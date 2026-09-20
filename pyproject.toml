@@ -1,0 +1,71 @@
+[project]
+name = "mahara-match"
+version = "0.1.0"
+description = "Architecture scaffold for the Mahara Match modular monolith"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "mypy",
+    "pytest",
+    "pytest-django",
+    "pytest-cov",
+    "coverage[toml]",
+    "pre-commit",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["."]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP", "DJ"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["backend", "ai", "pipelines"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+namespace_packages = true
+explicit_package_bases = true
+exclude = '(^|/)(\.venv|build|dist)/'
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+addopts = "--strict-config --strict-markers"
+django_find_project = false
+markers = [
+    "unit: isolated behavior without external services",
+    "integration: collaboration across modules or storage adapters",
+    "e2e: complete user journeys through application boundaries",
+]
+# Add DJANGO_SETTINGS_MODULE only when real Django test settings exist.
+
+[tool.coverage.run]
+branch = true
+source = ["backend", "ai", "pipelines"]
+relative_files = true
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+
+[tool.coverage.html]
+directory = "htmlcov"
