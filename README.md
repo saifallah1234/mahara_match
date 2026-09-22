@@ -9,9 +9,10 @@ corrections/improvements, as clarified by the user on 2026-09-20. See
 [CONTEXT.md](CONTEXT.md) and decision Q22 in the
 [question register](docs/architecture/open_questions.md) for the source reconciliation.
 
-This repository currently contains **architecture, documentation and development
-tooling only**. There is no initialized Django project, API, database schema, AI
-implementation, pipeline, deployment or application test suite.
+This repository now contains the initialized Django/DRF backend and the Person 1
+identity/RBAC slice. Its initial database migration remains gated on the Person 4
+organization models. Other business domains, AI, pipelines and deployment remain
+architecture placeholders.
 
 ## Start here
 
@@ -35,9 +36,8 @@ uv sync --locked
 ```
 
 The development group is installed by default. `uv.lock` records exact resolved
-versions; `pyproject.toml` declares the tools. Runtime dependencies are deferred.
-pytest-django may bring Django transitively into the development environment;
-this does not initialize Django or choose the future runtime dependency policy.
+versions; `pyproject.toml` declares Django, DRF, PostgreSQL/JWT/OpenAPI runtime
+dependencies and the development tools.
 
 When working in a Git checkout, install hooks with:
 
@@ -59,19 +59,17 @@ uv run --frozen pytest
 
 The equivalent commands inside the activated environment are `ruff check .`,
 `ruff format --check .`, `mypy .`, and `pytest`.
-Ruff and mypy currently check configuration and empty package markers only.
-**pytest exits with code 5 because no tests exist yet.** Do not hide this with a
-dummy test or reinterpret it as a passing application test suite. Add real tests
-with implementation. Django settings and mypy plugins are intentionally unset.
-Once meaningful tests exist, use `uv run --frozen pytest --cov --cov-report=term-missing`.
-No coverage target is imposed on an empty scaffold.
+Ruff, mypy and identity contract unit tests are active. PostgreSQL integration tests,
+the shared initial identity migration and a successful Django system check require
+the Person 4 organization/member models. Use
+`uv run --frozen pytest --cov --cov-report=term-missing` when reviewing coverage.
 
 ## Repository map
 
 | Location | Responsibility |
 | --- | --- |
 | `backend/apps/` | Business domains, future API/services/ORM boundaries |
-| `backend/config/` | Future Django configuration, currently empty |
+| `backend/config/` | Django settings, root routes and ASGI/WSGI entrypoints |
 | `backend/common/` | Domain-neutral technical helpers only |
 | `ai/` | Future agents, workflows, retrieval, document intelligence and evaluation |
 | `pipelines/` | Future data processing and background orchestration |

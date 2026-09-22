@@ -354,10 +354,13 @@ explicitly excludes it.
 ## Decision ownership and phase gates
 
 Read Q identifiers in the [question register](../architecture/open_questions.md).
-Phase 1's G01–G10 provide model-level detail. A decision owner proposes, reviewers
-review, and the team/product authority agrees business rules. Until then the affected
-task is blocked, not filled with guessed defaults. Update this roadmap when decisions
-change its paths or delivery scope.
+Phase 1's G01–G10 provide model-level detail. Their policy directions were approved
+on 2026-09-21; the [Phase 1 gate register](phase_01_data_backend.md#decision-gates-before-coding-the-affected-part)
+records both those decisions and the concrete owning contracts still required. A
+decision owner proposes those remaining details, reviewers review them, and the
+team/product authority agrees business rules. Until then the affected part is blocked,
+not filled with guessed defaults. Update this roadmap when decisions change its paths
+or delivery scope.
 
 | Decision | Owner; collaborators/reviewers | Affected tasks | Resolve before |
 | --- | --- | --- | --- |

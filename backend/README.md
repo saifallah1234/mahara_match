@@ -1,8 +1,9 @@
 # Backend boundary
 
-Future Django + Django REST Framework modular monolith. No project initialization
-has been performed. `config/` reserves settings and entrypoints, `apps/` owns
-business domains, and `common/` contains domain-neutral technical support.
+Django + Django REST Framework modular monolith. The project configuration and the
+Person 1 identity/RBAC slice are initialized; other domains remain reserved.
+`config/` owns settings and entrypoints, `apps/` owns business domains, and `common/`
+contains domain-neutral technical support.
 
 Future request path: **API → application service → Django ORM → PostgreSQL**.
 Transport code does not implement business rules or mutate models directly.

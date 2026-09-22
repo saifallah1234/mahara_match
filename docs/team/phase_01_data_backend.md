@@ -1,7 +1,8 @@
 # Phase 01 — Data model becomes a usable backend
 
-Status: execution plan only. None of the Python files, migrations, routes or tests
-named below has been implemented by this document. Read the
+Status: execution in progress. The P1 Django and identity/RBAC code is implemented,
+but its initial migration and PostgreSQL integration remain gated on P4's organization
+models. Other task rows remain plans until their owners implement them. Read the
 [full roadmap](implementation_roadmap.md) and [team workflow](development_workflow.md).
 
 ## Authority, scope and completion
@@ -172,10 +173,10 @@ All owners use fully qualified backend app imports; do not put backend/apps on
 the import path (its platform domain is not Python's standard-library platform module).
 
 P1 publishes a reviewed API contract before domain API work: route names/versioning,
-pagination, error representation, authentication context, owner/organization scope,
-service inputs/results, writable fields and method availability. P2–P5 review their
-consumer contracts. These transport choices are planning decisions to make at G01,
-not unverified source requirements or routes silently chosen by this document.
+pagination, error representation, JWT authentication context, owner/organization
+scope, service inputs/results, writable fields and method availability. P2–P5 review
+their consumer contracts. G01 approves the authentication direction but does not
+silently choose these remaining transport details or routes.
 
 Shared relationships use canonical identifiers and agreed model references, never
 copied tables or temporary shadow models. Services validate referenced ownership;
@@ -191,22 +192,24 @@ P1 merges root registrations after it passes, not all five developers independen
 ## Decision gates before coding the affected part
 
 Question references point to the [question register](../architecture/open_questions.md).
-The owner drafts the decision; reviewers agree it with the team/product authority.
-Ownership does not authorize inventing a business rule. Record the approved answer
-in the question register and affected architecture/API documents before implementation.
+The decisions below were approved by the user on **2026-09-21**. They replace the
+previous undecided direction for G01–G10. Ownership still does not authorize inventing
+concrete enum members, limits, transition rules or retention periods that the approved
+decision does not state. Those details must be written into the owning schema/API
+contract before the affected implementation.
 
-| Gate | Decision / evidence | Owner; reviewers | Affected tasks | Must resolve before |
+| Gate | Approved decision (2026-09-21) | Owner; reviewers | Affected tasks | Required follow-through before coding |
 | --- | --- | --- | --- | --- |
-| G01 | Django-compatible user/auth approach, RBAC vs Django auth representation, role vocabulary excluding human ANETI, session/token approach, API/service contract; Q07, Q22, Q23 | P1; P4, P2 | P01-1A, P01-1B, P01-4A; all API tasks | User initialization and first identity migration; route work |
-| G02 | UUID vs association keys, null global role uniqueness, timestamps, reference/on-delete behavior, hierarchy/departments; Q05–Q06, Q19 | P1; P4, P2, P3, P5 for their relations | All P01 model tasks | Affected model/migration PR |
-| G03 | Role/resource/operation matrix, organization and candidate visibility, deletion/retention and system-field access; Q03, Q07, Q19 | P1; all domain owners | All P01 APIs and models with deletion semantics | Affected access/deletion design; no provisional unrestricted endpoints |
-| G04 | Skills/languages/education scales, alias definition, association uniqueness and reference governance; Q20, Q24 | P2; P3, P5 | P01-2, P01-3, P01-5 | Taxonomy migrations and consumer fields |
-| G05 | Candidate Distance/Relocation, preference cardinality, incomplete metadata/enums, CV versioning and raw-result staging; Q08–Q09, Q24 | P2; P3, P1 | P01-2 | Affected candidate/document migrations and serializers |
-| G06 | Salary currency, language cardinality/CV language, offer URL, missing offer enums and result definitions; Q10–Q11, Q24 | P3; P2, P4 | P01-3; P01-2 targeted analyses | Offer/result model completion |
-| G07 | Application/interview enum definitions and retained history/deletion; Q12, Q24 | P3; P1, P2 | P01-3 | Model field definitions; transition rules separately required before Phase 5 writes |
-| G08 | Source identifiers/authorization representation, provenance fields, import enum definitions and source-created ownership; Q16–Q17, Q24 | P4; P3, P1 | P01-4A, P01-3 | Source/offer/import migrations; operational policy before Phase 6 |
-| G09 | Training field/enumeration definitions, paid/free scope and missing record requirements; Q13, Q24 | P5; P4, P2 | P01-5 | Training schema completion; advanced behavior remains gated for Phase 5 |
-| G10 | Message/execution/action/notification enums, trace visibility, audit attribution and protected-record lifecycle; Q15, Q19, Q24 | P1; P4, P2 | P01-1B | Assistant/platform migrations; operational confirmation before Phase 8 |
+| G01 | Use Django `AbstractUser` with the custom `roles`, `permissions` and `user_roles` RBAC tables. Authenticate API access with JWT. Do not create a human ANETI role. Retain platform roles for Candidate, Employer, Training Organization, Ministry and Admin. | P1; P4, P2 | P01-1A, P01-1B, P01-4A; all API tasks | P1 publishes the role identifiers, JWT lifecycle and shared API/service contract before user migrations and route work. |
+| G02 | Use UUID primary keys, `created_at` and `updated_at` on every persisted entity, explicit foreign keys and explicit `on_delete` rules. Represent organization hierarchy with `parent_id`. | P1; P4, P2, P3, P5 for their relations | All P01 model tasks | Each owner records its exact foreign-key deletion behavior and scoped uniqueness; P1 records global versus organization-scoped role uniqueness. |
+| G03 | Define the RBAC matrix before exposing APIs. Users may access only resources allowed by their role and organization. Prefer soft deletion for important business records and protect system and audit fields. | P1; all domain owners | All P01 APIs and models with deletion semantics | Publish the resource/operation matrix, candidate visibility rules and the exact records subject to soft deletion or retention. No provisional unrestricted endpoints. |
+| G04 | Use central reference tables for skills, languages and degrees, with alias tables. Enforce association uniqueness such as `(candidate, skill)`. | P2; P3, P5 | P01-2, P01-3, P01-5 | P2 publishes canonical table naming, alias shape, reference governance and the actual approved level/scale vocabularies before taxonomy migrations. |
+| G05 | Store candidate preferences separately, covering work mode, relocation and location/distance. Support multiple CV versions. Store raw CV analysis separately from candidate-validated normalized data. | P2; P3, P1 | P01-2 | P2 records preference cardinality, distance semantics, CV/document cardinality, version allocation and concrete document/CV status vocabularies before candidate/document migrations and serializers. |
+| G06 | Job offers contain salary minimum/maximum and currency, a URL, required languages through relationship tables, and controlled contract, work-mode and status enums. | P3; P2, P4 | P01-3; P01-2 targeted analyses | P3 publishes concrete enum values, language-level semantics, salary validation and URL constraints before offer/result models. |
+| G07 | Use explicit application-status and interview-status enums. Preserve application/interview history instead of overwriting important transitions. | P3; P1, P2 | P01-3 | P3 publishes the concrete enum values, permitted transitions, authority, withdrawal/reapplication behavior and history retention before these models and write services. |
+| G08 | Give every source an identifier, authorization status and configuration. Preserve import provenance with `source_id + external_id`, checksums and batch tracking. | P4; P3, P1 | P01-4A, P01-3 | P4 defines authorization governance, missing external-ID behavior, repeat/update semantics and concrete import/source statuses before source/import migrations. |
+| G09 | Training uses controlled type, modality and status fields and pricing through `is_free` and price. Required and acquired skills reference the central skill tables. | P5; P4, P2 | P01-5 | P5 publishes concrete enums, price/currency constraints and the scope of prerequisites, assessment, attendance and certificates before training migrations. |
+| G10 | Define controlled enums for messages, executions, actions and notifications. Retain execution/audit traces with user attribution. Important audit records are not normally deletable. | P1; P4, P2 | P01-1B | P1 publishes concrete enum values, trace visibility/redaction, protected lifecycle rules and the confirmation state machine before assistant/platform migrations. |
 
 A field present in the logical model is not automatically fully specified. Explicitly
 reconcile absent lengths/nullability/defaults, string enums without vocabularies,
