@@ -9,6 +9,7 @@ from backend.apps.identity.api.role_permissions_views import RolePermissionViewS
 from backend.apps.identity.api.roles_views import RoleViewSet
 from backend.apps.identity.api.user_roles_views import UserRoleViewSet
 from backend.apps.identity.api.users_views import UserViewSet
+from backend.apps.identity.api.organizations_views import OrganizationViewSet
 
 router = DefaultRouter()
 router.register("users", UserViewSet, basename="user")
@@ -16,6 +17,7 @@ router.register("roles", RoleViewSet, basename="role")
 router.register("permissions", PermissionViewSet, basename="permission")
 router.register("user-roles", UserRoleViewSet, basename="user-role")
 router.register("role-permissions", RolePermissionViewSet, basename="role-permission")
+router.register("organizations", OrganizationViewSet, basename="organization")
 
 urlpatterns = [
     path("auth/token/", TokenObtainPairView.as_view(), name="token-obtain-pair"),

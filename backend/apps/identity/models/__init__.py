@@ -3,6 +3,8 @@ from backend.apps.identity.models.role_permissions import RolePermission
 from backend.apps.identity.models.roles import Role, RoleCode
 from backend.apps.identity.models.user_roles import UserRole
 from backend.apps.identity.models.users import User, UserStatus
+from backend.apps.identity.models.organizations import Organization, OrganizationType
+
 
 __all__ = [
     "Permission",
@@ -12,4 +14,6 @@ __all__ = [
     "User",
     "UserRole",
     "UserStatus",
+    "Organization",
+    "OrganizationType",
 ]
