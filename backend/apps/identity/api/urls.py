@@ -10,6 +10,7 @@ from backend.apps.identity.api.roles_views import RoleViewSet
 from backend.apps.identity.api.user_roles_views import UserRoleViewSet
 from backend.apps.identity.api.users_views import UserViewSet
 from backend.apps.identity.api.organizations_views import OrganizationViewSet
+from backend.apps.identity.api.organization_members_views import (OrganizationMemberViewSet,)
 
 router = DefaultRouter()
 router.register("users", UserViewSet, basename="user")
@@ -27,4 +28,25 @@ urlpatterns = [
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("", include(router.urls)),
+    path(
+        "organizations/<uuid:organization_id>/members/",
+        OrganizationMemberViewSet.as_view(
+            {
+                "get": "list",
+                "post": "create",
+            }
+        ),
+        name="organization-member-list",
+    ),
+    path(
+        "organizations/<uuid:organization_id>/members/<uuid:pk>/",
+        OrganizationMemberViewSet.as_view(
+            {
+                "get": "retrieve",
+                "patch": "partial_update",
+                "delete": "destroy",
+            }
+        ),
+        name="organization-member-detail",
+    ),
 ]

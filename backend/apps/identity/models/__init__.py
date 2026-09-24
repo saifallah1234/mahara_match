@@ -4,6 +4,7 @@ from backend.apps.identity.models.roles import Role, RoleCode
 from backend.apps.identity.models.user_roles import UserRole
 from backend.apps.identity.models.users import User, UserStatus
 from backend.apps.identity.models.organizations import Organization, OrganizationType
+from backend.apps.identity.models.organization_members import OrganizationMember
 
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
     "UserRole",
     "UserStatus",
     "Organization",
+    "OrganizationMember",
     "OrganizationType",
 ]
