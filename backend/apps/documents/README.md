@@ -1,6 +1,6 @@
 # documents
 
-**Future responsibility:** Shared uploaded-file metadata, ownership, storage references and processing status.
+**Responsibility:** Shared uploaded-file metadata, ownership, storage references and processing status.
 
 **Logical entity ownership:** documents.
 
@@ -11,11 +11,12 @@ Own file metadata, not CV versions or import histories. Object storage holds byt
 
 ## Reserved boundaries
 
-- `api/`: future DRF transport, request validation and response representation.
-- `services/`: application operations, authorization and business coordination.
-- `models/`: future Django ORM definitions owned by this domain.
+- `api/`: owner-scoped read transport.
+- `services/`: trusted metadata creation and ownership checks.
+- `models/`: Django ORM metadata definition.
 
-These directories contain no implementations. No Django app has been initialized.
+The app is initialized without migrations. Binary upload and storage adapters remain
+future work.
 Cross-domain operations use the owning service; do not duplicate entities or mutate
 another domain's models directly. Open requirements are tracked in the
 [question register](../../../docs/architecture/open_questions.md).
