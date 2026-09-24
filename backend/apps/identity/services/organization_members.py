@@ -13,7 +13,7 @@ from backend.common.exceptions import DomainNotFoundError, DomainValidationError
 
 def list_members(
     actor: Any,
-    organization_id: UUID | str,
+    organization_id: UUID,
 ) -> QuerySet[OrganizationMember]:
     require_permission(
         actor,
@@ -31,7 +31,7 @@ def list_members(
 
 def get_member(
     actor: Any,
-    organization_id: UUID | str,
+    organization_id: UUID,
     member_id: UUID | str,
 ) -> OrganizationMember:
     require_permission(
