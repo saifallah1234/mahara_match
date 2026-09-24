@@ -40,9 +40,7 @@ class OrganizationMemberViewSet(GenericViewSet[OrganizationMember]):
             organization_id,
             pk,
         )
-        return Response(
-            OrganizationMemberReadSerializer(member).data
-        )
+        return Response(OrganizationMemberReadSerializer(member).data)
 
     def create(
         self,
@@ -89,9 +87,7 @@ class OrganizationMemberViewSet(GenericViewSet[OrganizationMember]):
             serializer.validated_data,
         )
 
-        return Response(
-            OrganizationMemberReadSerializer(member).data
-        )
+        return Response(OrganizationMemberReadSerializer(member).data)
 
     def destroy(
         self,

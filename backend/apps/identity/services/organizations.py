@@ -1,16 +1,15 @@
+from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
-from collections.abc import Mapping
 
 from django.db import IntegrityError, transaction
 from django.db.models import QuerySet
 
 from backend.apps.identity.models import Organization
+from backend.apps.identity.models.organizations import VerificationStatus
 from backend.apps.identity.services.access import require_permission
 from backend.apps.identity.services.contracts import IdentityPermissionCode
-from backend.apps.identity.models.organizations import VerificationStatus
-from backend.common.exceptions import DomainNotFoundError
-from backend.common.exceptions import DomainValidationError
+from backend.common.exceptions import DomainNotFoundError, DomainValidationError
 
 
 def list_organizations(actor: Any) -> QuerySet[Organization]:
@@ -46,9 +45,7 @@ def create_organization(
     except IntegrityError as exc:
         raise DomainValidationError(
             details={
-                "matricule_fiscal": [
-                    "An organization with this matricule fiscal already exists."
-                ]
+                "matricule_fiscal": ["An organization with this matricule fiscal already exists."]
             }
         ) from exc
 
@@ -87,9 +84,7 @@ def update_organization(
     except IntegrityError as exc:
         raise DomainValidationError(
             details={
-                "matricule_fiscal": [
-                    "An organization with this matricule fiscal already exists."
-                ]
+                "matricule_fiscal": ["An organization with this matricule fiscal already exists."]
             }
         ) from exc
 
@@ -105,11 +100,7 @@ def verify_organization(
 
     if organization.verification_status != VerificationStatus.PENDING:
         raise DomainValidationError(
-            details={
-                "verification_status": [
-                    "Only pending organizations can be verified."
-                ]
-            }
+            details={"verification_status": ["Only pending organizations can be verified."]}
         )
 
     organization.verification_status = VerificationStatus.VERIFIED
@@ -127,11 +118,7 @@ def reject_organization(
 
     if organization.verification_status != VerificationStatus.PENDING:
         raise DomainValidationError(
-            details={
-                "verification_status": [
-                    "Only pending organizations can be rejected."
-                ]
-            }
+            details={"verification_status": ["Only pending organizations can be rejected."]}
         )
 
     organization.verification_status = VerificationStatus.REJECTED

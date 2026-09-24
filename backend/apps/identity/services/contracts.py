@@ -23,7 +23,9 @@ BASE_PERMISSIONS = (
     PermissionDefinition(IdentityPermissionCode.UPDATE_SELF, "identity.user", "update_self"),
     PermissionDefinition(IdentityPermissionCode.MANAGE_USERS, "identity.user", "manage"),
     PermissionDefinition(IdentityPermissionCode.MANAGE_RBAC, "identity.rbac", "manage"),
-    PermissionDefinition(IdentityPermissionCode.MANAGE_ORGANIZATIONS, "identity.organization", "manage"),
+    PermissionDefinition(
+        IdentityPermissionCode.MANAGE_ORGANIZATIONS, "identity.organization", "manage"
+    ),
 )
 
 BASE_ROLE_NAMES: dict[str, str] = {

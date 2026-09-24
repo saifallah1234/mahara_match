@@ -1,9 +1,9 @@
 from uuid import UUID
 
+from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
-from rest_framework.decorators import action
 
 from backend.apps.identity.api.organizations_serializers import (
     OrganizationCreateSerializer,
@@ -18,14 +18,10 @@ class OrganizationViewSet(GenericViewSet[Organization]):
     serializer_class = OrganizationReadSerializer
     queryset = Organization.objects.none()
 
-
     def list(self, request: Request) -> Response:
         queryset = organization_services.list_organizations(request.user)
         page = self.paginate_queryset(queryset)
-        return self.get_paginated_response(
-            OrganizationReadSerializer(page, many=True).data
-        )
-
+        return self.get_paginated_response(OrganizationReadSerializer(page, many=True).data)
 
     def retrieve(self, request: Request, pk: UUID) -> Response:
         return Response(
@@ -33,7 +29,6 @@ class OrganizationViewSet(GenericViewSet[Organization]):
                 organization_services.get_organization(request.user, pk)
             ).data
         )
-
 
     def create(self, request: Request) -> Response:
         serializer = OrganizationCreateSerializer(data=request.data)
@@ -46,7 +41,6 @@ class OrganizationViewSet(GenericViewSet[Organization]):
             OrganizationReadSerializer(organization).data,
             status=201,
         )
-
 
     def partial_update(self, request: Request, pk: UUID) -> Response:
         organization = organization_services.get_organization(request.user, pk)
@@ -61,7 +55,6 @@ class OrganizationViewSet(GenericViewSet[Organization]):
             serializer.validated_data,
         )
         return Response(OrganizationReadSerializer(organization).data)
-
 
     @action(detail=True, methods=["post"])
     def verify(self, request: Request, pk: UUID) -> Response:

@@ -1,5 +1,7 @@
 from typing import Any
+
 from rest_framework import serializers
+
 from backend.apps.identity.models import Organization, OrganizationType
 
 

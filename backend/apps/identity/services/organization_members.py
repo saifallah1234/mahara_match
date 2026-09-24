@@ -22,8 +22,7 @@ def list_members(
     )
 
     return (
-        OrganizationMember.objects
-        .filter(organization_id=organization_id)
+        OrganizationMember.objects.filter(organization_id=organization_id)
         .select_related("organization", "user")
         .order_by("created_at", "id")
     )
@@ -41,13 +40,9 @@ def get_member(
     )
 
     try:
-        return (
-            OrganizationMember.objects
-            .select_related("organization", "user")
-            .get(
-                id=member_id,
-                organization_id=organization_id,
-            )
+        return OrganizationMember.objects.select_related("organization", "user").get(
+            id=member_id,
+            organization_id=organization_id,
         )
     except OrganizationMember.DoesNotExist as exc:
         raise DomainNotFoundError("Organization member not found.") from exc
@@ -69,11 +64,7 @@ def create_member(
         return OrganizationMember.objects.create(**dict(data))
     except IntegrityError as exc:
         raise DomainValidationError(
-            details={
-                "user": [
-                    "This user is already a member of this organization."
-                ]
-            }
+            details={"user": ["This user is already a member of this organization."]}
         ) from exc
 
 

@@ -32,7 +32,6 @@ class Organization(UUIDTimestampedModel):
     legal_name = models.CharField(max_length=255)
     registration_number = models.CharField(
         max_length=100,
-        null=True,
         blank=True,
     )
     description = models.TextField(blank=True)
@@ -49,11 +48,9 @@ class Organization(UUIDTimestampedModel):
     )
     deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
-
     class Meta:
         db_table = "organizations"
         ordering = ("legal_name", "id")
-
 
     def __str__(self) -> str:
         return self.legal_name

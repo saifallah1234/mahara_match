@@ -4,13 +4,15 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 
 from backend.apps.identity.api.authentication_views import LogoutView
+from backend.apps.identity.api.organization_members_views import (
+    OrganizationMemberViewSet,
+)
+from backend.apps.identity.api.organizations_views import OrganizationViewSet
 from backend.apps.identity.api.permissions_views import PermissionViewSet
 from backend.apps.identity.api.role_permissions_views import RolePermissionViewSet
 from backend.apps.identity.api.roles_views import RoleViewSet
 from backend.apps.identity.api.user_roles_views import UserRoleViewSet
 from backend.apps.identity.api.users_views import UserViewSet
-from backend.apps.identity.api.organizations_views import OrganizationViewSet
-from backend.apps.identity.api.organization_members_views import (OrganizationMemberViewSet,)
 
 router = DefaultRouter()
 router.register("users", UserViewSet, basename="user")
