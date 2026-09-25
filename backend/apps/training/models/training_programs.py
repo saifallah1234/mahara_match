@@ -1,6 +1,7 @@
 from typing import ClassVar
 
 from django.db import models
+from django.db.models import Q
 
 from backend.common.models import UUIDTimestampedModel
 
@@ -25,7 +26,9 @@ class ProgramStatus(models.TextChoices):
 
 class TrainingProgram(UUIDTimestampedModel):
     objects: ClassVar[models.Manager] = models.Manager()
-    organization_id: models.UUIDField = models.UUIDField(db_index=True)
+    organization = models.ForeignKey(
+        "identity.Organization", on_delete=models.PROTECT, related_name="training_programs"
+    )
     title: models.CharField = models.CharField(max_length=255)
     description: models.TextField = models.TextField(blank=True, default="")
     level: models.CharField = models.CharField(
@@ -37,15 +40,19 @@ class TrainingProgram(UUIDTimestampedModel):
     status: models.CharField = models.CharField(
         max_length=30, choices=ProgramStatus.choices, default=ProgramStatus.DRAFT
     )
-    is_paid: models.BooleanField = models.BooleanField(default=False)
-    price: models.DecimalField = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
+    is_free: models.BooleanField = models.BooleanField(default=True)
+    price: models.DecimalField = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     class Meta:
         app_label = "training"
         db_table = "training_programs"
         ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(is_free=True, price=0) | Q(is_free=False, price__gt=0)),
+                name="training_programs_free_price_consistent",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.title} ({self.status})"

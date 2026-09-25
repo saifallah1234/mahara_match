@@ -24,8 +24,12 @@ Scan/parse results, raw parsed JSON, skill validation provenance, completion sco
 and ATS analysis results have no candidate write route. Only candidate confirmed
 information is written to structured records.
 
-`distance` is the maximum preferred commute in kilometres, nullable and bounded by
-the decimal field's 999.99 km representable maximum. An unset distance means no
-preference. `relocation` is `OPEN` or `CANNOT`; `work_mode` is `REMOTE`, `HYBRID` or
+**Approved change pending implementation (2026-09-25; Q09):** one
+`candidate_preferences` record per candidate must contain work mode, relocation
+and maximum preferred commute distance in kilometres. Missing distance means no
+preference stated. The current code/API still puts `distance` and `relocation` on
+`candidate_profiles`; this contract describes that current behavior until P2
+reconciles it before migration. Its decimal field currently represents up to
+999.99 km. `relocation` is `OPEN` or `CANNOT`; `work_mode` is `REMOTE`, `HYBRID` or
 `ONSITE`. Language levels use CEFR A1–C2; skill levels use `BEGINNER`,
 `INTERMEDIATE`, `ADVANCED` and `EXPERT`. Project `technologies` accepts skill UUIDs.

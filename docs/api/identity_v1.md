@@ -15,6 +15,12 @@ PostgreSQL integration remain gated on the Person 4 `Organization` and
 - Errors use `{"error":{"code":"...","message":"...","details":{...}}}`.
 - OpenAPI is served at `/api/v1/schema/` and Swagger UI at `/api/v1/docs/`.
 
+**Approved browser direction (2026-09-25; not yet implemented):** the future
+React/TypeScript/Vite UI calls `/api/v1` through a same-origin path. Refresh
+credentials use an HttpOnly cookie with CSRF protection. P1/P4 must define the
+cookie attributes, token endpoint behavior and CSRF request contract before UI
+integration; this direction does not change the currently implemented token API.
+
 ## Identity resources
 
 | Resource | Methods | Authority |

@@ -6,6 +6,8 @@ from backend.apps.training.models import DeliveryMode, ProgramLevel, ProgramStat
 
 
 class TrainingProgramReadSerializer(serializers.ModelSerializer[TrainingProgram]):
+    organization_id = serializers.UUIDField(read_only=True)
+
     class Meta:
         model = TrainingProgram
         fields = (
@@ -16,7 +18,7 @@ class TrainingProgramReadSerializer(serializers.ModelSerializer[TrainingProgram]
             "level",
             "delivery_mode",
             "status",
-            "is_paid",
+            "is_free",
             "price",
             "created_at",
             "updated_at",
@@ -31,14 +33,16 @@ class TrainingProgramCreateSerializer(serializers.Serializer[dict[str, Any]]):
     level = serializers.ChoiceField(choices=ProgramLevel.choices, required=False)
     delivery_mode = serializers.ChoiceField(choices=DeliveryMode.choices, required=False)
     status = serializers.ChoiceField(choices=ProgramStatus.choices, required=False)
-    is_paid = serializers.BooleanField(required=False, default=False)
-    price = serializers.DecimalField(
-        max_digits=10, decimal_places=2, required=False, allow_null=True
-    )
+    is_free = serializers.BooleanField(required=False, default=True)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, default=0)
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
-        if attrs.get("is_paid") and not attrs.get("price"):
-            raise serializers.ValidationError({"price": "A price is required for a paid program."})
+        if (attrs["is_free"] and attrs["price"] != 0) or (
+            not attrs["is_free"] and attrs["price"] <= 0
+        ):
+            raise serializers.ValidationError(
+                {"price": "Free programs cost 0 TND; paid programs cost more than 0 TND."}
+            )
         return attrs
 
 
@@ -48,7 +52,15 @@ class TrainingProgramUpdateSerializer(serializers.Serializer[dict[str, Any]]):
     level = serializers.ChoiceField(choices=ProgramLevel.choices, required=False)
     delivery_mode = serializers.ChoiceField(choices=DeliveryMode.choices, required=False)
     status = serializers.ChoiceField(choices=ProgramStatus.choices, required=False)
-    is_paid = serializers.BooleanField(required=False)
-    price = serializers.DecimalField(
-        max_digits=10, decimal_places=2, required=False, allow_null=True
-    )
+    is_free = serializers.BooleanField(required=False)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        program = self.instance
+        is_free = attrs.get("is_free", program.is_free)
+        price = attrs.get("price", program.price)
+        if (is_free and price != 0) or (not is_free and price <= 0):
+            raise serializers.ValidationError(
+                {"price": "Free programs cost 0 TND; paid programs cost more than 0 TND."}
+            )
+        return attrs

@@ -11,9 +11,9 @@ from backend.apps.training.models import (
 
 @admin.register(TrainingProgram)
 class TrainingProgramAdmin(admin.ModelAdmin):
-    list_display = ("title", "organization_id", "level", "delivery_mode", "status", "is_paid")
-    list_filter = ("status", "level", "delivery_mode", "is_paid")
-    search_fields = ("title", "description", "organization_id")
+    list_display = ("title", "organization", "level", "delivery_mode", "status", "is_free")
+    list_filter = ("status", "level", "delivery_mode", "is_free")
+    search_fields = ("title", "description", "organization__legal_name")
 
 
 @admin.register(TrainingSkill)

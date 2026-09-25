@@ -9,6 +9,7 @@ from backend.apps.identity.models import Permission
 from backend.apps.identity.services.access import require_permission
 from backend.apps.identity.services.contracts import IdentityPermissionCode
 from backend.common.exceptions import DomainNotFoundError, DomainValidationError
+
 """
 This file contains the service functions for managing permissions.
 

@@ -18,12 +18,35 @@ the original source files remain unchanged. See Q22 in the question register.
 for G01–G10: Django `AbstractUser`, custom RBAC and JWT; UUID keys and timestamps;
 role/organization-scoped access and preferred soft deletion for important records;
 central taxonomy references and aliases; separate candidate preferences and raw CV
-results; explicit offer salary/currency/language fields; retained recruitment history;
+results; offer salary bounds and language fields; retained recruitment history;
 import provenance; controlled training/pricing fields; and protected attributable
 assistant/audit traces. The exact enum vocabularies, transition matrices, limits and
 retention periods not supplied by that decision remain owning-contract details and
 must not be invented. See the [Phase 1 gate register](docs/team/phase_01_data_backend.md#decision-gates-before-coding-the-affected-part)
 and [question register](docs/architecture/open_questions.md).
+
+**User decisions (2026-09-25):** the PostgreSQL recommendation baseline is a pilot;
+the MVP label requires evaluated Phase 7 hybrid plus graph/GraphRAG. Five human
+roles remain Candidate, Recruiter, Training Manager, Ministry Manager and Admin.
+Offers use TND only with no currency column, superseding the earlier G06 direction.
+One candidate preference holds work mode, relocation and maximum commute distance;
+one internal Easy Apply application per candidate/offer retains status history.
+Frontend technology is React, TypeScript and Vite under `frontend/`. Q01–Q26 in
+the [question register](docs/architecture/open_questions.md) record the full
+decisions and the concrete details still owed by each domain owner.
+
+**Discussion refinements (2026-09-25):** no departments or department labels in
+the MVP. Leave existing optional candidate/CV language fields; do not add offer
+language requirements or language-based rejection for now. Recruiter access to a
+limited profile requires candidate opt-in; submitted CVs go only to the receiving
+organization. Training prices are TND, free `0` or paid greater than `0`.
+Recruiters may skip optional forward application stages or reject an active
+application; candidates may withdraw while active. Hired, rejected and withdrawn
+are terminal, with no reapplication to the same offer. Automated import rows
+without `external_id` are rejected. Raw CV extraction and conversation history
+have no age-based automatic deletion. CV/account deletion is soft deletion with
+no MVP restoration, scheduled purge or backup system; retained-data policy still
+needs review before release.
 
 The task adds technical decisions not stated in those documents: a Django/DRF
 modular monolith, Django ORM as schema authority, Python 3.12, uv, and the chosen
@@ -47,8 +70,9 @@ candidates and employers (PDF p. 2; advisor identity clarified above).
 
 The five human actors use account roles, with organization membership where
 applicable (DM §2; PDF pp. 3–4). The ANETI advisor is a system AI actor, not a
-sixth human role or an advisor staffing workflow. Ministry account scope and the
-delivery scope of AI guidance remain open; the advisor's AI identity is resolved.
+sixth human role or an advisor staffing workflow. Ministry reporting still needs
+approved KPI and privacy contracts; AI guidance reuses candidate, recommendation
+and assistant data.
 
 ## Functional modules and vocabulary
 
@@ -86,10 +110,12 @@ ORM → PostgreSQL. Django migrations will create and evolve relational tables.
 The project and P1 identity models/settings are initialized, while the shared
 identity migration waits for P4's organization/member models.
 
-PostgreSQL owns transactional data. Object storage holds CVs and other original
-files; the database holds metadata and URIs. Vector and Neo4j stores are derived
-indexes retaining relational identifiers. Validated changes are recorded in
-PostgreSQL before idempotent projection synchronization (DM §§1, 5; PDF p. 9).
+PostgreSQL owns transactional data and initial text search. Object storage holds
+CVs and other original files; the database holds metadata and URIs. Evaluate
+pgvector for semantic retrieval; use Neo4j only if GraphRAG traversal genuinely
+needs it. Any vector/graph index is a derived projection retaining relational IDs.
+Validated changes are recorded in PostgreSQL before idempotent synchronization
+(DM §§1, 5; PDF p. 9).
 
 The PDF's microservice deployment wording (p. 10) is overridden by this task's
 modular-monolith requirement. Future heavy processing can have separate execution
@@ -112,19 +138,24 @@ LangGraph is planned for interactive multi-step paths combining tools,
 deterministic steps and human validation. Agents call tools, tools call application
 services, and those services enforce permissions and persistence. Conversation,
 execution, tool-call and action records belong to the backend `assistant` domain.
-External messages and applications require explicit confirmation (PDF p. 9).
+Agent-initiated profile edits, applications, enrollments and external sends require
+explicit user confirmation; reads and drafts do not. Action persistence uses
+idempotency keys. Exact lifecycle states remain a P1 contract (Q15).
 
 CV processing separates text extraction (PyMuPDF) and OCR for scanned/image inputs
 (Tesseract or equivalent) from NLP/LLM parsing, ATS analysis and CV generation.
-Extracted profile information must be confirmed by the candidate. Under the approved
-G05 direction, raw CV results are stored separately from candidate-validated normalized
-data; their exact retention lifecycle remains to be defined (DM §4.B; PDF p. 9).
+Extracted profile information must be confirmed by the candidate. Under G05, raw
+CV results are stored separately from candidate-validated normalized data and
+remain linked to the CV without an age-based automatic deletion timer. CV/account
+deletion is soft deletion; retained-data policy still needs review before release
+(DM §4.B; PDF p. 9).
 
-RAG uses retrieved internal sources; GraphRAG adds projected relationships among
+RAG uses retrieved internal sources; GraphRAG adds relationships among
 candidates, organizations, offers, skills and training. Hybrid lexical/vector/graph
 retrieval and reranking support source-backed explanations of matched and missing
 skills. Neither retrieval nor model output can replace business authorization or
-make final hiring decisions (PDF pp. 2, 5, 7, 9).
+make final hiring decisions (PDF pp. 2, 5, 7, 9). The baseline is a pilot; the MVP
+label requires demonstrated and evaluated hybrid plus graph/GraphRAG retrieval.
 
 ## Background pipelines
 
@@ -142,23 +173,20 @@ helpers. `ai/` owns future intelligence capabilities; `pipelines/` processing;
 and collaboration. See the [repository map](README.md#repository-map).
 
 Guidance remains a README-only scope marker for AI-assisted candidate support,
-not a human advisor module or a second AI runtime. Any distinct business state
-would need justification before implementation. Reporting and community are
-also reserved scopes without schemas. Community,
-advanced interview scheduling and external integrations are deferred in the PDF's
-recommended MVP section. Freelance is a future extension; fine-tuning and
-quantization depend on data, resources and evaluation (PDF p. 10). GraphRAG MVP
-timing conflicts with its progressive-extension description and is not resolved here.
+not a human advisor module or a second AI runtime. Reporting needs a small set of
+approved aggregate KPIs and privacy rules before implementation. Community is
+post-MVP. Advanced integrations stay outside the current release; freelance,
+fine-tuning and quantization retain separate future gates (PDF p. 10).
 
 ## Decisions and unresolved questions
 
 The [implementation roadmap](docs/team/implementation_roadmap.md) assigns future
 work across five people and ten integration phases, with separately gated post-MVP
 extensions. The [Phase 1 plan](docs/team/phase_01_data_backend.md) covers all defined
-relational entities and controlled backend interfaces. Frontend delivery is included
-behind a framework/location decision; no frontend or backend functionality exists yet.
-These plans define future work beyond the partial P1 identity implementation, not
-completed product capabilities or new business rules.
+relational entities and controlled backend interfaces. Frontend technology and
+location are selected, but no frontend has been created; P4 still needs exact
+feature/test paths and browser transport/acceptance contracts. These plans define
+future work beyond the partial backend implementation, not completed capabilities.
 
 Single domain ownership, ORM-controlled relational schema, derived AI indexes,
 separate interactive/background orchestration, explicit action confirmation and
@@ -166,9 +194,7 @@ candidate validation guide future implementation. Python 3.12, English docs and
 uv are the agreed team defaults.
 
 Consult [open questions](docs/architecture/open_questions.md) before implementing
-the concrete contracts left open by the approved Phase 1 directions: department
-semantics, scoped uniqueness and deletion rules, enum/scale values, distance and
-preference cardinality, CV numbering, application transitions, source deduplication,
-training assessment, AI guidance scope, reporting, providers and retention/visibility.
-The register distinguishes approved direction from missing concrete definitions and
-must not be treated as permission to invent acceptance criteria.
+the contracts still open after the 2026-09-25 answers: remaining interview states,
+importer ownership, KPI definitions, provider/model evaluation, retained-data policy,
+scoring weights and release thresholds. The register distinguishes approved
+direction from missing details; do not invent acceptance criteria.

@@ -24,14 +24,14 @@ def list_members(
     return (
         OrganizationMember.objects.filter(organization_id=organization_id)
         .select_related("organization", "user")
-        .order_by("created_at", "id")
+        .order_by("organization_id", "user_id")
     )
 
 
 def get_member(
     actor: Any,
     organization_id: UUID,
-    member_id: UUID | str,
+    user_id: UUID | str,
 ) -> OrganizationMember:
     require_permission(
         actor,
@@ -41,7 +41,7 @@ def get_member(
 
     try:
         return OrganizationMember.objects.select_related("organization", "user").get(
-            id=member_id,
+            user_id=user_id,
             organization_id=organization_id,
         )
     except OrganizationMember.DoesNotExist as exc:
@@ -53,7 +53,8 @@ def create_member(
     actor: Any,
     data: Mapping[str, Any],
 ) -> OrganizationMember:
-    organization_id = data["organization"]
+    data = dict(data)
+    organization_id = data.pop("organization_id")
     require_permission(
         actor,
         IdentityPermissionCode.MANAGE_ORGANIZATIONS,
@@ -61,7 +62,11 @@ def create_member(
     )
 
     try:
-        return OrganizationMember.objects.create(**dict(data))
+        return OrganizationMember.objects.create(
+            organization_id=organization_id,
+            user_id=data.pop("user"),
+            **data,
+        )
     except IntegrityError as exc:
         raise DomainValidationError(
             details={"user": ["This user is already a member of this organization."]}
@@ -86,7 +91,7 @@ def update_member(
         if field in data:
             setattr(member, field, data[field])
 
-    member.save(update_fields=[*data.keys(), "updated_at"])
+    member.save(update_fields=list(data.keys()))
     return member
 
 

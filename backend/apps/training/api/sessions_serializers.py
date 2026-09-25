@@ -33,7 +33,7 @@ class TrainingSessionCreateSerializer(serializers.Serializer[dict[str, Any]]):
     status = serializers.ChoiceField(choices=SessionStatus.choices, required=False)
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
-        if attrs["end_date"] < attrs["start_date"]:
+        if attrs["end_date"] <= attrs["start_date"]:
             raise serializers.ValidationError({"end_date": "Must be after the start date."})
         if attrs["registration_deadline"] > attrs["start_date"]:
             raise serializers.ValidationError(
@@ -49,3 +49,16 @@ class TrainingSessionUpdateSerializer(serializers.Serializer[dict[str, Any]]):
     location_or_url = serializers.CharField(max_length=500, required=False)
     registration_deadline = serializers.DateTimeField(required=False)
     status = serializers.ChoiceField(choices=SessionStatus.choices, required=False)
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        session = self.instance
+        start_date = attrs.get("start_date", session.start_date)
+        end_date = attrs.get("end_date", session.end_date)
+        deadline = attrs.get("registration_deadline", session.registration_deadline)
+        if end_date <= start_date:
+            raise serializers.ValidationError({"end_date": "Must be after the start date."})
+        if deadline > start_date:
+            raise serializers.ValidationError(
+                {"registration_deadline": "Must be on or before the start date."}
+            )
+        return attrs

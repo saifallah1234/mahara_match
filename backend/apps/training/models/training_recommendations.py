@@ -10,9 +10,13 @@ from backend.common.models import UUIDTimestampedModel
 
 class TrainingRecommendation(UUIDTimestampedModel):
     objects: ClassVar[models.Manager] = models.Manager()
-    candidate_id: models.UUIDField = models.UUIDField(db_index=True)
+    candidate = models.ForeignKey(
+        "candidates.CandidateProfile",
+        on_delete=models.PROTECT,
+        related_name="training_recommendations",
+    )
     program = models.ForeignKey(
-        TrainingProgram, on_delete=models.CASCADE, related_name="recommendations"
+        TrainingProgram, on_delete=models.PROTECT, related_name="recommendations"
     )
     program_id: uuid.UUID  # Explicitly type the underlying foreign key ID for type checkers
 
@@ -26,6 +30,12 @@ class TrainingRecommendation(UUIDTimestampedModel):
         app_label = "training"
         db_table = "training_recommendations"
         ordering = ["-score"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(score__gte=0, score__lte=100),
+                name="training_recommendation_score_range",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"Recommendation for Candidate {self.candidate_id} - Score: {self.score}"

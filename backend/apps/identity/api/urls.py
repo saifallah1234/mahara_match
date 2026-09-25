@@ -41,7 +41,7 @@ urlpatterns = [
         name="organization-member-list",
     ),
     path(
-        "organizations/<uuid:organization_id>/members/<uuid:pk>/",
+        "organizations/<uuid:organization_id>/members/<uuid:user_id>/",
         OrganizationMemberViewSet.as_view(
             {
                 "get": "retrieve",

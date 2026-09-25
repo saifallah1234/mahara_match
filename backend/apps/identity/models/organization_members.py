@@ -1,10 +1,8 @@
 from django.conf import settings
 from django.db import models
 
-from backend.common.models import UUIDTimestampedModel
 
-
-class OrganizationMember(UUIDTimestampedModel):
+class OrganizationMember(models.Model):
     organization = models.ForeignKey(
         "identity.Organization",
         on_delete=models.PROTECT,
@@ -23,16 +21,11 @@ class OrganizationMember(UUIDTimestampedModel):
         null=True,
         blank=True,
     )
+    pk = models.CompositePrimaryKey("organization_id", "user_id")
 
     class Meta:
         db_table = "organization_members"
-        ordering = ("created_at", "id")
-        constraints = [
-            models.UniqueConstraint(
-                fields=("organization", "user"),
-                name="organization_members_organization_user_unique",
-            )
-        ]
+        ordering = ("organization_id", "user_id")
 
     def __str__(self) -> str:
         return f"{self.user_id} - {self.organization_id}"

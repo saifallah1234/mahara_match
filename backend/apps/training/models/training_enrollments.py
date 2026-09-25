@@ -18,11 +18,13 @@ class EnrollmentStatus(models.TextChoices):
 class TrainingEnrollment(UUIDTimestampedModel):
     objects: ClassVar[models.Manager] = models.Manager()
     session = models.ForeignKey(
-        TrainingSession, on_delete=models.CASCADE, related_name="enrollments"
+        TrainingSession, on_delete=models.PROTECT, related_name="enrollments"
     )
     session_id: uuid.UUID  # Explicitly type the underlying foreign key ID for type checkers
 
-    candidate_id: models.UUIDField = models.UUIDField(db_index=True)
+    candidate = models.ForeignKey(
+        "candidates.CandidateProfile", on_delete=models.PROTECT, related_name="training_enrollments"
+    )
     status: models.CharField = models.CharField(
         max_length=30, choices=EnrollmentStatus.choices, default=EnrollmentStatus.REGISTERED
     )
@@ -35,7 +37,15 @@ class TrainingEnrollment(UUIDTimestampedModel):
     class Meta:
         app_label = "training"
         db_table = "training_enrollments"
-        unique_together = ("session", "candidate_id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("session", "candidate"), name="training_enrollment_session_candidate_unique"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(completion_rate__gte=0, completion_rate__lte=100),
+                name="training_enrollment_completion_range",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"Candidate {self.candidate_id} in Session {self.session_id}"

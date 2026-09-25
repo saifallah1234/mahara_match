@@ -24,6 +24,7 @@ class TrainingEnrollmentViewSet(GenericViewSet[TrainingEnrollment]):
         queryset = enrollment_services.list_enrollments(
             active_request_user(request),
             candidate_id=request.query_params.get("candidate_id"),
+            organization_id=request.query_params.get("organization_id"),
         )
         page = self.paginate_queryset(queryset)
         serializer = TrainingEnrollmentReadSerializer(page, many=True)

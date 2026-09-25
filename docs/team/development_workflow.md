@@ -52,8 +52,11 @@ write access and does not authorize unrelated changes.
 Use task IDs in branches/PR descriptions, for example
 `feature/p01-2-candidate-records`. Merge agreed contracts before their consumers,
 then integration tests. The roadmap identifies likely shared-file conflicts and
-PR order per phase. Frontend file ownership is assigned only after its framework,
-location and testing contract are agreed at F01; no UI_ROOT placeholder is a real path.
+PR order per phase. F01 selected React/TypeScript/Vite under `frontend/`, with
+feature code in `frontend/src/features/` and shared API code in `frontend/src/api/`.
+P4 still assigns exact feature/test paths and records browser auth, localization,
+RTL and accessibility acceptance before UI implementation. The roadmap binds
+UI_ROOT to the approved feature root; it is not an implemented directory.
 
 ## Cross-module and architecture changes
 

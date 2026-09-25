@@ -49,7 +49,7 @@ class TrainingProgramViewSet(GenericViewSet[TrainingProgram]):
     def _update(self, request: Request, pk: UUID, *, partial: bool) -> Response:
         actor = active_request_user(request)
         program = program_services.get_program(actor, pk)
-        serializer = TrainingProgramUpdateSerializer(data=request.data, partial=partial)
+        serializer = TrainingProgramUpdateSerializer(program, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         program = program_services.update_program(actor, program, serializer.validated_data)
         return Response(TrainingProgramReadSerializer(program).data)

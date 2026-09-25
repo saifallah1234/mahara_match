@@ -123,7 +123,7 @@ must be agreed; the source does not authorize blanket hard-delete cascades.
 | candidate_languages | P2 / P01-2 | candidates/candidate_languages | W4 | L: own profile + shared language; approved level values | G02–G04 |
 | candidate_skills | P2 / P01-2 | candidates/candidate_skills | W4 | L: own profile + canonical skill; validation/source provenance not caller-controlled | G02–G05 |
 | Certifications | P2 / P01-2 | candidates/certifications | W4 | E: candidate-owned certification record; no invented training certificate issuance | G03, G05 |
-| candidate_preferences | P2 / P01-2 | candidates/candidate_preferences | W4 | E: own approved preferences; cardinality and mobility unresolved | G05 |
+| candidate_preferences | P2 / P01-2 | candidates/candidate_preferences | W4 | E: one record per candidate with work mode, relocation and maximum commute distance in km | G05 |
 | projects | P2 / P01-2 | candidates/projects | W4 | E: candidate-owned project record | G03, G05 |
 | cvs | P2 / P01-2 | candidates/cvs | W4 | E: owned document reference and allowed metadata; version/parse outputs protected; primary selection enforces uniqueness | G03, G05; parsing/generation P03-2 |
 | cv_analysis_results | P2 / P01-2 | candidates/cv_analysis_results | W5 | R: authorized analysis reads; scores/issues/suggestions produced internally | G05–G06; analysis P03-3 |
@@ -192,30 +192,39 @@ P1 merges root registrations after it passes, not all five developers independen
 ## Decision gates before coding the affected part
 
 Question references point to the [question register](../architecture/open_questions.md).
-The decisions below were approved by the user on **2026-09-21**. They replace the
-previous undecided direction for G01–G10. Ownership still does not authorize inventing
-concrete enum members, limits, transition rules or retention periods that the approved
-decision does not state. Those details must be written into the owning schema/API
-contract before the affected implementation.
+The directions below were approved on **2026-09-21** and refined by the user's
+**2026-09-25** answers in the [question register](../architecture/open_questions.md).
+In particular, Q10 replaces G06's earlier currency-field decision. Ownership still
+does not authorize inventing enum members, limits, transition rules or retention
+periods that those decisions do not supply. Record remaining details in the owning
+schema/API contract before affected implementation.
 
-| Gate | Approved decision (2026-09-21) | Owner; reviewers | Affected tasks | Required follow-through before coding |
+| Gate | Approved direction (2026-09-21, refined 2026-09-25) | Owner; reviewers | Affected tasks | Required follow-through before coding |
 | --- | --- | --- | --- | --- |
-| G01 | Use Django `AbstractUser` with the custom `roles`, `permissions` and `user_roles` RBAC tables. Authenticate API access with JWT. Do not create a human ANETI role. Retain platform roles for Candidate, Employer, Training Organization, Ministry and Admin. | P1; P4, P2 | P01-1A, P01-1B, P01-4A; all API tasks | P1 publishes the role identifiers, JWT lifecycle and shared API/service contract before user migrations and route work. |
-| G02 | Use UUID primary keys, `created_at` and `updated_at` on every persisted entity, explicit foreign keys and explicit `on_delete` rules. Represent organization hierarchy with `parent_id`. | P1; P4, P2, P3, P5 for their relations | All P01 model tasks | Each owner records its exact foreign-key deletion behavior and scoped uniqueness; P1 records global versus organization-scoped role uniqueness. |
-| G03 | Define the RBAC matrix before exposing APIs. Users may access only resources allowed by their role and organization. Prefer soft deletion for important business records and protect system and audit fields. | P1; all domain owners | All P01 APIs and models with deletion semantics | Publish the resource/operation matrix, candidate visibility rules and the exact records subject to soft deletion or retention. No provisional unrestricted endpoints. |
-| G04 | Use central reference tables for skills, languages and degrees, with alias tables. Enforce association uniqueness such as `(candidate, skill)`. | P2; P3, P5 | P01-2, P01-3, P01-5 | P2 publishes canonical table naming, alias shape, reference governance and the actual approved level/scale vocabularies before taxonomy migrations. |
-| G05 | Store candidate preferences separately, covering work mode, relocation and location/distance. Support multiple CV versions. Store raw CV analysis separately from candidate-validated normalized data. | P2; P3, P1 | P01-2 | P2 records preference cardinality, distance semantics, CV/document cardinality, version allocation and concrete document/CV status vocabularies before candidate/document migrations and serializers. |
-| G06 | Job offers contain salary minimum/maximum and currency, a URL, required languages through relationship tables, and controlled contract, work-mode and status enums. | P3; P2, P4 | P01-3; P01-2 targeted analyses | P3 publishes concrete enum values, language-level semantics, salary validation and URL constraints before offer/result models. |
-| G07 | Use explicit application-status and interview-status enums. Preserve application/interview history instead of overwriting important transitions. | P3; P1, P2 | P01-3 | P3 publishes the concrete enum values, permitted transitions, authority, withdrawal/reapplication behavior and history retention before these models and write services. |
-| G08 | Give every source an identifier, authorization status and configuration. Preserve import provenance with `source_id + external_id`, checksums and batch tracking. | P4; P3, P1 | P01-4A, P01-3 | P4 defines authorization governance, missing external-ID behavior, repeat/update semantics and concrete import/source statuses before source/import migrations. |
-| G09 | Training uses controlled type, modality and status fields and pricing through `is_free` and price. Required and acquired skills reference the central skill tables. | P5; P4, P2 | P01-5 | P5 publishes concrete enums, price/currency constraints and the scope of prerequisites, assessment, attendance and certificates before training migrations. |
-| G10 | Define controlled enums for messages, executions, actions and notifications. Retain execution/audit traces with user attribution. Important audit records are not normally deletable. | P1; P4, P2 | P01-1B | P1 publishes concrete enum values, trace visibility/redaction, protected lifecycle rules and the confirmation state machine before assistant/platform migrations. |
+| G01 | Use Django `AbstractUser`, custom RBAC and JWT. Human roles: Candidate, Recruiter, Training Manager, Ministry Manager and Admin; no human ANETI role. | P1; P4, P2 | P01-1A, P01-1B, P01-4A; all API tasks | Keep the published identifiers, JWT lifecycle and shared API/service contract; browser cookie/CSRF transport is a later Q23 contract. |
+| G02 | Use UUID primary keys, `created_at` and `updated_at` on persisted entities including associations, explicit foreign keys/`on_delete`, and scoped uniqueness. Organization hierarchy uses `parent_id`; prevent cycles. No departments are needed for MVP. | P1; P4, P2, P3, P5 for their relations | All P01 model tasks | Each owner records deletion behavior and scoped uniqueness; P4 validates company/subsidiary hierarchy. |
+| G03 | Define RBAC before APIs. Profiles are private by default; candidate opt-in lets verified recruiters see headline, skills, experience, education, governorate and work preferences, excluding name, contact, birth date and CV. Receiving organizations see submitted CVs; ministry reads aggregates. CV/account deletion is soft deletion, hidden from normal access/search/AI, with no MVP restoration or scheduled purge. Protect audit fields. | P1; all domain owners | All P01 APIs and models with deletion semantics | Enforce opt-in and field-level visibility; define a reviewed retention policy for retained personal data before release. No provisional unrestricted endpoints. |
+| G04 | Use central skills, languages and degrees with governed aliases and unique associations. Start with CEFR A1–C2 and Beginner/Intermediate/Advanced/Expert skill levels. | P2; P3, P5 | P01-2, P01-3, P01-5 | P2 publishes alias shape, canonical naming and governance before taxonomy migrations. |
+| G05 | One separate preference record per candidate contains work mode, relocation and maximum commute distance in km; missing distance means no stated preference. Support CV versions starting at 1 and at most one primary CV. Keep raw extraction restricted and separate from candidate-approved normalized data. | P2; P3, P1 | P01-2 | P2 defines remaining CV/document cardinality, raw-result access/retention and document/CV status vocabularies before migrations and serializers. |
+| G06 | Offers have salary minimum/maximum in TND only, with no currency column; validate ordering. No offer-language or requested-CV-language requirement is added for MVP; existing candidate/CV language fields remain optional. Application links are HTTPS. Keep controlled contract, work-mode and status enums. | P3; P2, P4 | P01-3; P01-2 targeted analyses | P3 defines enum values and URL limits. Reject or review non-TND imported salary instead of relabeling it. This supersedes G06's earlier currency and relational offer-language directions. |
+| G07 | One internal Easy Apply application per candidate/offer, with append-only history. Recruiters advance along `SUBMITTED → UNDER_REVIEW → PRESELECTED → INTERVIEW → OFFERED → HIRED`, skipping optional forward stages, or reject while active; candidates withdraw while active. `HIRED`, `REJECTED`, `WITHDRAWN` are terminal; no reapplication. No internal tracking for external applications. | P3; P1, P2 | P01-3 | P3 defines interview-specific states and the exact transition service contract before write services. |
+| G08 | Sources have identifiers, authorization state and configuration. Admin approval records permission evidence, acquisition method and review/expiry date. Reject and record automated rows without `external_id`; use `(source, external_id)` upserts, checksums and batches; flag cross-source duplicates. | P4; P3, P1 | P01-4A, P01-3 | P4 defines manual-file behavior, employer ownership, source/import statuses and approval expiry behavior before affected migrations. |
+| G09 | Training has controlled type, modality and status; prices are TND only, with `is_free` and price `0` for free programs or price greater than `0` for paid programs. Distinguish prerequisite skills from skills taught using central references. Enrollment progresses from registered to in progress to completed or dropped. | P5; P4, P2 | P01-5 | P5 defines concrete enums, capacity/deadline rules and any assessment, attendance or certificate scope before affected work. |
+| G10 | Use controlled message, execution, action and notification states, attributable protected traces, explicit confirmation for agent-initiated profile edits, applications, enrollments and external sends, and idempotency keys. Reads/drafts need no confirmation. | P1; P4, P2 | P01-1B | P1 defines exact state machine, expiry/replay, trace redaction and retention before assistant/platform migrations and execution. |
 
 A field present in the logical model is not automatically fully specified. Explicitly
 reconcile absent lengths/nullability/defaults, string enums without vocabularies,
 unique/relationship cardinalities, score semantics, educational years vs date checks,
 document-to-CV cardinality and CV numbering before the relevant migration. Do not
 invent a generic OTHER status or guessed defaults to make the schema compile.
+
+**Current code needing owner reconciliation before affected migrations:** the
+candidate model stores distance/relocation on the profile rather than the single
+preference record (Q09); organization membership currently uses a composite
+primary key without the G02 UUID/timestamp convention. Training models now follow
+Q13 pricing and skill-purpose decisions and reference provider organizations,
+candidate profiles and taxonomy skills with protected relationships. Their
+constraints remain unapplied until training migrations are created.
 
 ## Dependencies, parallel work and merge waves
 
@@ -296,7 +305,7 @@ Specific source requirements (DM §7) need PostgreSQL-backed tests:
 - Case-insensitive email uniqueness; one profile per user; agreed association keys.
 - One candidate/offer application, one candidate/session enrollment, at most one
   primary CV per candidate; include concurrent-write tests where races could bypass checks.
-- Valid date/year ranges, salary ordering/currency and applicable score bounds.
+- Valid date/year ranges, TND salary ordering and applicable score bounds.
 - Offer/source identifier uniqueness under the approved missing-ID policy.
 - CV belongs to the submitting candidate; links cannot cross an unauthorized tenant.
 - Publication needs organization/title/description/at least one skill: Phase 1 must

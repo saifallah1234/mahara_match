@@ -43,7 +43,11 @@ class OrganizationCreateSerializer(serializers.Serializer[dict[str, Any]]):
     description = serializers.CharField(required=False, allow_blank=True)
     website_url = serializers.CharField(required=False, allow_blank=True)
     logo_uri = serializers.CharField(required=False, allow_blank=True)
-    matricule_fiscal = serializers.CharField(max_length=13)
+    matricule_fiscal = serializers.RegexField(
+        regex=r"^\d{7}[A-Z]\d{3}\d{2}$",
+        max_length=13,
+        error_messages={"invalid": "Enter a valid 13-character Tunisian matricule fiscal."},
+    )
     governorate = serializers.CharField(max_length=100, required=False, allow_blank=True)
     city = serializers.CharField(max_length=100, required=False, allow_blank=True)
     address_line = serializers.CharField(max_length=255, required=False, allow_blank=True)
@@ -65,7 +69,12 @@ class OrganizationUpdateSerializer(serializers.Serializer[dict[str, Any]]):
     description = serializers.CharField(required=False, allow_blank=True)
     website_url = serializers.CharField(required=False, allow_blank=True)
     logo_uri = serializers.CharField(required=False, allow_blank=True)
-    matricule_fiscal = serializers.CharField(max_length=13, required=False)
+    matricule_fiscal = serializers.RegexField(
+        regex=r"^\d{7}[A-Z]\d{3}\d{2}$",
+        max_length=13,
+        required=False,
+        error_messages={"invalid": "Enter a valid 13-character Tunisian matricule fiscal."},
+    )
     governorate = serializers.CharField(max_length=100, required=False, allow_blank=True)
     city = serializers.CharField(max_length=100, required=False, allow_blank=True)
     address_line = serializers.CharField(max_length=255, required=False, allow_blank=True)

@@ -1,3 +1,4 @@
+from django.core.validators import RegexValidator
 from django.db import models
 
 from backend.common.models import UUIDTimestampedModel
@@ -33,11 +34,22 @@ class Organization(UUIDTimestampedModel):
     registration_number = models.CharField(
         max_length=100,
         blank=True,
+        null=True,
+        unique=True,
     )
     description = models.TextField(blank=True)
     website_url = models.TextField(blank=True)
     logo_uri = models.TextField(blank=True)
-    matricule_fiscal = models.CharField(max_length=13, unique=True)
+    matricule_fiscal = models.CharField(
+        max_length=13,
+        unique=True,
+        validators=[
+            RegexValidator(
+                regex=r"^\d{7}[A-Z]\d{3}\d{2}$",
+                message="Enter a valid 13-character Tunisian matricule fiscal.",
+            )
+        ],
+    )
     governorate = models.CharField(max_length=100, blank=True)
     city = models.CharField(max_length=100, blank=True)
     address_line = models.CharField(max_length=255, blank=True)
@@ -51,6 +63,13 @@ class Organization(UUIDTimestampedModel):
     class Meta:
         db_table = "organizations"
         ordering = ("legal_name", "id")
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(type=OrganizationType.SUBSIDIARY)
+                | models.Q(parent_id__isnull=True),
+                name="organizations_only_subsidiaries_have_parent",
+            )
+        ]
 
     def __str__(self) -> str:
         return self.legal_name

@@ -7,7 +7,7 @@ from backend.apps.training.models.training_programs import (
 )
 from backend.apps.training.models.training_recommendations import TrainingRecommendation
 from backend.apps.training.models.training_sessions import SessionStatus, TrainingSession
-from backend.apps.training.models.training_skills import TrainingSkill
+from backend.apps.training.models.training_skills import TrainingSkill, TrainingSkillPurpose
 
 __all__ = [
     "TrainingProgram",
@@ -15,6 +15,7 @@ __all__ = [
     "DeliveryMode",
     "ProgramStatus",
     "TrainingSkill",
+    "TrainingSkillPurpose",
     "TrainingSession",
     "SessionStatus",
     "TrainingEnrollment",

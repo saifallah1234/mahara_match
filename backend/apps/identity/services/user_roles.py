@@ -74,14 +74,13 @@ def _validate_scope(user: User, role: Role, organization_id: UUID | None) -> Non
         )
 
     membership_model = apps.get_model("identity", "OrganizationMember")
-    is_active_member = membership_model.objects.filter(
+    is_member = membership_model.objects.filter(
         user_id=user.id,
         organization_id=organization.id,
-        member_status="ACTIVE",
     ).exists()
-    if not is_active_member:
+    if not is_member:
         raise DomainValidationError(
-            details={"organization_id": ["An active organization membership is required."]}
+            details={"organization_id": ["The user must belong to the organization."]}
         )
 
 

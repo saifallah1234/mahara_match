@@ -33,12 +33,12 @@ class OrganizationMemberViewSet(GenericViewSet[OrganizationMember]):
         self,
         request: Request,
         organization_id: UUID,
-        pk: UUID,
+        user_id: UUID,
     ) -> Response:
         member = member_services.get_member(
             request.user,
             organization_id,
-            pk,
+            user_id,
         )
         return Response(OrganizationMemberReadSerializer(member).data)
 
@@ -51,7 +51,7 @@ class OrganizationMemberViewSet(GenericViewSet[OrganizationMember]):
         serializer.is_valid(raise_exception=True)
 
         data = serializer.validated_data
-        data["organization"] = organization_id
+        data["organization_id"] = organization_id
 
         member = member_services.create_member(
             request.user,
@@ -67,12 +67,12 @@ class OrganizationMemberViewSet(GenericViewSet[OrganizationMember]):
         self,
         request: Request,
         organization_id: UUID,
-        pk: UUID,
+        user_id: UUID,
     ) -> Response:
         member = member_services.get_member(
             request.user,
             organization_id,
-            pk,
+            user_id,
         )
 
         serializer = OrganizationMemberUpdateSerializer(
@@ -93,12 +93,12 @@ class OrganizationMemberViewSet(GenericViewSet[OrganizationMember]):
         self,
         request: Request,
         organization_id: UUID,
-        pk: UUID,
+        user_id: UUID,
     ) -> Response:
         member = member_services.get_member(
             request.user,
             organization_id,
-            pk,
+            user_id,
         )
 
         member_services.remove_member(

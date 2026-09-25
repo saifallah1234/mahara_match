@@ -22,6 +22,7 @@ class TrainingRecommendationViewSet(GenericViewSet[TrainingRecommendation]):
         queryset = recommendation_services.list_recommendations(
             active_request_user(request),
             candidate_id=request.query_params.get("candidate_id"),
+            organization_id=request.query_params.get("organization_id"),
         )
         page = self.paginate_queryset(queryset)
         serializer = TrainingRecommendationReadSerializer(page, many=True)
