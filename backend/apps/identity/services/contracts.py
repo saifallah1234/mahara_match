@@ -8,6 +8,7 @@ class IdentityPermissionCode:
     UPDATE_SELF = "identity.user.update_self"
     MANAGE_USERS = "identity.user.manage"
     MANAGE_RBAC = "identity.rbac.manage"
+    MANAGE_ORGANIZATIONS = "identity.organization.manage"
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,9 @@ BASE_PERMISSIONS = (
     PermissionDefinition(IdentityPermissionCode.UPDATE_SELF, "identity.user", "update_self"),
     PermissionDefinition(IdentityPermissionCode.MANAGE_USERS, "identity.user", "manage"),
     PermissionDefinition(IdentityPermissionCode.MANAGE_RBAC, "identity.rbac", "manage"),
+    PermissionDefinition(
+        IdentityPermissionCode.MANAGE_ORGANIZATIONS, "identity.organization", "manage"
+    ),
 )
 
 BASE_ROLE_NAMES: dict[str, str] = {
@@ -50,5 +54,6 @@ BASELINE_GRANTS: frozenset[tuple[str, str]] = frozenset(
     {
         (RoleCode.ADMIN, IdentityPermissionCode.MANAGE_USERS),
         (RoleCode.ADMIN, IdentityPermissionCode.MANAGE_RBAC),
+        (RoleCode.ADMIN, IdentityPermissionCode.MANAGE_ORGANIZATIONS),
     }
 )
