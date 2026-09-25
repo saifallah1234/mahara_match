@@ -17,7 +17,7 @@ class EnrollmentStatus(models.TextChoices):
 
 class TrainingEnrollment(UUIDTimestampedModel):
     objects: ClassVar[models.Manager] = models.Manager()
-    session: models.ForeignKey = models.ForeignKey(
+    session = models.ForeignKey(
         TrainingSession, on_delete=models.CASCADE, related_name="enrollments"
     )
     session_id: uuid.UUID  # Explicitly type the underlying foreign key ID for type checkers

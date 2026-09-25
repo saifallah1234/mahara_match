@@ -1,33 +1,75 @@
+from collections.abc import Mapping
+from typing import Any
 from uuid import UUID
 
-from backend.apps.training.models import TrainingSession
+from django.db.models import QuerySet
+
+from backend.apps.identity.models import User
+from backend.apps.identity.services.access import require_permission
+from backend.apps.training.models import SessionStatus, TrainingProgram, TrainingSession
+from backend.apps.training.services.contracts import TrainingPermissionCode
+from backend.common.exceptions import DomainNotFoundError
 
 
-class SessionService:
-    @staticmethod
-    def create_session(
-        program_id: UUID,
-        start_date,
-        end_date,
-        capacity: int,
-        location_or_url: str,
-        registration_deadline,
-        status: str = "PLANNED",
-    ) -> TrainingSession:
-        return TrainingSession.objects.create(
-            program_id=program_id,
-            start_date=start_date,
-            end_date=end_date,
-            capacity=capacity,
-            location_or_url=location_or_url,
-            registration_deadline=registration_deadline,
-            status=status,
-        )
+def list_program_sessions(actor: User, program_id: UUID | str) -> QuerySet[TrainingSession]:
+    require_permission(actor, TrainingPermissionCode.VIEW_CATALOG)
+    return TrainingSession.objects.filter(program_id=program_id)
 
-    @staticmethod
-    def get_by_id(session_id: UUID) -> TrainingSession | None:
-        return TrainingSession.objects.filter(id=session_id).first()
 
-    @staticmethod
-    def list_program_sessions(program_id: UUID) -> list[TrainingSession]:
-        return list(TrainingSession.objects.filter(program_id=program_id))
+def get_session(actor: User, session_id: UUID | str) -> TrainingSession:
+    require_permission(actor, TrainingPermissionCode.VIEW_CATALOG)
+    try:
+        return TrainingSession.objects.select_related("program").get(id=session_id)
+    except TrainingSession.DoesNotExist as exc:
+        raise DomainNotFoundError("Training session not found.") from exc
+
+
+def create_session(actor: User, data: Mapping[str, Any]) -> TrainingSession:
+    try:
+        program = TrainingProgram.objects.get(id=data["program_id"])
+    except TrainingProgram.DoesNotExist as exc:
+        raise DomainNotFoundError("Training program not found.") from exc
+
+    require_permission(
+        actor, TrainingPermissionCode.MANAGE_SESSIONS, organization_id=program.organization_id
+    )
+    return TrainingSession.objects.create(
+        program=program,
+        start_date=data["start_date"],
+        end_date=data["end_date"],
+        capacity=data["capacity"],
+        location_or_url=data["location_or_url"],
+        registration_deadline=data["registration_deadline"],
+        status=data.get("status", SessionStatus.PLANNED),
+    )
+
+
+def update_session(
+    actor: User, session: TrainingSession, data: Mapping[str, Any]
+) -> TrainingSession:
+    require_permission(
+        actor,
+        TrainingPermissionCode.MANAGE_SESSIONS,
+        organization_id=session.program.organization_id,
+    )
+    for field in (
+        "start_date",
+        "end_date",
+        "capacity",
+        "location_or_url",
+        "registration_deadline",
+        "status",
+    ):
+        if field in data:
+            setattr(session, field, data[field])
+    session.save(update_fields=[*data.keys(), "updated_at"])
+    return session
+
+
+def delete_session(actor: User, session: TrainingSession) -> None:
+    require_permission(
+        actor,
+        TrainingPermissionCode.MANAGE_SESSIONS,
+        organization_id=session.program.organization_id,
+    )
+    session.delete()

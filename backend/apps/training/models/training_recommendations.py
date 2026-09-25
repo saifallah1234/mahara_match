@@ -10,7 +10,7 @@ from backend.common.models import UUIDTimestampedModel
 class TrainingRecommendation(UUIDTimestampedModel):
     objects: ClassVar[models.Manager] = models.Manager()
     candidate_id: models.UUIDField = models.UUIDField(db_index=True)
-    program: models.ForeignKey = models.ForeignKey(
+    program = models.ForeignKey(
         TrainingProgram, on_delete=models.CASCADE, related_name="recommendations"
     )
     program_id: uuid.UUID  # Explicitly type the underlying foreign key ID for type checkers

@@ -16,9 +16,7 @@ class SessionStatus(models.TextChoices):
 
 class TrainingSession(UUIDTimestampedModel):
     objects: ClassVar[models.Manager] = models.Manager()
-    program: models.ForeignKey = models.ForeignKey(
-        TrainingProgram, on_delete=models.CASCADE, related_name="sessions"
-    )
+    program = models.ForeignKey(TrainingProgram, on_delete=models.CASCADE, related_name="sessions")
     program_id: uuid.UUID  # Explicitly type the underlying foreign key ID for type checkers
 
     start_date: models.DateTimeField = models.DateTimeField()

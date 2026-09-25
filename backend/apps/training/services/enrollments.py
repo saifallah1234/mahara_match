@@ -1,67 +1,102 @@
+from collections.abc import Mapping
+from typing import Any
 from uuid import UUID
 
+from django.db.models import QuerySet
 from django.utils import timezone
 
+from backend.apps.identity.models import User
+from backend.apps.identity.services.access import require_permission
 from backend.apps.training.models import EnrollmentStatus, TrainingEnrollment, TrainingSession
-from backend.apps.training.services.contracts import EnrollmentDTO
-from backend.common.exceptions.domain import DomainNotFoundError, DomainValidationError
+from backend.apps.training.services.contracts import TrainingPermissionCode
+from backend.common.exceptions import DomainNotFoundError, DomainValidationError
 
 
 class EnrollmentLimitReachedError(DomainValidationError):
-    """Raised when a candidate tries to enroll in a full session."""
-
     code = "training_session_full"
-    default_message = "Cannot enroll candidate: session maximum capacity reached."
+    default_message = "Cannot enroll candidate: session capacity reached."
 
 
 class DuplicateEnrollmentError(DomainValidationError):
-    """Raised when a candidate is already registered for a session."""
-
     code = "training_duplicate_enrollment"
     default_message = "Candidate is already enrolled in this session."
 
 
-class EnrollmentService:
-    @staticmethod
-    def enroll_candidate(dto: EnrollmentDTO) -> TrainingEnrollment:
-        session = TrainingSession.objects.filter(id=dto.session_id).first()
-        if not session:
-            raise DomainNotFoundError(message="Session not found.")
+def _require_self_or_manage(actor: User, candidate_id: UUID | str) -> None:
+    if str(candidate_id) == str(actor.id):
+        require_permission(actor, TrainingPermissionCode.ENROLL_SELF)
+    else:
+        require_permission(actor, TrainingPermissionCode.MANAGE_ENROLLMENTS)
 
-        # Check capacity rule
-        current_count = TrainingEnrollment.objects.filter(session_id=dto.session_id).count()
-        if current_count >= session.capacity:
-            raise EnrollmentLimitReachedError()
 
-        # Check duplicate enrollment constraint
-        if TrainingEnrollment.objects.filter(
-            session_id=dto.session_id, candidate_id=dto.candidate_id
-        ).exists():
-            raise DuplicateEnrollmentError()
+def list_enrollments(
+    actor: User, candidate_id: UUID | str | None = None
+) -> QuerySet[TrainingEnrollment]:
+    if candidate_id is None or str(candidate_id) == str(actor.id):
+        require_permission(actor, TrainingPermissionCode.VIEW_OWN_ENROLLMENTS)
+        return TrainingEnrollment.objects.filter(candidate_id=candidate_id or actor.id)
+    require_permission(actor, TrainingPermissionCode.MANAGE_ENROLLMENTS)
+    return TrainingEnrollment.objects.filter(candidate_id=candidate_id)
 
-        return TrainingEnrollment.objects.create(
-            session_id=dto.session_id,
-            candidate_id=dto.candidate_id,
-            status=dto.status,
+
+def get_enrollment(actor: User, enrollment_id: UUID | str) -> TrainingEnrollment:
+    try:
+        enrollment = TrainingEnrollment.objects.select_related("session__program").get(
+            id=enrollment_id
         )
+    except TrainingEnrollment.DoesNotExist as exc:
+        raise DomainNotFoundError("Enrollment not found.") from exc
 
-    @staticmethod
-    def update_progress(enrollment_id: UUID, completion_rate: float) -> TrainingEnrollment:
-        enrollment = TrainingEnrollment.objects.filter(id=enrollment_id).first()
-        if not enrollment:
-            raise DomainNotFoundError(message="Enrollment record not found.")
+    if str(enrollment.candidate_id) == str(actor.id):
+        require_permission(actor, TrainingPermissionCode.VIEW_OWN_ENROLLMENTS)
+    else:
+        require_permission(actor, TrainingPermissionCode.MANAGE_ENROLLMENTS)
+    return enrollment
 
-        enrollment.completion_rate = completion_rate
 
-        if completion_rate >= 100.0:
-            enrollment.status = EnrollmentStatus.COMPLETED
-            enrollment.completed_at = timezone.now()
-        elif completion_rate > 0.0 and enrollment.status == EnrollmentStatus.REGISTERED:
-            enrollment.status = EnrollmentStatus.IN_PROGRESS
+def enroll_candidate(actor: User, data: Mapping[str, Any]) -> TrainingEnrollment:
+    candidate_id = data.get("candidate_id", actor.id)
+    _require_self_or_manage(actor, candidate_id)
 
-        enrollment.save()
-        return enrollment
+    try:
+        session = TrainingSession.objects.get(id=data["session_id"])
+    except TrainingSession.DoesNotExist as exc:
+        raise DomainNotFoundError("Training session not found.") from exc
 
-    @staticmethod
-    def list_candidate_enrollments(candidate_id: UUID) -> list[TrainingEnrollment]:
-        return list(TrainingEnrollment.objects.filter(candidate_id=candidate_id))
+    current_count = TrainingEnrollment.objects.filter(session_id=session.id).count()
+    if current_count >= session.capacity:
+        raise EnrollmentLimitReachedError()
+
+    if TrainingEnrollment.objects.filter(session_id=session.id, candidate_id=candidate_id).exists():
+        raise DuplicateEnrollmentError()
+
+    return TrainingEnrollment.objects.create(
+        session=session,
+        candidate_id=candidate_id,
+        status=EnrollmentStatus.REGISTERED,
+    )
+
+
+def update_progress(
+    actor: User, enrollment: TrainingEnrollment, completion_rate: float
+) -> TrainingEnrollment:
+    require_permission(
+        actor,
+        TrainingPermissionCode.MANAGE_ENROLLMENTS,
+        organization_id=enrollment.session.program.organization_id,
+    )
+    enrollment.completion_rate = completion_rate
+    if completion_rate >= 100.0:
+        enrollment.status = EnrollmentStatus.COMPLETED
+        enrollment.completed_at = timezone.now()
+    elif completion_rate > 0.0 and enrollment.status == EnrollmentStatus.REGISTERED:
+        enrollment.status = EnrollmentStatus.IN_PROGRESS
+    enrollment.save(update_fields=["completion_rate", "status", "completed_at", "updated_at"])
+    return enrollment
+
+
+def cancel_enrollment(actor: User, enrollment: TrainingEnrollment) -> TrainingEnrollment:
+    _require_self_or_manage(actor, enrollment.candidate_id)
+    enrollment.status = EnrollmentStatus.DROPPED
+    enrollment.save(update_fields=["status", "updated_at"])
+    return enrollment

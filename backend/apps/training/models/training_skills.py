@@ -9,7 +9,7 @@ from backend.common.models import UUIDTimestampedModel
 
 class TrainingSkill(UUIDTimestampedModel):
     objects: ClassVar[models.Manager] = models.Manager()
-    program: models.ForeignKey = models.ForeignKey(
+    program = models.ForeignKey(
         TrainingProgram, on_delete=models.CASCADE, related_name="program_skills"
     )
     program_id: uuid.UUID  # Explicitly type the underlying foreign key ID for type checkers
