@@ -24,6 +24,9 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "backend.apps.identity.apps.IdentityConfig",
     "backend.apps.training.apps.TrainingConfig",
+    "backend.apps.taxonomy.apps.TaxonomyConfig",
+    "backend.apps.documents.apps.DocumentsConfig",
+    "backend.apps.candidates.apps.CandidatesConfig",
 ]
 
 MIDDLEWARE = [

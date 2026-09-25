@@ -1,6 +1,6 @@
 # taxonomy
 
-**Future responsibility:** Shared canonical references reused across business domains.
+**Responsibility:** Shared canonical references reused across business domains.
 
 **Logical entity ownership:** skills, skill_aliases, languages, education_levels.
 
@@ -11,11 +11,11 @@ Candidate, offer and training associations stay with those domains. Occupation t
 
 ## Reserved boundaries
 
-- `api/`: future DRF transport, request validation and response representation.
-- `services/`: application operations, authorization and business coordination.
-- `models/`: future Django ORM definitions owned by this domain.
+- `api/`: authenticated read-only catalog transport.
+- `models/`: Django ORM reference definitions.
 
-These directories contain no implementations. No Django app has been initialized.
+The app is initialized without migrations. Reference governance beyond Django admin
+and a skill alias contract remain future work.
 Cross-domain operations use the owning service; do not duplicate entities or mutate
 another domain's models directly. Open requirements are tracked in the
 [question register](../../../docs/architecture/open_questions.md).

@@ -39,6 +39,8 @@ class UserCreateSerializer(serializers.Serializer[dict[str, Any]]):
 
 
 class UserProfileUpdateSerializer(serializers.Serializer[dict[str, Any]]):
-    first_name = serializers.CharField(max_length=100)
-    last_name = serializers.CharField(max_length=100)
+    email = serializers.EmailField(max_length=255, required=False)
+    password = serializers.CharField(write_only=True, trim_whitespace=False, required=False)
+    first_name = serializers.CharField(max_length=100, required=False)
+    last_name = serializers.CharField(max_length=100, required=False)
     phone = serializers.CharField(max_length=30, required=False, allow_blank=True)

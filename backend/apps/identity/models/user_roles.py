@@ -16,7 +16,7 @@ class UserRole(UUIDTimestampedModel):
         on_delete=models.PROTECT,
         related_name="user_assignments",
     )
-    organization = models.ForeignKey(  # type: ignore[misc]
+    organization = models.ForeignKey(
         "identity.Organization",
         on_delete=models.PROTECT,
         null=True,

@@ -7,6 +7,12 @@ from backend.apps.identity.services.contracts import (
     BASELINE_GRANTS,
 )
 
+"""
+This file contains the service functions for initializing the identity RBAC system.
+
+seed_identity_rbac()
+Initializes the RBAC data in the database.
+"""
 
 @transaction.atomic
 def seed_identity_rbac() -> None:

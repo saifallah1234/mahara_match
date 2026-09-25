@@ -21,15 +21,32 @@ class UserManager(BaseUserManager["User"]):
     def normalize_identity_email(email: str) -> str:
         return email.strip().casefold()
 
-    def get_by_natural_key(self, username: str | None) -> "User":
-        if username is None:
+    def get_by_natural_key(self, user_email: str | None) -> "User":
+        if user_email is None:
             raise self.model.DoesNotExist
-        return self.get(email__iexact=self.normalize_identity_email(username))
+        return self.get(email__iexact=self.normalize_identity_email(user_email))
 
-    def create_user(self, email: str, password: str | None = None, **extra_fields: Any) -> "User":
+    def create_user(
+    self,
+    email: str,
+    username: str,
+    lastname: str,
+    password: str | None = None,
+    **extra_fields: Any,
+) -> "User":
         if not email:
             raise ValueError("An email address is required.")
-        user = self.model(email=self.normalize_identity_email(email), **extra_fields)
+        if not username:
+                    raise ValueError("A username is required.")
+        if not lastname:
+                    raise ValueError("A lastname is required.")
+
+        user = self.model(
+        email=self.normalize_identity_email(email),
+        username=username.strip(),
+        last_name=lastname.strip(),
+        **extra_fields,
+    )
         user.set_password(password)
         user.save(using=self._db)
         return user
