@@ -1,6 +1,7 @@
 import uuid
 from typing import ClassVar
 
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from backend.apps.training.models.training_programs import TrainingProgram
@@ -16,7 +17,9 @@ class TrainingRecommendation(UUIDTimestampedModel):
     program_id: uuid.UUID  # Explicitly type the underlying foreign key ID for type checkers
 
     reason_json: models.JSONField = models.JSONField(default=dict)
-    score: models.FloatField = models.FloatField()
+    score: models.FloatField = models.FloatField(
+        validators=[MinValueValidator(0.0), MaxValueValidator(100.0)]
+    )
     model_version: models.CharField = models.CharField(max_length=50)
 
     class Meta:
