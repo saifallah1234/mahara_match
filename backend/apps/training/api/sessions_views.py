@@ -1,3 +1,4 @@
+from typing import Any, cast
 from uuid import UUID
 
 from rest_framework import status
@@ -52,7 +53,9 @@ class TrainingSessionViewSet(GenericViewSet[TrainingSession]):
     def _update(self, request: Request, pk: UUID, *, partial: bool) -> Response:
         actor = active_request_user(request)
         session = session_services.get_session(actor, pk)
-        serializer = TrainingSessionUpdateSerializer(session, data=request.data, partial=partial)
+        serializer = TrainingSessionUpdateSerializer(
+            cast(Any, session), data=request.data, partial=partial
+        )
         serializer.is_valid(raise_exception=True)
         session = session_services.update_session(actor, session, serializer.validated_data)
         return Response(TrainingSessionReadSerializer(session).data)

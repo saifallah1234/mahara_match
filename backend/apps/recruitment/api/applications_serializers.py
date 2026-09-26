@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from backend.apps.recruitment.models import Application
+from backend.apps.recruitment.models import Application, ApplicationStatus
 
 
 class ApplicationReadSerializer(serializers.ModelSerializer[Application]):
@@ -23,3 +23,14 @@ class ApplicationReadSerializer(serializers.ModelSerializer[Application]):
             "updated_at",
         )
         read_only_fields = fields
+
+
+class ApplicationSubmitSerializer(serializers.Serializer[dict[str, object]]):
+    offer_id = serializers.UUIDField()
+    cv_id = serializers.UUIDField()
+    cover_letter = serializers.CharField(required=False, allow_blank=True)
+
+
+class ApplicationTransitionSerializer(serializers.Serializer[dict[str, object]]):
+    status = serializers.ChoiceField(choices=ApplicationStatus.values)
+    reason = serializers.CharField(required=False, allow_blank=True)

@@ -6,7 +6,9 @@ class RecruitmentPermissionCode:
     READ_OFFERS = "recruitment.offer.read"
     MANAGE_OFFERS = "recruitment.offer.manage"
     READ_APPLICATIONS = "recruitment.application.read"
+    MANAGE_APPLICATIONS = "recruitment.application.manage"
     READ_INTERVIEWS = "recruitment.interview.read"
+    MANAGE_INTERVIEWS = "recruitment.interview.manage"
 
 
 RECRUITMENT_PERMISSIONS = (
@@ -16,19 +18,25 @@ RECRUITMENT_PERMISSIONS = (
         RecruitmentPermissionCode.READ_APPLICATIONS, "recruitment.application", "read"
     ),
     PermissionDefinition(
+        RecruitmentPermissionCode.MANAGE_APPLICATIONS, "recruitment.application", "manage"
+    ),
+    PermissionDefinition(
         RecruitmentPermissionCode.READ_INTERVIEWS, "recruitment.interview", "read"
+    ),
+    PermissionDefinition(
+        RecruitmentPermissionCode.MANAGE_INTERVIEWS, "recruitment.interview", "manage"
     ),
 )
 
-# PROPOSAL (G03 not decided): who gets which permission. P1 must merge these into the
-# identity seeding (bootstrap.py) once the team agrees. Application and interview data
-# is personal, so admins are not granted read access here until Q19 is decided.
+# Personal application and interview reads belong to the receiving recruiter org.
 RECRUITMENT_GRANTS: frozenset[tuple[str, str]] = frozenset(
     {
         (RoleCode.RECRUITER, RecruitmentPermissionCode.READ_OFFERS),
         (RoleCode.RECRUITER, RecruitmentPermissionCode.MANAGE_OFFERS),
         (RoleCode.RECRUITER, RecruitmentPermissionCode.READ_APPLICATIONS),
+        (RoleCode.RECRUITER, RecruitmentPermissionCode.MANAGE_APPLICATIONS),
         (RoleCode.RECRUITER, RecruitmentPermissionCode.READ_INTERVIEWS),
+        (RoleCode.RECRUITER, RecruitmentPermissionCode.MANAGE_INTERVIEWS),
         (RoleCode.ADMIN, RecruitmentPermissionCode.READ_OFFERS),
     }
 )

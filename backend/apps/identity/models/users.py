@@ -27,26 +27,22 @@ class UserManager(BaseUserManager["User"]):
         return self.get(email__iexact=self.normalize_identity_email(user_email))
 
     def create_user(
-    self,
-    email: str,
-    username: str,
-    lastname: str,
-    password: str | None = None,
-    **extra_fields: Any,
-) -> "User":
+        self,
+        email: str,
+        password: str | None = None,
+        **extra_fields: Any,
+    ) -> "User":
         if not email:
             raise ValueError("An email address is required.")
-        if not username:
-                    raise ValueError("A username is required.")
-        if not lastname:
-                    raise ValueError("A lastname is required.")
+        for field in ("first_name", "last_name"):
+            if not str(extra_fields.get(field, "")).strip():
+                raise ValueError(f"A {field} is required.")
+            extra_fields[field] = str(extra_fields[field]).strip()
 
         user = self.model(
-        email=self.normalize_identity_email(email),
-        username=username.strip(),
-        last_name=lastname.strip(),
-        **extra_fields,
-    )
+            email=self.normalize_identity_email(email),
+            **extra_fields,
+        )
         user.set_password(password)
         user.save(using=self._db)
         return user

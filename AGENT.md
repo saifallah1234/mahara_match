@@ -26,9 +26,10 @@
 
 ## Current stage and future verification
 
-The foundation contains no functionality. Do not infer that README descriptions,
-empty directories, configuration names or source logical tables already exist as
-implemented features. Feature implementation requires a subsequent task.
+The repository contains partial domain models, services and API routes. Do not
+infer that README descriptions, empty directories or source logical tables are
+implemented features. Initial application migrations were applied to the configured
+PostgreSQL database on 2026-09-26; later workflows remain partial.
 
 Expected commands from an activated development environment:
 
@@ -39,9 +40,8 @@ mypy .
 pytest
 ```
 
-Alternatively prefix each with `uv run --frozen`. pytest currently collects no
-tests and returns exit code 5; no fake tests or fabricated Django settings should
-be added to make that appear successful. Do not add Black.
+Alternatively prefix each with `uv run --frozen`. Keep database integration checks
+against an isolated database or a transaction that is rolled back. Do not add Black.
 
 Confirm external actions with the user when implementing the product's agent
 workflows, as required by the specification. This product rule is distinct from

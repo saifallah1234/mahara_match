@@ -27,8 +27,15 @@ def test_offer_skill_collection_allows_list_and_create() -> None:
 
 @pytest.mark.parametrize(
     "resource",
-    ["applications", "application-status-history", "interviews"],
+    ["application-status-history"],
 )
 def test_read_only_resources_expose_only_get(resource: str) -> None:
     assert _actions(f"/api/v1/{resource}/") == {"get": "list"}
     assert _actions(f"/api/v1/{resource}/{UUID_PATH}/") == {"get": "retrieve"}
+
+
+@pytest.mark.parametrize("resource", ["applications", "interviews"])
+def test_lifecycle_resources_expose_controlled_actions(resource: str) -> None:
+    assert _actions(f"/api/v1/{resource}/") == {"get": "list", "post": "create"}
+    assert _actions(f"/api/v1/{resource}/{UUID_PATH}/") == {"get": "retrieve"}
+    assert _actions(f"/api/v1/{resource}/{UUID_PATH}/transition/") == {"post": "transition"}

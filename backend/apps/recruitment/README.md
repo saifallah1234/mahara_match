@@ -1,6 +1,6 @@
 # recruitment
 
-**Future responsibility:** Offers, applications and recruitment follow-up.
+**Responsibility:** Offers, applications and recruitment follow-up.
 
 **Logical entity ownership:** job_offers, offer_skills, applications, application_status_history, interviews.
 
@@ -9,13 +9,17 @@ See the [complete ownership map](../../../docs/architecture/domain_boundaries.md
 
 Reference identity organizations, candidate CV versions and taxonomy. Do not own organization copies, import histories or matching algorithms. External application tracking is not supported by the model's Easy_apply description.
 
-## Reserved boundaries
+## Current backend
 
-- `api/`: future DRF transport, request validation and response representation.
-- `services/`: application operations, authorization and business coordination.
-- `models/`: future Django ORM definitions owned by this domain.
+The ORM models and scoped `/api/v1` routes exist. Employers create draft offers;
+verified companies can publish offers with at least one skill, then pause, close
+or archive them. External offers require an HTTPS application link. Candidates
+see published offers and can submit one internal Easy Apply application with an
+owned CV. Status changes create append-only history. Recruiters can schedule an
+interview for an application at `INTERVIEW` and complete or cancel it; interview
+feedback is recruiter-only.
 
-These directories contain no implementations. No Django app has been initialized.
-Cross-domain operations use the owning service; do not duplicate entities or mutate
-another domain's models directly. Open requirements are tracked in the
-[question register](../../../docs/architecture/open_questions.md).
+`source_id` now belongs to a protected `imports.DataSource` foreign key. The
+initial recruitment migration is applied. Contract and experience vocabularies,
+and agent-initiated application confirmation remain follow-up
+contracts. Cross-domain operations use owning services.

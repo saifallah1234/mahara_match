@@ -8,7 +8,7 @@ from django.db.models import Q
 class OfferMatch(models.Model):
     objects: models.Manager["OfferMatch"]
     id: Any = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    candidate: Any = models.ForeignKey(  # type: ignore[misc]
+    candidate: Any = models.ForeignKey(
         "candidates.CandidateProfile",
         on_delete=models.CASCADE,
         related_name="offer_matches",

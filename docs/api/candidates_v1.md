@@ -1,8 +1,8 @@
 # Candidate API v1 contract
 
-The candidate, document and taxonomy apps are implemented without migrations. Full
-model checks await `recruitment.JobOffer` for targeted analyses and the identity
-app's pending `Organization` model. Database tests await shared migrations.
+The candidate, document, taxonomy, recruitment and identity apps have applied
+initial migrations. Database smoke checks cover the migrated schema and key access
+paths; dedicated integration tests remain future work.
 
 - `/api/v1/candidate-profiles/me/`: GET, POST (create once), PUT and PATCH for the
   current candidate. `completion_score` and identity linkage are system managed.
@@ -24,12 +24,9 @@ Scan/parse results, raw parsed JSON, skill validation provenance, completion sco
 and ATS analysis results have no candidate write route. Only candidate confirmed
 information is written to structured records.
 
-**Approved change pending implementation (2026-09-25; Q09):** one
-`candidate_preferences` record per candidate must contain work mode, relocation
-and maximum preferred commute distance in kilometres. Missing distance means no
-preference stated. The current code/API still puts `distance` and `relocation` on
-`candidate_profiles`; this contract describes that current behavior until P2
-reconciles it before migration. Its decimal field currently represents up to
+One `candidate_preferences` record per candidate contains work mode, relocation
+and maximum preferred commute distance in kilometres (Q09). Missing distance means no
+preference stated. Its decimal field currently represents up to
 999.99 km. `relocation` is `OPEN` or `CANNOT`; `work_mode` is `REMOTE`, `HYBRID` or
 `ONSITE`. Language levels use CEFR A1–C2; skill levels use `BEGINNER`,
 `INTERMEDIATE`, `ADVANCED` and `EXPERT`. Project `technologies` accepts skill UUIDs.

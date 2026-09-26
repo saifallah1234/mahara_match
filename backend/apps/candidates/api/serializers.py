@@ -32,8 +32,6 @@ class CandidateProfileSerializer(serializers.ModelSerializer[CandidateProfile]):
             "availability_date",
             "profile_visibility",
             "completion_score",
-            "distance",
-            "relocation",
             "created_at",
             "updated_at",
         )
@@ -117,7 +115,7 @@ class CertificationSerializer(serializers.ModelSerializer[Certification]):
 class CandidatePreferenceSerializer(serializers.ModelSerializer[CandidatePreference]):
     class Meta:
         model = CandidatePreference
-        fields = ("id", "work_mode", "created_at", "updated_at")
+        fields = ("id", "work_mode", "relocation", "distance", "created_at", "updated_at")
         read_only_fields = ("id", "created_at", "updated_at")
 
 

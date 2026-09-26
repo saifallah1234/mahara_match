@@ -16,8 +16,6 @@ PROTECTED = {
     "created_by_id",
     "source_id",
     "external_id",
-    "min_salary",
-    "max_salary",
     "created_at",
     "updated_at",
     "deleted_at",
@@ -40,3 +38,19 @@ def test_read_serializer_is_read_only_and_hides_soft_delete_marker() -> None:
     serializer = JobOfferReadSerializer()
     assert "deleted_at" not in serializer.fields
     assert all(field.read_only for field in serializer.fields.values())
+
+
+def test_salary_and_external_url_validation() -> None:
+    serializer = JobOfferCreateSerializer(
+        data={
+            "organization_id": "00000000-0000-0000-0000-000000000001",
+            "title": "Engineer",
+            "description": "Build things",
+            "easy_apply": False,
+            "min_salary": "2000.00",
+            "max_salary": "3000.00",
+            "offer_url": "http://example.com/apply",
+        }
+    )
+    assert not serializer.is_valid()
+    assert "offer_url" in serializer.errors

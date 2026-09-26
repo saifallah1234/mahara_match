@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
@@ -77,7 +77,7 @@ def update_profile(actor: User, data: Mapping[str, Any]) -> CandidateProfile:
 
 def list_records[RecordT: models.Model](actor: User, model: type[RecordT]) -> QuerySet[RecordT]:
     profile = own_profile(actor)
-    return model.objects.filter(candidate=profile).order_by("created_at", "id")
+    return cast(Any, model).objects.filter(candidate=profile).order_by("created_at", "id")
 
 
 def get_record[RecordT: models.Model](
@@ -85,7 +85,7 @@ def get_record[RecordT: models.Model](
 ) -> RecordT:
     try:
         return list_records(actor, model).get(id=record_id)
-    except model.DoesNotExist as exc:
+    except cast(Any, model).DoesNotExist as exc:
         raise DomainNotFoundError("Record not found.") from exc
 
 
@@ -124,9 +124,9 @@ def update_record[RecordT: models.Model](
     _save_validated(record)
     if model is Project and "technologies" in data:
         technologies = _unique_technologies(data["technologies"])
-        ProjectSkill.objects.filter(project=record).delete()
+        ProjectSkill.objects.filter(project=cast(Project, record)).delete()
         ProjectSkill.objects.bulk_create(
-            [ProjectSkill(project=record, skill=skill) for skill in technologies]
+            [ProjectSkill(project=cast(Project, record), skill=skill) for skill in technologies]
         )
     return record
 

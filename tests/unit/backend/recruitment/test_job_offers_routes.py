@@ -21,3 +21,9 @@ def test_job_offer_detail_has_no_delete_operation() -> None:
 
 def test_job_offer_collection_allows_list_and_create_only() -> None:
     assert _actions("/api/v1/job-offers/") == {"get": "list", "post": "create"}
+
+
+def test_job_offer_has_controlled_transition_action() -> None:
+    assert _actions("/api/v1/job-offers/00000000-0000-0000-0000-000000000001/transition/") == {
+        "post": "transition"
+    }

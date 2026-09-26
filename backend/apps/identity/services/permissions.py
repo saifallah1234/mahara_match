@@ -21,6 +21,7 @@ create_permission(actor, data)
 Checks MANAGE_RBAC, then creates a new permission.
 """
 
+
 def list_permissions(actor: Any) -> QuerySet[Permission]:
     require_permission(actor, IdentityPermissionCode.MANAGE_RBAC)
     return Permission.objects.order_by("code")

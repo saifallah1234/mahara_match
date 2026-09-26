@@ -1,35 +1,38 @@
 from uuid import UUID
 
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 
-from backend.apps.identity.models import User
-from backend.apps.identity.services.access import has_permission
+from backend.apps.identity.models import RoleCode, User, UserRole
 from backend.apps.recruitment.models import Application
 from backend.apps.recruitment.services.contracts import RecruitmentPermissionCode
-from backend.apps.recruitment.services.scope import restrict_to_organizations
-from backend.common.exceptions import DomainNotFoundError
-
-# Read-only in Phase 1: submission, withdrawal and status changes belong to P05-3.
-# TODO(G03): candidates reading their own applications needs the user -> candidate link.
+from backend.apps.recruitment.services.scope import organization_ids_with_permission
+from backend.common.exceptions import DomainNotFoundError, DomainPermissionError
 
 
 def list_applications(actor: User) -> QuerySet[Application]:
-    queryset = restrict_to_organizations(
-        actor,
-        Application.objects.all(),
-        RecruitmentPermissionCode.READ_APPLICATIONS,
-        "offer__organization_id",
+    scope = organization_ids_with_permission(actor, RecruitmentPermissionCode.READ_APPLICATIONS)
+    if scope is None:
+        return Application.objects.order_by("created_at", "id")
+    candidate = (
+        actor.is_active
+        and UserRole.objects.filter(user=actor, role__code=RoleCode.CANDIDATE).exists()
     )
-    return queryset.order_by("created_at", "id")
+    if not candidate and not scope:
+        raise DomainPermissionError()
+    visibility = Q(
+        offer__organization_id__in=scope,
+        candidate__user__status="ACTIVE",
+        offer__organization__deleted_at__isnull=True,
+        offer__organization__verification_status="VERIFIED",
+    )
+    if candidate:
+        visibility |= Q(candidate__user=actor)
+    return Application.objects.filter(visibility).order_by("created_at", "id")
 
 
 def get_application(actor: User, application_id: UUID | str) -> Application:
     try:
-        application = Application.objects.select_related("offer").get(id=application_id)
+        application = list_applications(actor).select_related("offer").get(id=application_id)
     except Application.DoesNotExist as exc:
         raise DomainNotFoundError("Application not found.") from exc
-    if not has_permission(
-        actor, RecruitmentPermissionCode.READ_APPLICATIONS, application.offer.organization_id
-    ):
-        raise DomainNotFoundError("Application not found.")
     return application

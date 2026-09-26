@@ -9,7 +9,7 @@ organizations. Candidates enroll against their candidate profile. Training price
 are TND: free programs cost `0`, paid programs cost more than `0`.
 
 Seed identity and training permissions with `python manage.py seed_rbac` after
-the required database migrations have been applied. Training migrations have not
-been created yet. Capacity and registration-deadline policies beyond the existing
+the required database migrations have been applied. The initial training migration
+is applied. Capacity and registration-deadline policies beyond the existing
 session fields, and recommendation scoring criteria, remain open in the
 [question register](../../../docs/architecture/open_questions.md).

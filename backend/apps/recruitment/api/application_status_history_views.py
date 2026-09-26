@@ -29,9 +29,13 @@ class ApplicationStatusHistoryViewSet(GenericViewSet[ApplicationStatusHistory]):
         )
         page = self.paginate_queryset(queryset)
         return self.get_paginated_response(
-            ApplicationStatusHistoryReadSerializer(page, many=True).data
+            ApplicationStatusHistoryReadSerializer(
+                page, many=True, context={"request": request}
+            ).data
         )
 
     def retrieve(self, request: Request, pk: UUID) -> Response:
         entry = history_services.get_status_history_entry(active_request_user(request), pk)
-        return Response(ApplicationStatusHistoryReadSerializer(entry).data)
+        return Response(
+            ApplicationStatusHistoryReadSerializer(entry, context={"request": request}).data
+        )

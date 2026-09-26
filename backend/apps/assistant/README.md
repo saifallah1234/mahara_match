@@ -1,6 +1,6 @@
 # assistant
 
-**Future responsibility:** Relational history of assistant interactions and confirmed actions.
+**Responsibility:** Relational history of assistant interactions and proposed actions.
 
 **Logical entity ownership:** conversations, conversation_messages, agent_executions, agent_tool_calls, agent_actions.
 
@@ -13,13 +13,11 @@ This includes the ANETI employment advisor, clarified by the user as the system 
 agent for recommendations and CV assistance (2026-09-20; Q22). Its interaction and
 execution history belongs here; CV and recommendation records retain their owning domains.
 
-## Reserved boundaries
+## Current backend
 
-- `api/`: future DRF transport, request validation and response representation.
-- `services/`: application operations, authorization and business coordination.
-- `models/`: future Django ORM definitions owned by this domain.
-
-These directories contain no implementations. No Django app has been initialized.
-Cross-domain operations use the owning service; do not duplicate entities or mutate
-another domain's models directly. Open requirements are tracked in the
-[question register](../../../docs/architecture/open_questions.md).
+The five ORM records and owner-scoped `/api/v1` read routes are initialized.
+Users may create, rename and soft-delete their conversations; messages, execution
+traces and actions are written only by trusted services. Tool inputs and action
+idempotency keys are never returned by public trace serializers. Confirmation,
+execution, expiry and replay policy remain the Phase 8 action contract. The initial
+schema migration is applied; no agent runtime is included.

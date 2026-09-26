@@ -14,7 +14,7 @@ Candidate, offer and training associations stay with those domains. Occupation t
 - `api/`: authenticated read-only catalog transport.
 - `models/`: Django ORM reference definitions.
 
-The app is initialized without migrations. Reference governance beyond Django admin
+The initial migration is applied. Reference governance beyond Django admin
 and a skill alias contract remain future work.
 Cross-domain operations use the owning service; do not duplicate entities or mutate
 another domain's models directly. Open requirements are tracked in the

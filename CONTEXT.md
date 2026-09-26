@@ -6,8 +6,8 @@ The [logical MVP data model](mahara_match_data_modeling.md) (DM) and the
 [preliminary specification](Cahier%20de%20charge%20pr%C3%A9liminaire%20PDF.pdf) (PDF)
 are the business sources of truth. PDF citations throughout this repository use
 **physical PDF page numbers**, including the cover (printed page 8 is physical
-page 9). The P1 account/RBAC slice is the first partial implementation; the rest
-of the documented product remains planned.
+page 9). Identity, candidates, training, recruitment and persisted match models
+have partial implementations; several planned workflows remain.
 
 **User clarification (2026-09-20):** the ANETI employment advisor is the system's
 AI agent for recommendations and CV assistance, not a human advisor account.
@@ -106,9 +106,11 @@ The complete entity-to-domain map is in
 ## Technical and persistence architecture
 
 The backend is a modular monolith: DRF API → application service → Django
-ORM → PostgreSQL. Django migrations will create and evolve relational tables.
-The project and P1 identity models/settings are initialized, while the shared
-identity migration waits for P4's organization/member models.
+ORM → PostgreSQL. Django migrations create and evolve relational tables.
+Initial migrations for all active business apps were generated and applied to the
+configured Supabase PostgreSQL database on 2026-09-26. RBAC roles and permissions
+were seeded. Assistant, imports and platform have protected persistence interfaces;
+the agent runtime and actual import processing remain in later phases.
 
 PostgreSQL owns transactional data and initial text search. Object storage holds
 CVs and other original files; the database holds metadata and URIs. Evaluate
@@ -194,7 +196,7 @@ candidate validation guide future implementation. Python 3.12, English docs and
 uv are the agreed team defaults.
 
 Consult [open questions](docs/architecture/open_questions.md) before implementing
-the contracts still open after the 2026-09-25 answers: remaining interview states,
-importer ownership, KPI definitions, provider/model evaluation, retained-data policy,
-scoring weights and release thresholds. The register distinguishes approved
+the contracts still open after the 2026-09-25 answers: importer ownership, KPI
+definitions, provider/model evaluation, retained-data policy, scoring weights and
+release thresholds. The register distinguishes approved
 direction from missing details; do not invent acceptance criteria.

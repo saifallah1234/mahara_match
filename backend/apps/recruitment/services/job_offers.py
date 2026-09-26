@@ -2,23 +2,23 @@ from collections.abc import Mapping
 from typing import Any, cast
 from uuid import UUID
 
-from django.apps import apps
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 
-from backend.apps.identity.models import RoleCode, User
-from backend.apps.identity.services.access import has_permission, require_permission
+from backend.apps.identity.models import Organization, RoleCode, User, UserRole
+from backend.apps.identity.services.access import require_permission
 from backend.apps.identity.services.contracts import ORGANIZATION_ROLE_TYPES
-from backend.apps.recruitment.models import JobOffer
+from backend.apps.recruitment.models import JobOffer, JobOfferStatus
 from backend.apps.recruitment.services.contracts import RecruitmentPermissionCode
-from backend.apps.recruitment.services.scope import restrict_to_organizations
+from backend.apps.recruitment.services.scope import organization_ids_with_permission
 from backend.common.exceptions import (
     DomainNotFoundError,
+    DomainPermissionError,
     DomainValidationError,
 )
 
-# Whitelist of caller-editable fields. Status, publication dates, source, external_id,
-# created_by and salaries (Q10: no currency yet) are deliberately NOT editable here.
+# Status, publication dates, source, external_id and created_by are lifecycle/import fields.
 _EDITABLE_FIELDS = (
     "title",
     "description",
@@ -28,14 +28,49 @@ _EDITABLE_FIELDS = (
     "country_code",
     "governorate",
     "city",
+    "min_salary",
+    "max_salary",
     "application_deadline",
     "offer_url",
     "description_language_id",
-    "required_language_id",
     "education_level_id",
     "easy_apply",
 )
-_REFERENCE_FIELDS = ("description_language_id", "required_language_id", "education_level_id")
+_REFERENCE_FIELDS = ("description_language_id", "education_level_id")
+
+
+def _validate_offer_fields(fields: Mapping[str, Any], offer: JobOffer | None = None) -> None:
+    minimum = fields.get("min_salary", offer.min_salary if offer else None)
+    maximum = fields.get("max_salary", offer.max_salary if offer else None)
+    if minimum is not None and maximum is not None and maximum < minimum:
+        raise DomainValidationError(details={"max_salary": ["Must be at least min_salary."]})
+    if (minimum is not None and minimum < 0) or (maximum is not None and maximum < 0):
+        raise DomainValidationError(details={"salary": ["Salary must be nonnegative."]})
+    url = fields.get("offer_url")
+    if url and not str(url).lower().startswith("https://"):
+        raise DomainValidationError(details={"offer_url": ["Use an HTTPS URL."]})
+    if (
+        offer
+        and fields.get("easy_apply", offer.easy_apply) is False
+        and offer.applications.exists()
+    ):
+        raise DomainValidationError(
+            details={"easy_apply": ["An offer with applications must stay internal."]}
+        )
+    if offer and offer.status == JobOfferStatus.PUBLISHED:
+        if not fields.get("easy_apply", offer.easy_apply) and not fields.get(
+            "offer_url", offer.offer_url
+        ):
+            raise DomainValidationError(
+                details={"offer_url": ["External applications need a link."]}
+            )
+        if (
+            not str(fields.get("title", offer.title)).strip()
+            or not str(fields.get("description", offer.description)).strip()
+        ):
+            raise DomainValidationError(
+                details={"offer": ["Published offers need a title and description."]}
+            )
 
 
 def _validate_references(fields: Mapping[str, Any]) -> None:
@@ -51,16 +86,10 @@ def _validate_references(fields: Mapping[str, Any]) -> None:
         raise DomainValidationError(details=errors)
 
 
-def _get_recruiting_organization(organization_id: UUID) -> Any:
+def _get_recruiting_organization(organization_id: UUID) -> Organization:
     try:
-        organization_model = apps.get_model("identity", "Organization")
-    except LookupError as exc:
-        raise DomainValidationError(
-            "Organization integration is not available until the P4 identity models are merged."
-        ) from exc
-    try:
-        organization = organization_model.objects.get(id=organization_id)
-    except organization_model.DoesNotExist as exc:
+        organization = Organization.objects.get(id=organization_id)
+    except Organization.DoesNotExist as exc:
         raise DomainValidationError(
             details={"organization_id": ["Organization not found."]}
         ) from exc
@@ -72,24 +101,30 @@ def _get_recruiting_organization(organization_id: UUID) -> Any:
 
 
 def list_job_offers(actor: User) -> QuerySet[JobOffer]:
-    # TODO(G03): candidate-facing visibility (e.g. published offers only) is undecided.
-    queryset = restrict_to_organizations(
-        actor,
-        JobOffer.objects.filter(deleted_at__isnull=True),
-        RecruitmentPermissionCode.READ_OFFERS,
-        "organization_id",
+    queryset = JobOffer.objects.filter(
+        deleted_at__isnull=True, organization__deleted_at__isnull=True
     )
+    scope = organization_ids_with_permission(actor, RecruitmentPermissionCode.READ_OFFERS)
+    if scope is None:
+        return queryset.order_by("created_at", "id")
+    candidate = (
+        actor.is_active
+        and UserRole.objects.filter(user=actor, role__code=RoleCode.CANDIDATE).exists()
+    )
+    if not candidate and not scope:
+        raise DomainPermissionError()
+    visibility = Q(organization_id__in=scope)
+    if candidate:
+        visibility |= Q(status="PUBLISHED", organization__verification_status="VERIFIED")
+    queryset = queryset.filter(visibility)
     return queryset.order_by("created_at", "id")
 
 
 def get_job_offer(actor: User, offer_id: UUID | str) -> JobOffer:
     try:
-        offer = JobOffer.objects.get(id=offer_id, deleted_at__isnull=True)
+        offer = list_job_offers(actor).get(id=offer_id)
     except JobOffer.DoesNotExist as exc:
         raise DomainNotFoundError("Job offer not found.") from exc
-    # Unreadable offers look non-existent, so their existence is not leaked.
-    if not has_permission(actor, RecruitmentPermissionCode.READ_OFFERS, offer.organization_id):
-        raise DomainNotFoundError("Job offer not found.")
     return offer
 
 
@@ -100,14 +135,19 @@ def create_job_offer(actor: User, data: Mapping[str, Any]) -> JobOffer:
     organization = _get_recruiting_organization(organization_id)
 
     fields = {field: data[field] for field in _EDITABLE_FIELDS if field in data}
+    _validate_offer_fields(fields)
     _validate_references(fields)
     try:
-        # status defaults to DRAFT; publication is a Phase 2 service (see phase_01 plan).
-        return JobOffer.objects.create(
+        offer = JobOffer(
             organization_id=organization.id,
             created_by=actor,
             **fields,
         )
+        offer.full_clean()
+        offer.save()
+        return offer
+    except ValidationError as exc:
+        raise DomainValidationError(details=exc.message_dict) from exc
     except IntegrityError as exc:
         raise DomainValidationError(
             details={"offer": ["The offer violates a data constraint."]}
@@ -116,12 +156,21 @@ def create_job_offer(actor: User, data: Mapping[str, Any]) -> JobOffer:
 
 @transaction.atomic
 def update_job_offer(actor: User, offer: JobOffer, data: Mapping[str, Any]) -> JobOffer:
+    try:
+        offer = JobOffer.objects.select_for_update().get(pk=offer.pk, deleted_at__isnull=True)
+    except JobOffer.DoesNotExist as exc:
+        raise DomainNotFoundError("Job offer not found.") from exc
     require_permission(actor, RecruitmentPermissionCode.MANAGE_OFFERS, offer.organization_id)
     fields = {field: data[field] for field in _EDITABLE_FIELDS if field in data}
+    _validate_offer_fields(fields, offer)
     _validate_references(fields)
     if not fields:
         return offer
     for field, value in fields.items():
         setattr(offer, field, value)
-    offer.save(update_fields=[*fields, "updated_at"])
+    try:
+        offer.full_clean()
+        offer.save(update_fields=[*fields, "updated_at"])
+    except ValidationError as exc:
+        raise DomainValidationError(details=exc.message_dict) from exc
     return offer

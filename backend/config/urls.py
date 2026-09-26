@@ -10,4 +10,7 @@ urlpatterns = [
     path("api/v1/", include("backend.apps.candidates.api.urls")),
     path("api/v1/", include("backend.apps.recruitment.api.urls")),
     path("api/v1/", include("backend.apps.matching.services.urls")),
+    path("api/v1/", include("backend.apps.assistant.api.urls")),
+    path("api/v1/", include("backend.apps.platform.api.urls")),
+    path("api/v1/", include("backend.apps.imports.api.urls")),
 ]

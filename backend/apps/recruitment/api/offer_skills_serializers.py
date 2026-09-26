@@ -2,6 +2,7 @@ from typing import Any
 
 from rest_framework import serializers
 
+from backend.apps.candidates.models.entities import SkillLevel
 from backend.apps.recruitment.models import OfferSkill
 
 
@@ -25,9 +26,9 @@ class OfferSkillReadSerializer(serializers.ModelSerializer[OfferSkill]):
 
 
 class OfferSkillUpdateSerializer(serializers.Serializer[dict[str, Any]]):
-    # G04/Q20: level and importance scales are undefined, so these stay free text.
+    # Importance scale is still an owning contract.
     importance = serializers.CharField(max_length=30, required=False, allow_blank=True)
-    required_level = serializers.CharField(max_length=30, required=False, allow_blank=True)
+    required_level = serializers.ChoiceField(choices=["", *SkillLevel.values], required=False)
     is_mandatory = serializers.BooleanField(required=False)
 
 

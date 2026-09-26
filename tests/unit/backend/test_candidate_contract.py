@@ -16,6 +16,7 @@ from backend.apps.candidates.models import (
     Project,
     ProjectSkill,
 )
+from backend.apps.recruitment.models import JobOffer
 
 pytestmark = pytest.mark.unit
 
@@ -43,10 +44,7 @@ def test_candidate_table_and_relationship_contract() -> None:
     assert CandidateProfile._meta.get_field("user").unique
     assert CandidatePreference._meta.get_field("candidate").unique
     assert CV._meta.get_field("document").unique
-    assert (
-        CVAnalysisResult._meta.get_field("target_offer").remote_field.model
-        == "recruitment.JobOffer"
-    )
+    assert CVAnalysisResult._meta.get_field("target_offer").remote_field.model is JobOffer
     assert Project._meta.get_field("technologies").remote_field.through is ProjectSkill
     for model in (Experience, Education, CandidateLanguage, CandidateSkill):
         assert model._meta.get_field("candidate") is not None

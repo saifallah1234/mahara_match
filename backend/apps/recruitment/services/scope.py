@@ -1,7 +1,7 @@
 from typing import Any, cast
 from uuid import UUID
 
-from django.db.models import Model, QuerySet
+from django.db.models import Model, Q, QuerySet
 
 from backend.apps.identity.models import User, UserRole
 from backend.common.exceptions import DomainPermissionError
@@ -18,7 +18,12 @@ def organization_ids_with_permission(actor: User, permission_code: str) -> set[U
         user_role_manager.filter(
             user=actor,
             role__permission_grants__permission__code=permission_code,
-        ).values_list("organization_id", flat=True)
+        )
+        .filter(
+            Q(organization__isnull=True)
+            | Q(organization__members__user=actor, organization__deleted_at__isnull=True)
+        )
+        .values_list("organization_id", flat=True)
     )
     if None in ids:
         return None

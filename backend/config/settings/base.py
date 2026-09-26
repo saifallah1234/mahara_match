@@ -1,8 +1,23 @@
 import os
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 BASE_DIR = Path(__file__).resolve().parents[3]
+
+# Local development values; process environment always takes precedence.
+env_file = BASE_DIR / ".env"
+if env_file.is_file():
+    for line in env_file.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        value = value.strip()
+        if value[:1] == value[-1:] and value.startswith(('"', "'")):
+            value = value[1:-1]
+        if value:
+            os.environ.setdefault(key.strip(), value)
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-development-key")
 DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() == "true"
@@ -29,6 +44,9 @@ INSTALLED_APPS = [
     "backend.apps.taxonomy.apps.TaxonomyConfig",
     "backend.apps.documents.apps.DocumentsConfig",
     "backend.apps.candidates.apps.CandidatesConfig",
+    "backend.apps.assistant.apps.AssistantConfig",
+    "backend.apps.imports.apps.ImportsConfig",
+    "backend.apps.platform.apps.PlatformConfig",
 ]
 
 MIDDLEWARE = [
@@ -60,15 +78,25 @@ TEMPLATES = [
     },
 ]
 
+pooler_url = os.getenv("POSTGRES_SESSION_POOLER")
+pooler = urlsplit(pooler_url) if pooler_url else None
+if pooler and (pooler.scheme not in {"postgres", "postgresql"} or not pooler.hostname):
+    raise ValueError("POSTGRES_SESSION_POOLER must be a PostgreSQL connection URL.")
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "mahara_match"),
-        "USER": os.getenv("POSTGRES_USER", "postgres"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
-        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        "NAME": pooler.path.lstrip("/") if pooler else os.getenv("POSTGRES_DB", "mahara_match"),
+        "USER": unquote(pooler.username or "")
+        if pooler
+        else os.getenv("POSTGRES_USER", "postgres"),
+        "PASSWORD": unquote(pooler.password or "")
+        if pooler
+        else os.getenv("POSTGRES_PASSWORD", ""),
+        "HOST": pooler.hostname if pooler else os.getenv("POSTGRES_HOST", "localhost"),
+        "PORT": str(pooler.port or 5432) if pooler else os.getenv("POSTGRES_PORT", "5432"),
         "CONN_MAX_AGE": 0,
+        "OPTIONS": {"sslmode": "require"} if pooler else {},
     }
 }
 

@@ -9,10 +9,13 @@ class OrganizationMemberReadSerializer(serializers.ModelSerializer[OrganizationM
     class Meta:
         model = OrganizationMember
         fields = (
+            "id",
             "organization",
             "user",
             "job_title",
             "joined_at",
+            "created_at",
+            "updated_at",
         )
         read_only_fields = fields
 

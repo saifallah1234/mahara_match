@@ -2,6 +2,7 @@ from uuid import UUID
 
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -11,10 +12,12 @@ from backend.apps.recruitment.api.job_offers_permissions import IsActiveAuthenti
 from backend.apps.recruitment.api.job_offers_serializers import (
     JobOfferCreateSerializer,
     JobOfferReadSerializer,
+    JobOfferTransitionSerializer,
     JobOfferUpdateSerializer,
 )
 from backend.apps.recruitment.models import JobOffer
 from backend.apps.recruitment.services import job_offers as offer_services
+from backend.apps.recruitment.services.offer_lifecycle import transition_offer
 
 
 class JobOfferViewSet(GenericViewSet[JobOffer]):
@@ -53,4 +56,13 @@ class JobOfferViewSet(GenericViewSet[JobOffer]):
         serializer = JobOfferUpdateSerializer(data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         offer = offer_services.update_job_offer(actor, offer, serializer.validated_data)
+        return Response(JobOfferReadSerializer(offer).data)
+
+    @action(detail=True, methods=["post"])
+    def transition(self, request: Request, pk: UUID) -> Response:
+        serializer = JobOfferTransitionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        offer = transition_offer(
+            active_request_user(request), pk, serializer.validated_data["status"]
+        )
         return Response(JobOfferReadSerializer(offer).data)

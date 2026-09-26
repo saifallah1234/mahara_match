@@ -218,10 +218,9 @@ unique/relationship cardinalities, score semantics, educational years vs date ch
 document-to-CV cardinality and CV numbering before the relevant migration. Do not
 invent a generic OTHER status or guessed defaults to make the schema compile.
 
-**Current code needing owner reconciliation before affected migrations:** the
-candidate model stores distance/relocation on the profile rather than the single
-preference record (Q09); organization membership currently uses a composite
-primary key without the G02 UUID/timestamp convention. Training models now follow
+**Current model reconciliation:** candidate distance/relocation now belong to the
+single preference record (Q09), and organization membership uses a UUID key,
+timestamps and a scoped unique constraint (G02). Training models follow
 Q13 pricing and skill-purpose decisions and reference provider organizations,
 candidate profiles and taxonomy skills with protected relationships. Their
 constraints remain unapplied until training migrations are created.

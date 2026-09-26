@@ -2,7 +2,8 @@ from typing import Any
 
 from rest_framework import serializers
 
-from backend.apps.recruitment.models import JobOffer
+from backend.apps.candidates.models.entities import WorkMode
+from backend.apps.recruitment.models import JobOffer, JobOfferStatus
 
 
 class JobOfferReadSerializer(serializers.ModelSerializer[JobOffer]):
@@ -10,7 +11,6 @@ class JobOfferReadSerializer(serializers.ModelSerializer[JobOffer]):
     created_by_id = serializers.UUIDField(read_only=True)
     source_id = serializers.UUIDField(read_only=True, allow_null=True)
     description_language_id = serializers.UUIDField(read_only=True, allow_null=True)
-    required_language_id = serializers.UUIDField(read_only=True, allow_null=True)
     education_level_id = serializers.UUIDField(read_only=True, allow_null=True)
 
     class Meta:
@@ -37,7 +37,6 @@ class JobOfferReadSerializer(serializers.ModelSerializer[JobOffer]):
             "closed_at",
             "offer_url",
             "description_language_id",
-            "required_language_id",
             "education_level_id",
             "easy_apply",
             "created_at",
@@ -47,22 +46,32 @@ class JobOfferReadSerializer(serializers.ModelSerializer[JobOffer]):
 
 
 class _JobOfferWriteSerializer(serializers.Serializer[dict[str, Any]]):
-    """Whitelist of caller-editable fields. Salaries wait for Q10 (currency)."""
+    """Whitelist of caller-editable offer metadata."""
 
     title = serializers.CharField(max_length=200)
     description = serializers.CharField()
     contract_type = serializers.CharField(max_length=30, required=False, allow_blank=True)
-    work_mode = serializers.CharField(max_length=30, required=False, allow_blank=True)
+    work_mode = serializers.ChoiceField(choices=["", *WorkMode.values], required=False)
     experience_level = serializers.CharField(max_length=30, required=False, allow_blank=True)
     country_code = serializers.CharField(max_length=2, required=False, allow_blank=True)
     governorate = serializers.CharField(max_length=100, required=False, allow_blank=True)
     city = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    min_salary = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True
+    )
+    max_salary = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True
+    )
     application_deadline = serializers.DateField(required=False, allow_null=True)
-    offer_url = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    offer_url = serializers.URLField(max_length=500, required=False, allow_blank=True)
     description_language_id = serializers.UUIDField(required=False, allow_null=True)
-    required_language_id = serializers.UUIDField(required=False, allow_null=True)
     education_level_id = serializers.UUIDField(required=False, allow_null=True)
     easy_apply = serializers.BooleanField()
+
+    def validate_offer_url(self, value: str) -> str:
+        if value and not value.lower().startswith("https://"):
+            raise serializers.ValidationError("Use an HTTPS URL.")
+        return value
 
 
 class JobOfferCreateSerializer(_JobOfferWriteSerializer):
@@ -71,3 +80,7 @@ class JobOfferCreateSerializer(_JobOfferWriteSerializer):
 
 class JobOfferUpdateSerializer(_JobOfferWriteSerializer):
     """The owning organization cannot be changed after creation."""
+
+
+class JobOfferTransitionSerializer(serializers.Serializer[dict[str, Any]]):
+    status = serializers.ChoiceField(choices=JobOfferStatus.values)

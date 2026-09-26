@@ -40,10 +40,10 @@ These areas contain README files only. They do not imply approved models or MVP 
 
 ## Interface organization
 
-Defined domains reserve `api/`, `services/` and `models/`, each empty.
-Future APIs adapt transport to application-service operations; services own
-business validation and authorization; models implement domain-owned ORM state.
-There are no public APIs, signatures, serializers, models or DTOs in this scaffold.
+Implemented domains use `api/`, `services/` and `models/`. APIs adapt transport
+to application-service operations; services own business validation and
+authorization; models implement domain-owned ORM state. Imports, assistant and
+platform records remain pending, and no application migrations have been created.
 
 Cross-domain mutations go through owning services. Model relationships may refer
 to existing owners without cloning entities. A service can coordinate work across

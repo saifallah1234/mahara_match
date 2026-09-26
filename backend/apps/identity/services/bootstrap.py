@@ -14,6 +14,7 @@ seed_identity_rbac()
 Initializes the RBAC data in the database.
 """
 
+
 @transaction.atomic
 def seed_identity_rbac() -> None:
     roles = {

@@ -15,8 +15,8 @@ Reference shared documents and taxonomy. Raw extraction is separate from candida
 - `services/`: candidate ownership, version allocation and business validation.
 - `models/`: Django ORM definitions owned by this domain.
 
-The app is initialized without migrations. Targeted CV analysis uses a lazy foreign
-key to the future `recruitment.JobOffer`; full system checks await that model.
+The candidate preference holds work mode, relocation and maximum commute distance
+for one candidate. Targeted CV analysis links to `recruitment.JobOffer`.
 Cross-domain operations use the owning service; do not duplicate entities or mutate
 another domain's models directly. Open requirements are tracked in the
 [question register](../../../docs/architecture/open_questions.md).

@@ -2,15 +2,15 @@ from collections.abc import Mapping
 from typing import Any, cast
 from uuid import UUID
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import QuerySet
 
 from backend.apps.identity.models import User
-from backend.apps.identity.services.access import has_permission, require_permission
+from backend.apps.identity.services.access import require_permission
 from backend.apps.recruitment.models import JobOffer, JobOfferStatus, OfferSkill
 from backend.apps.recruitment.services.contracts import RecruitmentPermissionCode
-from backend.apps.recruitment.services.job_offers import get_job_offer
-from backend.apps.recruitment.services.scope import restrict_to_organizations
+from backend.apps.recruitment.services.job_offers import get_job_offer, list_job_offers
 from backend.common.exceptions import DomainNotFoundError, DomainValidationError
 
 # offer and skill are fixed once the link exists; only the requirement details change.
@@ -18,12 +18,7 @@ _EDITABLE_FIELDS = ("importance", "required_level", "is_mandatory")
 
 
 def list_offer_skills(actor: User, offer_id: UUID | None = None) -> QuerySet[OfferSkill]:
-    queryset = restrict_to_organizations(
-        actor,
-        OfferSkill.objects.filter(offer__deleted_at__isnull=True),
-        RecruitmentPermissionCode.READ_OFFERS,
-        "offer__organization_id",
-    )
+    queryset = OfferSkill.objects.filter(offer__in=list_job_offers(actor))
     if offer_id is not None:
         queryset = queryset.filter(offer_id=offer_id)
     return queryset.order_by("created_at", "id")
@@ -31,15 +26,9 @@ def list_offer_skills(actor: User, offer_id: UUID | None = None) -> QuerySet[Off
 
 def get_offer_skill(actor: User, offer_skill_id: UUID | str) -> OfferSkill:
     try:
-        offer_skill = OfferSkill.objects.select_related("offer").get(
-            id=offer_skill_id, offer__deleted_at__isnull=True
-        )
+        offer_skill = list_offer_skills(actor).select_related("offer").get(id=offer_skill_id)
     except OfferSkill.DoesNotExist as exc:
         raise DomainNotFoundError("Offer skill not found.") from exc
-    if not has_permission(
-        actor, RecruitmentPermissionCode.READ_OFFERS, offer_skill.offer.organization_id
-    ):
-        raise DomainNotFoundError("Offer skill not found.")
     return offer_skill
 
 
@@ -57,7 +46,12 @@ def create_offer_skill(actor: User, data: Mapping[str, Any]) -> OfferSkill:
 
     fields = {field: data[field] for field in _EDITABLE_FIELDS if field in data}
     try:
-        return OfferSkill.objects.create(offer=offer, skill_id=data["skill_id"], **fields)
+        offer_skill = OfferSkill(offer=offer, skill_id=data["skill_id"], **fields)
+        offer_skill.full_clean()
+        offer_skill.save()
+        return offer_skill
+    except ValidationError as exc:
+        raise DomainValidationError(details=exc.message_dict) from exc
     except IntegrityError as exc:
         raise DomainValidationError(
             details={"skill_id": ["This skill is already attached to the offer."]}
@@ -74,7 +68,11 @@ def update_offer_skill(actor: User, offer_skill: OfferSkill, data: Mapping[str, 
         return offer_skill
     for field, value in fields.items():
         setattr(offer_skill, field, value)
-    offer_skill.save(update_fields=[*fields, "updated_at"])
+    try:
+        offer_skill.full_clean()
+        offer_skill.save(update_fields=[*fields, "updated_at"])
+    except ValidationError as exc:
+        raise DomainValidationError(details=exc.message_dict) from exc
     return offer_skill
 
 

@@ -15,7 +15,7 @@ Own file metadata, not CV versions or import histories. Object storage holds byt
 - `services/`: trusted metadata creation and ownership checks.
 - `models/`: Django ORM metadata definition.
 
-The app is initialized without migrations. Binary upload and storage adapters remain
+The initial migration is applied. Binary upload and storage adapters remain
 future work.
 Cross-domain operations use the owning service; do not duplicate entities or mutate
 another domain's models directly. Open requirements are tracked in the

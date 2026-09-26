@@ -18,7 +18,7 @@ class ApplicationStatus(models.TextChoices):
 class Application(models.Model):
     objects: models.Manager["Application"]
     id: Any = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    candidate: Any = models.ForeignKey(  # type: ignore[misc]
+    candidate: Any = models.ForeignKey(
         "candidates.CandidateProfile",
         on_delete=models.PROTECT,
         related_name="applications",
@@ -29,7 +29,7 @@ class Application(models.Model):
         related_name="applications",
     )
     # The service layer must check that this CV belongs to `candidate` (DM section 7).
-    cv: Any = models.ForeignKey(  # type: ignore[misc]
+    cv: Any = models.ForeignKey(
         "candidates.CV",
         on_delete=models.PROTECT,
         related_name="applications",
@@ -53,7 +53,7 @@ class Application(models.Model):
         db_table = "applications"
         ordering = ("created_at", "id")
         constraints = [
-            # Q12: re-applying after withdrawal is undecided; this blocks it for now.
+            # Q12: no reapplication after any final state.
             models.UniqueConstraint(
                 fields=["candidate", "offer"],
                 name="applications_candidate_offer_unique",

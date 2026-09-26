@@ -44,8 +44,11 @@ def test_easy_apply_has_no_guessed_default() -> None:
 
 def test_job_offer_constraints_are_declared() -> None:
     assert _constraint_names(JobOffer) == {
+        "job_offers_import_has_external_id",
         "job_offers_source_external_id_unique",
         "job_offers_max_salary_gte_min_salary",
+        "job_offers_min_salary_nonnegative",
+        "job_offers_max_salary_nonnegative",
     }
 
 

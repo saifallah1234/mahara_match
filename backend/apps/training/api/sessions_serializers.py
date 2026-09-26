@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 from rest_framework import serializers
 
@@ -51,7 +51,7 @@ class TrainingSessionUpdateSerializer(serializers.Serializer[dict[str, Any]]):
     status = serializers.ChoiceField(choices=SessionStatus.choices, required=False)
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
-        session = self.instance
+        session = cast(TrainingSession, self.instance)
         start_date = attrs.get("start_date", session.start_date)
         end_date = attrs.get("end_date", session.end_date)
         deadline = attrs.get("registration_deadline", session.registration_deadline)

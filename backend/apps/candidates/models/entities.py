@@ -65,15 +65,6 @@ class CandidateProfile(UUIDTimestampedModel):
         default=Decimal("0.00"),
         validators=[MinValueValidator(0), MaxValueValidator(100)],
     )
-    distance = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0)],
-        help_text="Maximum preferred commute distance in kilometres.",
-    )
-    relocation = models.CharField(max_length=10, choices=Relocation.choices, blank=True)
 
     class Meta:
         db_table = "candidate_profiles"
@@ -81,10 +72,6 @@ class CandidateProfile(UUIDTimestampedModel):
             models.CheckConstraint(
                 condition=Q(completion_score__gte=0) & Q(completion_score__lte=100),
                 name="candidate_profiles_score_range",
-            ),
-            models.CheckConstraint(
-                condition=Q(distance__isnull=True) | Q(distance__gte=0),
-                name="candidate_profiles_distance_nonnegative",
             ),
         ]
 
@@ -202,9 +189,24 @@ class CandidatePreference(UUIDTimestampedModel):
         "candidates.CandidateProfile", on_delete=models.PROTECT, related_name="preferences"
     )
     work_mode = models.CharField(max_length=10, choices=WorkMode.choices)
+    relocation = models.CharField(max_length=10, choices=Relocation.choices, blank=True)
+    distance = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        help_text="Maximum preferred commute distance in kilometres.",
+    )
 
     class Meta:
         db_table = "candidate_preferences"
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(distance__isnull=True) | Q(distance__gte=0),
+                name="candidate_preferences_distance_nonnegative",
+            )
+        ]
 
 
 class Project(CandidateOwnedModel):
