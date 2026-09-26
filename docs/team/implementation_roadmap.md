@@ -14,8 +14,11 @@ Follow the [team workflow](development_workflow.md) for every PR.
   [domain ownership](../architecture/domain_boundaries.md) and the
   [question register](../architecture/open_questions.md).
 - **User decisions:** Django/DRF/PostgreSQL modular monolith; all defined relational
-  entities in Phase 1; include frontend delivery behind a technology/location gate;
-  the ANETI employment advisor is the system AI agent, never a human advisor role.
+  entities in Phase 1; React/TypeScript/Vite frontend; PostgreSQL baseline as pilot
+  and evaluated Phase 7 hybrid/graph retrieval before the MVP label; the ANETI
+  employment advisor is the system AI agent, never a human advisor role. The
+  [question register](../architecture/open_questions.md) records the 2026-09-25
+  decisions and remaining contract details.
 - **Planning choices:** assignments, file names, merge waves and sequencing below
   organize future work; they do not invent source business rules. No calendar
   estimates or real names are inferred. P1 means Person 1, and similarly for P2–P5.
@@ -31,37 +34,40 @@ Agent/LangGraph → tool → application service → ORM.
 Dagster → reusable processing → application service for relational reads/writes.
 Services can invoke reusable AI capabilities and validate/persist returned results.
 Agents/tools cannot import models; capabilities cannot call back into their invoking
-services. Object storage stores bytes; vector/Neo4j stores derived projections.
+services. Object storage stores bytes; any vector/graph store holds derived
+projections. PostgreSQL text search comes first; pgvector is evaluated and Neo4j
+is conditional on demonstrated graph traversal need (Q14).
 
-**Frontend notation:** `UI_ROOT` is deliberately unbound until gate F01. P4 must
-record exact framework-compatible source, feature and test paths in this roadmap
-before any UI task starts. A root frontend/ area is a recommendation for that
-decision, not an existing folder or authorization to create it in this docs task.
-UI task names below identify required screens/contracts without pretending a stack
-has been selected. Backend tasks can complete against API tests while F01 is open;
-UI milestones cannot be declared complete. UI consumes the same authorized APIs.
+**Frontend notation:** F01 binds `UI_ROOT` to `frontend/src/features/` for the
+approved React/TypeScript/Vite frontend; shared API code belongs in
+`frontend/src/api/`. P4 must record exact feature and test paths, browser
+authentication/CSRF transport, French/Arabic/RTL and accessibility acceptance
+before each UI task starts. These are future paths, not existing directories or
+authorization to create frontend files in this documentation task. UI consumes
+the same authorized `/api/v1` services through a same-origin API path.
 
 ## Phase overview
 
 | Phase | Objective | Person 1 | Person 2 | Person 3 | Person 4 | Person 5 | Main repo areas | Deliverable |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Relational backend | Users/RBAC, assistant/platform records, integration | Candidates, documents, taxonomy | Recruitment/match records | Organizations/import records, PostgreSQL/CI | Training, taxonomy test support | backend/, tests/, infrastructure/, .github/ | All defined data domains and controlled APIs |
-| 2 | Core workflows and UI foundation | Account/access operations | Candidate editing/completeness | Offer publication lifecycle | Organization workflows/UI foundation | Training catalogue lifecycle | backend/apps/, gated UI_ROOT | Authorized account/profile/catalogue journeys |
+| 2 | Core workflows and UI foundation | Account/access operations | Candidate editing/completeness | Offer publication lifecycle | Organization workflows/UI foundation | Training catalogue lifecycle | backend/apps/, UI_ROOT | Authorized account/profile/catalogue journeys |
 | 3 | CV intelligence | Access/trace contract | Parse/review/generate integration | ATS and target-offer comparison | Storage/upload/UI | Text extraction/OCR | ai/document_intelligence/, pipelines/document_processing/, backend/ | Candidate-validated CV processing |
 | 4 | Baseline search/recommendations | Access/result contracts | Candidate features/evaluation | Search/job matching | Search UI/organization evidence | Training recommendations | matching/, recruitment/, training/, ai/evaluation/ | Explainable PostgreSQL-first recommendations |
-| 5 | Participation workflows | Notifications/audit | Candidate application journey | Applications/recruitment/interviews | Employer/provider UI | Enrollment/progression | recruitment/, training/, platform/, gated UI_ROOT | Tracked applications and training participation |
+| 5 | Participation workflows | Notifications/audit | Candidate application journey | Applications/recruitment/interviews | Employer/provider UI | Enrollment/progression | recruitment/, training/, platform/, UI_ROOT | Tracked applications and training participation |
 | 6 | Background data work | Source authorization/audit | Taxonomy/quality normalization | Offer reconciliation | Imports/connectors | Dagster scheduling/recovery | imports/, pipelines/, infrastructure/ | Traceable authorized imports and background orchestration |
 | 7 | RAG/GraphRAG | Retrieval authorization | CV/profile evidence/evaluation | Hybrid retrieval/reranking | Embeddings/projections/stores | Graph/training context | ai/, pipelines/synchronization/, infrastructure/ | Grounded hybrid retrieval and measured recommendations |
 | 8 | ANETI AI advisor | Execution/confirmation records | CV tools | Search/application tools | Agent/LangGraph/chat UI | Training tools/evaluation | ai/agents/, ai/tools/, ai/workflows/, assistant/ | Confirmed, traceable FR/AR/Tunisian assistance |
-| 9 | Dashboards/integration | Administration/audit views | Candidate dashboards | Recruitment indicators | Integrated dashboards | Training/ministry aggregates | backend/apps/, tests/e2e/, gated UI_ROOT | Role-specific journeys and approved aggregate reports |
+| 9 | Dashboards/integration | Administration/audit views | Candidate dashboards | Recruitment indicators | Integrated dashboards | Training/ministry aggregates | backend/apps/, tests/e2e/, UI_ROOT | Role-specific journeys and approved aggregate reports |
 | 10 | Release readiness | Security/access audit | CV/privacy acceptance | API/search performance | Deployment/observability | Pipeline recovery/AI regression | infrastructure/, tests/, .github/, docs/ | Reproducible, tested release candidate |
 | Post-MVP | Gated extensions | Moderation/access review | Community/fine-tuning data | Advanced interviews/freelance study | External integration/quantization study | Training assessment/AI evaluation | Existing areas; new schemas only after approval | Separately scoped extension proposals and delivery |
 
 The numbers describe integration milestones, not a requirement for all five people
 to wait at every boundary. Start security, CI, fixtures, metrics and documentation
 with each feature. Phase 10 consolidates evidence instead of introducing testing late.
-Phase 7 follows baseline matching for development; Q02 still decides which milestone
-may be labeled MVP. Do not call a baseline-only release the approved MVP by inference.
+Phase 7 follows baseline matching for development. The PostgreSQL baseline may be
+released as a pilot; the MVP label requires demonstrated and evaluated Phase 7
+hybrid plus graph/GraphRAG capability (Q02), with release criteria still gated by Q26.
 
 ```mermaid
 flowchart LR
@@ -116,8 +122,9 @@ pass. **Deferred:** computed results, lifecycle actions, file processing and UI.
 ## Phase 2 — Core workflows and UI foundation
 
 **Objective:** turn CRUD into authorized account/profile/catalogue operations.
-Sources: DM §§2, 4.A–D, 7; PDF pp. 3–6. Decide F01, access/verification rules and
-workflow states before implementing affected operations.
+Sources: DM §§2, 4.A–D, 7; PDF pp. 3–6. F01 has selected the UI stack; record
+exact feature/test paths and browser transport, plus access/verification rules and
+workflow states, before implementing affected operations.
 
 | Task | Responsibility / exact backend targets and UI scope | Dependencies | Deliverable | Validation | Reviewer | PR order |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -128,7 +135,8 @@ workflow states before implementing affected operations.
 | P02-5 — P5 | backend/apps/training/services/catalogue.py, api/catalogue_views.py; UI_ROOT provider catalogue | P01-5; P02-1; Q13, Q24 | Provider-controlled programs and session preparation | tests/integration/training/test_catalogue.py: provider boundaries and invalid metadata/state | P2 | 2 parallel |
 
 **Coordination:** P4 integrates UI shell/routing/dependencies; feature owners work
-in separately assigned feature files after F01. P1 owns auth/root API integration.
+in separately assigned feature files after P4 records the F01 path and acceptance
+details. P1 owns auth/root API integration.
 Stable account/organization contracts merge before parallel domain workflows;
 UI contract PRs precede screens. Conflicts concentrate in identity routes and UI shell.
 
@@ -140,7 +148,7 @@ CV processing. Do not invent a completeness formula or automatic expiry policy.
 ## Phase 3 — Documents and CV intelligence
 
 **Objective:** candidate-reviewed CV extraction and improvement. Sources: DM §4.B;
-PDF pp. 5–9. Resolve Q08 staging, Q14 provider choices used here, Q19 file retention
+PDF pp. 5–9. Apply Q08 staging, select Q14 provider choices used here, settle Q19 file retention
 and Q26 ATS criteria before those components are implemented.
 
 | Task | Responsibility / future paths | Dependencies | Deliverable | Validation | Reviewer | PR order |
@@ -163,7 +171,7 @@ overwrite or invented information to fill absent CV sections.
 
 ## Phase 4 — Search and baseline recommendations
 
-**Objective:** useful, explainable search before hybrid retrieval. Sources: DM
+**Objective:** useful, explainable pilot search before hybrid retrieval. Sources: DM
 §§4.B–D, 5; PDF pp. 5–6, 9. Resolve Q26 scoring/eligibility and Q09 distance first.
 An inferred mismatch is not automatic rejection unless the product approves that rule.
 
@@ -180,8 +188,8 @@ P3/P5 own distinct recommendation tables; P2 exposes features without copying
 candidate models into matching. Main conflicts: shared taxonomy/scales and result
 contracts. UI merges after service contracts; independent baseline evaluation can
 start before OCR is ready. **Exit:** candidate→offer→missing skills→training journey
-is explainable and evaluated; no fabricated fallback scores. **Deferred:** semantic/
-graph ranking and its release classification under Q02.
+is explainable and evaluated; no fabricated fallback scores. This PostgreSQL
+baseline is a pilot under Q02. **Deferred:** semantic/graph ranking to Phase 7.
 
 ## Phase 5 — Applications, recruitment and training participation
 
@@ -235,16 +243,17 @@ submissions retain priority; Playwright is considered only for an authorized nee
 ## Phase 7 — RAG, GraphRAG and hybrid retrieval
 
 **Objective:** add derived knowledge retrieval with source-backed explanations.
-Sources: DM §5; PDF pp. 5, 7, 9–10. Q14/Q18 select stores/models and synchronization
-policies; Q02 governs MVP labeling. PostgreSQL remains authoritative.
+Sources: DM §5; PDF pp. 5, 7, 9–10. Q14/Q18 select concrete models, conditional
+stores and synchronization policies; Q02 requires evaluated hybrid plus graph/GraphRAG
+before MVP labeling. PostgreSQL remains authoritative.
 
 | Task | Responsibility / future paths | Dependencies | Deliverable | Validation | Reviewer | PR order |
 | --- | --- | --- | --- | --- | --- | --- |
 | P07-1 — P1 | backend/apps/identity/services/retrieval_scope.py; ai/retrieval/access_context.py | Q19; domain service scope contracts | Authorized retrieval context and source visibility contract | tests/integration/test_retrieval_scope.py: revoked access and cross-organization/candidate leakage | P4 | 1 |
 | P07-2 — P2 | ai/rag/evidence.py; ai/evaluation/retrieval_cases.py; backend/apps/candidates/services/retrieval_projection.py | Confirmed profile data, Q08/Q19/Q26 | Traceable CV/profile evidence and multilingual relevance/absence fixtures | tests/unit/ai/test_evidence.py; tests/integration/test_profile_projection.py | P3 | 1–2 |
 | P07-3 — P3 | ai/retrieval/lexical/search.py, vector/search.py, hybrid/search.py; ai/reranking/reranker.py; ai/rag/answering.py | P07-1/2/4/5 contracts; approved LLM/embedding/reranking providers | Hybrid candidates, reranking and cited RAG answers integrated through matching services | tests/integration/test_hybrid_retrieval.py: filter preservation, relevance comparisons, absent evidence | P5 | 3 |
-| P07-4 — P4 | ai/embeddings/encoder.py; ai/llm/providers/gateway.py; pipelines/synchronization/vector/project.py, graph/project.py; pipelines/dagster/assets/projections.py; infrastructure/vector/, graph/ | P06 orchestration; Q14/Q18; P07-1 scope and domain projection contracts | Versioned derived indexes, scheduled synchronization and agreed rebuild/delete behavior | tests/integration/test_projection_sync.py: replay, update/delete, rebuild and stale records | P1, P5 | 2 |
-| P07-5 — P5 | ai/retrieval/graph/search.py; ai/graphrag/context.py; backend/apps/training/services/retrieval_projection.py | Canonical skill/offer/training/organization relations; P07-4 indexes | Graph relationship context linked to relational IDs and training evidence | tests/integration/test_graph_context.py: missing edges, invalid references, authorized evidence | P3 | 2–3 |
+| P07-4 — P4 | ai/embeddings/encoder.py; ai/llm/providers/gateway.py; pipelines/synchronization/vector/project.py; conditional graph/project.py, pipelines/dagster/assets/projections.py and infrastructure/vector/, graph/ | P06 orchestration; Q14/Q18; P07-1 scope and domain projection contracts | Versioned derived indexes where needed, scheduled synchronization and agreed rebuild/delete behavior; Neo4j only after demonstrated traversal need | tests/integration/test_projection_sync.py: replay, update/delete, rebuild and stale records | P1, P5 | 2 |
+| P07-5 — P5 | ai/retrieval/graph/search.py; ai/graphrag/context.py; backend/apps/training/services/retrieval_projection.py where needed | Canonical skill/offer/training/organization relations; P07-1 scope, optional P07-4 graph projection | Evaluated graph relationship context from authorized relational evidence or a justified derived graph store | tests/integration/test_graph_context.py: missing edges, invalid references, authorized evidence | P3 | 2–3 |
 
 **Coordination:** agree identifiers, projection versions, evidence citations and access
 scope first; projection and retrieval adapters can develop against shared synthetic
@@ -252,7 +261,7 @@ fixtures; production integration follows scheduler/store availability. P4 owns s
 configuration; P3/P5 split hybrid vs graph files. Conflict points: retrieval contracts,
 model dependencies and projection schema. No agent gets ORM access through this work.
 
-**Exit:** compare baseline vs hybrid on the approved evaluation set; report actual
+**Exit:** compare baseline vs hybrid and graph/GraphRAG on the approved evaluation set; report actual
 relevance/latency results against team-agreed thresholds. Verify citations, missing-data
 responses, index rebuild/deletion and visibility after authorization changes.
 **Deferred:** fine-tuning/quantization; no invented relevance target or automatic
@@ -276,8 +285,9 @@ It is not a sixth human user or a human advisor-assignment module.
 P2/P3/P5 tools proceed independently; P4 owns tool registration and LangGraph state.
 Merge history/access → tools → workflow → UI/evaluation. Conflict hotspots are tool
 registry, shared graph state, prompts and provider dependencies; register through P4.
-Q15 decides which internal mutations need confirmation; external sends/submissions
-always need explicit user confirmation. Drafting a message does not imply sending it.
+Q15 requires explicit user confirmation for agent-initiated profile edits,
+applications, enrollments and external sends; reads/drafts need none. Drafting a
+message does not imply sending it. P1 still defines exact action states and replay.
 
 **Exit:** grounded multilingual recommendation/CV journeys work; denied actions stay
 denied; tool errors are surfaced; repeated requests cannot silently duplicate external
@@ -296,7 +306,7 @@ indicators or build raw personal-data exports as an aggregation shortcut.
 | P09-2 — P2 | backend/apps/candidates/services/dashboard.py, api/dashboard_views.py; UI_ROOT candidate dashboard | CVs, applications, training and assistant service contracts | Candidate progress, recommendations and next actions without duplicated state | tests/e2e/test_candidate_dashboard.py: coherent own-user data and missing results | P5 | 2 |
 | P09-3 — P3 | backend/apps/recruitment/services/indicators.py, api/indicators_views.py; UI_ROOT employer dashboard | Approved recruitment metrics; Q20 | Organization-scoped recruitment views and agreed counts | tests/integration/recruitment/test_indicators.py: known fixture totals and organization isolation | P4 | 1–2 |
 | P09-4 — P4 | UI_ROOT integrated dashboards/navigation; tests/e2e/test_integrated_journeys.py | P09-1/2/3/5; prior UI work | Consistent candidate/employer/provider/admin journeys and failure presentation | E2E role switching, empty/error states, agreed accessibility/localization checks | P1, P2 | 3 |
-| P09-5 — P5 | backend/apps/training/services/indicators.py; gated backend/apps/reporting/services/aggregates.py, api/reports_views.py; UI_ROOT provider/ministry dashboard | Q03/Q04/Q20 resolved; authoritative domain service contracts | Provider indicators; ministry aggregates/exports only for approved definitions and privacy scope | tests/integration/training/test_indicators.py; gated tests/integration/reporting/test_aggregates.py | P1, P3 | 1 contract; 2 implementation |
+| P09-5 — P5 | backend/apps/training/services/indicators.py; gated backend/apps/reporting/services/aggregates.py, api/reports_views.py; UI_ROOT provider/ministry dashboard | Q04/Q20 KPI and Q19 privacy contracts; authoritative domain services | Provider indicators; ministry aggregates/exports only for approved definitions and privacy scope | tests/integration/training/test_indicators.py; gated tests/integration/reporting/test_aggregates.py | P1, P3 | 1 contract; 2 implementation |
 
 **Coordination:** metric definitions and access contracts merge first, domain summaries
 next, combined UI/E2E last. Reporting remains README-only until its gate opens;
@@ -317,9 +327,9 @@ especially Q02/Q03; numerical SLOs/resources are team decisions, not source fact
 | Task | Responsibility / future paths | Dependencies | Deliverable | Validation | Reviewer | PR order |
 | --- | --- | --- | --- | --- | --- | --- |
 | P10-1 — P1 | tests/integration/test_access_boundaries.py; docs/architecture/security_review.md | All exposed services; Q19/Q23 | Permission, secrets/config, trace access and retention review with fixes assigned to owners | Cross-role/tenant denial, protected field tests and verified configured auth behavior | P4 | 1 audit; 3 acceptance |
-| P10-2 — P2 | tests/e2e/test_cv_privacy.py; ai/evaluation/cv_regression.py; docs/ai/cv_acceptance.md | CV pipeline and approved retention policy | CV processing/quality/privacy evidence and approved deletion behavior | Upload failure, corrupt/OCR documents, confirmation and relational/object/projection deletion consistency | P1, P5 | 2 parallel |
+| P10-2 — P2 | tests/e2e/test_cv_privacy.py; ai/evaluation/cv_regression.py; docs/ai/cv_acceptance.md | CV pipeline and approved privacy policy | CV processing/quality/privacy evidence and approved soft-delete visibility | Upload failure, corrupt/OCR documents, confirmation and exclusion of soft-deleted CVs from normal reads/search/AI | P1, P5 | 2 parallel |
 | P10-3 — P3 | tests/integration/test_query_performance.py; ai/evaluation/search_regression.py; docs/ai/search_acceptance.md | Representative approved synthetic dataset and agreed budgets | Measured API/search quality and performance; domain-owned fixes | Filter/permission correctness under load, query counts and baseline/hybrid regression | P4, P2 | 2 parallel |
-| P10-4 — P4 | infrastructure/docker/Dockerfile.backend, compose.staging.yaml; infrastructure/observability/README.md; .github/workflows/deploy_staging.yaml; docs/team/release_runbook.md | Working component builds; approved topology/secrets/environment and release scope | Reproducible staging deployment, operational health, database/file backup and restore runbook | Clean deployment, migration upgrade, actual restore drill and approved rollback/forward recovery | P1, P5 | 1 contract; 3 integration |
+| P10-4 — P4 | infrastructure/docker/Dockerfile.backend, compose.staging.yaml; infrastructure/observability/README.md; .github/workflows/deploy_staging.yaml; docs/team/release_runbook.md | Working component builds; approved topology/secrets/environment and release scope | Reproducible staging deployment, operational health and forward-recovery runbook; no MVP backup/restore system | Clean deployment, migration upgrade and approved forward recovery | P1, P5 | 1 contract; 3 integration |
 | P10-5 — P5 | tests/integration/test_pipeline_recovery.py; ai/evaluation/release_suite.py; docs/workflows/recovery_runbook.md | Dagster, projections, agent; approved recovery/evaluation budgets | Recovery evidence and reproducible AI regression results | Interrupted/replayed imports, index rebuilds, tool/provider failures and confirmation regression | P4, P3 | 2 parallel |
 
 **Coordination:** approve acceptance budgets and release scope first. Owners fix
@@ -328,7 +338,7 @@ changes. Main conflicts: lockfile, CI and deployment settings. Deployment automa
 is a future feature; production publication remains a separate authorized release action.
 
 **Exit:** required tests pass, scope/known limitations are explicit, no unresolved
-release blocker, secrets externalized, restore/recovery exercised, operational owners
+release blocker, secrets externalized, forward recovery exercised, operational owners
 assigned and team acceptance recorded. Heavy worker processes preserve the modular
 monolith; no independent service-owned relational schemas are introduced.
 
@@ -354,38 +364,43 @@ explicitly excludes it.
 ## Decision ownership and phase gates
 
 Read Q identifiers in the [question register](../architecture/open_questions.md).
-Phase 1's G01–G10 provide model-level detail. A decision owner proposes, reviewers
-review, and the team/product authority agrees business rules. Until then the affected
-task is blocked, not filled with guessed defaults. Update this roadmap when decisions
-change its paths or delivery scope.
+Phase 1's G01–G10 were approved on 2026-09-21 and refined by the user's
+2026-09-25 answers; the [Phase 1 gate register](phase_01_data_backend.md#decision-gates-before-coding-the-affected-part)
+records both those directions and the remaining owning contracts. Q10's TND-only
+rule supersedes the older G06 currency-field direction. Decision owners propose
+the missing details, reviewers review them, and the team/product authority agrees
+business rules. Until then only the affected part is gated; do not fill gaps with
+guessed defaults. The table below assigns remaining contract work, including for
+partly resolved questions.
 
 | Decision | Owner; collaborators/reviewers | Affected tasks | Resolve before |
 | --- | --- | --- | --- |
-| Q02 hybrid MVP obligation | P3; P4, P5 and team | P04-3, P07-3/5, P10-4 | Naming a milestone MVP / release-scope approval |
-| Q03 actor/capability MVP scope | P1; P4, P5 | P01-1B, P08-4, P09-5 | Affected role exposure and release commitment; AI advisor identity already resolved |
-| Q04 missing guidance/reporting/community definitions | P5 reporting, P2 community; P1, P4 | P09-5, PX-1/2 | New records/workflows; guidance uses existing AI and domain owners |
-| Q05 hierarchy/departments | P4; P1, P3 | P01-4A, P02-4 | Organization schema/operation changes |
+| Q02 hybrid/graph MVP acceptance | P3; P4, P5 and team | P04-3, P07-3/5, P10-4 | Phase 7 evaluation criteria and MVP release acceptance; baseline is pilot |
+| Q03 actor/capability delivery | P1; P4, P5 | P01-1B, P08-4, P09-5 | Ministry reporting timing after KPI/privacy definitions; five human roles and AI advisor identity are settled |
+| Q04 aggregate KPI definitions | P5 reporting, P2 community; P1, P4 | P09-5, PX-1/2 | Reporting metric/permission contract; community is post-MVP, guidance reuses existing domains |
+| Q05 hierarchy/departments | P4; P1, P3 | P01-4A, P02-4 | Cycle validation; no department entity or label in MVP |
 | Q06 keys/associations/timestamps | P1; all domain owners | All P01 model tasks | First affected migration |
 | Q07 + Q23 authentication, RBAC/Django and API contract | P1; P4, P2 | P01-1A/1B, P02-1; all API consumers | User initialization and access interface work |
 | Q08 extraction staging | P2; P1, P5 | P01-2, P03-2, P07-2 | CV storage schema and parsing persistence |
-| Q09 preference/distance/mobility | P2; P3 | P01-2, P02-2, P04-2/3 | Affected fields or matching logic |
-| Q10–Q11 offer currency/languages/URL | P3; P2, P4 | P01-3, P02-3, P04-3 | Offer schema/validation |
-| Q12 application/interview lifecycle | P3; P1, P2, P4 | P01-3, P05-3, P08-3, PX-3 | Enums/deletion in Phase 1; action transitions before Phase 5 |
-| Q13 training scope/payment/assessment | P5; P2, P4 | P01-5, P02-5, P05-5, PX-5 | Relevant schema, lifecycle or advanced training work |
+| Q09 preference/distance/mobility | P2; P3 | P01-2, P02-2, P04-2/3 | Move all three fields into one preference record; agree reliable distance inputs for matching |
+| Q10–Q11 TND salary/languages/URL | P3; P2, P4 | P01-3, P02-3, P04-3 | TND-only offer schema; no new offer-language requirement in MVP; HTTPS URL limits |
+| Q12 application/interview lifecycle | P3; P1, P2, P4 | P01-3, P05-3, P08-3, PX-3 | Agreed forward/reject/withdraw/terminal rules; interview-specific contract before Phase 5 |
+| Q13 training scope/payment/assessment | P5; P2, P4 | P01-5, P02-5, P05-5, PX-5 | TND pricing with free=0/paid>0; remaining capacity and advanced-training contract |
 | Q14 provider/store/model choices | P4; P2, P3, P5 | P03-2/3, P07-3/4/5, P08-4 | First corresponding model/store dependency or adapter |
 | Q15 confirmation/action semantics | P1; P4, P2, P3 | P01-1B, P08-1/2/3/4 | Persisted enum definitions; action execution before Phase 8 |
-| Q16 imports/source identity/deduplication | P4; P3, P2 | P01-4A/3, P06-2/3/4 | Source/offer fields; operational reconciliation |
+| Q16 imports/source identity/deduplication | P4; P3, P2 | P01-4A/3, P06-2/3/4 | Reject automated rows missing `external_id`; manual-file and ownership details |
 | Q17 source authorization | P4; P1 | P01-4A, P06-1/4 | Source exposure and any live acquisition |
-| Q18 projection cadence/retry/delete/rebuild | P5; P4, P3 | P06-5, P07-4, P10-5 | Scheduling and projection operations |
-| Q19 privacy/visibility/deletion/retention | P1; all owners | All read/write interfaces; P03-1, P07-1, P10-1/2 | Affected schema/access behavior; no delayed security gate |
+| Q18 projection cadence/retry/delete/rebuild | P5; P4, P3 | P06-5, P07-4, P10-5 | Source intervals, retry/freshness numbers, deletion propagation and versioned switch procedure |
+| Q19 privacy/visibility/deletion/retention | P1; all owners | All read/write interfaces; P03-1, P07-1, P10-1/2 | Opt-in limited recruiter view; CV/account soft delete without MVP restore, timed purge or backup; retention policy before release |
 | Q20 reference vocabulary and aggregates | P2 references, P5 reporting; P3, P1 | P01-2/3/5, P06-2, P09-3/5 | Taxonomy fields or metric implementation |
 | Q24 incomplete fields/enums/cardinalities | Each P01 entity owner; P1 plus relevant consumer | All affected P01 entity tasks | Model/migration PR; missing definition is not a completed entity |
-| F01 / Q25 UI framework, directory, API integration, test/accessibility/localization approach | P4; all five | P02-4 and every UI_ROOT task | UI implementation; replace UI_ROOT references with exact approved paths |
+| F01 / Q25 UI feature/test paths, browser auth and acceptance | P4; all five | P02-4 and every UI_ROOT task | UI implementation; React/TypeScript/Vite and `frontend/src/features/` are approved; record exact feature/test paths and acceptance checks |
 | Q26 scoring/eligibility/completeness/ATS and evaluation budgets | P3 matching, P2 CV/completeness, P5 training; P1/P4 review | P02-2, P03-3, P04-2/3/5, P07-2/3, P10-3 | Relevant computation/evaluation and release quality acceptance |
-| Operational topology, backup/recovery and release budgets | P4; P1, P5, all acceptance owners | P10-1 through P10-5 | Release infrastructure/acceptance; record chosen values in runbooks |
+| Operational topology, forward recovery and release budgets | P4; P1, P5, all acceptance owners | P10-1 through P10-5 | Release infrastructure/acceptance; MVP has no backup/restore system |
 
-Q01 is already resolved in favor of the modular monolith. Q21 records deferred
-perspectives. Q22 is resolved: no human ANETI account or advisor assignment work.
+Q01 is resolved in favor of the modular monolith. Q21 keeps advanced integrations
+outside the current release. Q22 is resolved: no human ANETI account or advisor
+assignment work.
 Do not reopen these decisions through a copied source diagram.
 
 ## PR discipline and overall completion

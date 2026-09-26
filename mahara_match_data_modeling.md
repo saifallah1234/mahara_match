@@ -203,7 +203,7 @@ Représente une entreprise, une filiale, un organisme de formation, une structur
 | `registration_number` | VARCHAR(100) | facultatif, UNIQUE par pays |
 | `description` | TEXT | facultatif |
 | `website_url`, `logo_uri` | TEXT | facultatifs |
-| `country_code` | CHAR(2) | obligatoire |
+| `matricule_fiscal` | CHAR(13) | obligatoire, unique |
 | `governorate`, `city`, `address_line` | VARCHAR | facultatifs |
 | `verification_status` | VARCHAR(20) | `PENDING`, `VERIFIED`, `REJECTED` |
 
@@ -226,7 +226,6 @@ ORG-3 TelNet Tunisia SUBSIDIARY ORG-1
 | `organization_id` | UUID | FK, partie de la PK |
 | `user_id` | UUID | FK, partie de la PK |
 | `job_title` | VARCHAR(150) | facultatif |
-| `member_status` | VARCHAR(20) | `INVITED`, `ACTIVE`, `INACTIVE` |
 | `joined_at` | TIMESTAMPTZ | facultatif |
 
 ### **B. Profil candidat et CV Intelligence**

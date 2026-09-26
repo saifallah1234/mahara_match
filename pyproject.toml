@@ -4,7 +4,13 @@ version = "0.1.0"
 description = "Architecture scaffold for the Mahara Match modular monolith"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "django>=5.2,<5.3",
+    "djangorestframework>=3.16,<3.17",
+    "djangorestframework-simplejwt>=5.5,<6",
+    "drf-spectacular>=0.28,<0.29",
+    "psycopg[binary]>=3.2,<4",
+]
 
 [dependency-groups]
 dev = [
@@ -15,6 +21,8 @@ dev = [
     "pytest-cov",
     "coverage[toml]",
     "pre-commit",
+    "django-stubs[compatible-mypy]>=5.2,<5.3",
+    "djangorestframework-stubs>=3.16,<3.17",
 ]
 
 [tool.uv]
@@ -38,6 +46,7 @@ line-ending = "auto"
 
 [tool.mypy]
 python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
 check_untyped_defs = true
 warn_unused_ignores = true
 warn_redundant_casts = true
@@ -45,12 +54,17 @@ namespace_packages = true
 explicit_package_bases = true
 exclude = '(^|/)(\.venv|build|dist)/'
 
+[tool.django-stubs]
+django_settings_module = "backend.config.settings.test"
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 addopts = "--strict-config --strict-markers"
 django_find_project = false
+DJANGO_SETTINGS_MODULE = "backend.config.settings.test"
+pythonpath = ["."]
 markers = [
     "unit: isolated behavior without external services",
     "integration: collaboration across modules or storage adapters",

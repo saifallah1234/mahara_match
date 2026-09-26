@@ -23,13 +23,14 @@ find_missing_skills, find_training, generate_cv, improve_cv,
 get_company_information, draft_message and prepare_application. These are source
 examples, not implemented tools or fixed Python interfaces.
 
-Agent → tool → authorized application service → ORM. Confirm external sends or
-applications explicitly before execution. Read-only calls and other writes need
-a clarified confirmation policy (Q15). Assistant records live in the backend;
+Agent → tool → authorized application service → ORM. Reads and drafts need no
+confirmation. Agent-initiated profile edits, applications, enrollments and external
+sends require explicit user confirmation before execution, with idempotency keys.
+Q15 still needs exact lifecycle states and replay/expiry rules. Assistant records live in the backend;
 no conversation tables belong in ai/. Tool inputs cannot bypass permissions.
 Human validation here means candidate/user review and confirmation, not approval
 by a human ANETI advisor. CV correction proposals do not silently overwrite
-candidate data; Q08 and Q15 retain the unresolved persistence/confirmation details.
+candidate data; raw extraction remains restricted until candidate review (Q08).
 
 ## Retrieval and recommendations
 
@@ -43,23 +44,27 @@ relational access goes through business services. Persistent offer-match results
 belong to matching; training recommendations belong to training. Business services
 validate and persist returned results without giving models write access.
 
-The PDF describes both PostgreSQL-first progressive matching (p. 5) and hybrid
-GraphRAG in the MVP (p. 10). Q02 leaves the delivery sequence unresolved.
+The PostgreSQL-first baseline is a pilot. Q02 requires demonstrated and evaluated
+Phase 7 hybrid plus graph/GraphRAG before a release is called MVP. Start search
+with PostgreSQL text search and evaluate pgvector for semantic retrieval. Use
+Neo4j only if the agreed graph traversal genuinely needs it; graph context may
+reuse authoritative relational relationships.
 
 ## Document intelligence
 
 Reuse pipelines/document_processing/ for direct PDF text extraction and OCR of
 scanned/image inputs. ai/document_intelligence/ reserves section/skill parsing,
 ATS analysis and CV generation. The candidate domain owns CV versions and analysis
-records; documents owns file metadata. Candidate validation precedes adoption of
-extracted profile facts; raw-result persistence is unresolved (Q08).
+records; documents owns file metadata. Restricted raw extraction can be retained
+for review, but only candidate-approved facts enter normalized candidate data.
+Retention of raw results remains part of Q19.
 
 ## Providers and evaluation
 
 llm/providers/ and llm/prompts/ reserve provider adapters and prompts. Qwen is a
-discussed candidate, not a selected dependency. Embedding models, rerankers, vector
-storage and LLM providers remain unselected. Neo4j and LangGraph are planned,
-not installed as runtime dependencies.
+discussed candidate, not a selected dependency. Select LLM, embedding model and
+reranker after French/Arabic/Tunisian, latency and hardware evaluation. Neo4j is
+conditional on graph traversal need; LangGraph is planned but not installed.
 
 evaluation/ reserves source-grounding, retrieval relevance, explanatory quality,
 FR/AR/Tunisian understanding, latency and correct tool/confirmation behavior.

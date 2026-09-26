@@ -1,6 +1,6 @@
 # matching
 
-**Future responsibility:** Matching application services and persisted offer recommendations.
+**Responsibility:** Matching application services and persisted offer recommendations.
 
 **Logical entity ownership:** offer_matches.
 
@@ -9,13 +9,13 @@ See the [complete ownership map](../../../docs/architecture/domain_boundaries.md
 
 Own business-facing comparison/recommendation coordination and offer-match results. AI retrieval/scoring capabilities return results through services. Training owns training_recommendations; never duplicate them here.
 
-## Reserved boundaries
+## Current backend
 
-- `api/`: future DRF transport, request validation and response representation.
-- `services/`: application operations, authorization and business coordination.
-- `models/`: future Django ORM definitions owned by this domain.
+`OfferMatch` stores versioned scores and exposes scoped read-only results. A
+candidate sees their own results. Verified recruiters see results for applicants
+to their organization's offers; the API does not expose pre-application profile
+or CV data through match explanations.
 
-These directories contain no implementations. No Django app has been initialized.
-Cross-domain operations use the owning service; do not duplicate entities or mutate
-another domain's models directly. Open requirements are tracked in the
-[question register](../../../docs/architecture/open_questions.md).
+No scoring writer or matching formula is implemented while Q26 weights,
+eligibility and explanation rules remain open. No matching migration has been
+created. Cross-domain operations use owning services.

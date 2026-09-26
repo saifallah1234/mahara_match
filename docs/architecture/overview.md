@@ -7,7 +7,7 @@ Business sources: [DM](../../mahara_match_data_modeling.md) and
 PDF page references include the cover. This repository is a scaffold only.
 
 **Source requirements:** PostgreSQL is authoritative, files live in object storage,
-vector/Neo4j data is derived, interactive AI uses tools and human confirmation,
+any vector/graph data is derived, interactive AI uses tools and user confirmation,
 and background data work is orchestrated separately (DM §§1, 5; PDF pp. 9–10).
 
 **Task decisions:** Django/DRF, Django ORM migrations, a modular monolith, English
@@ -26,7 +26,7 @@ API → Application service → Django ORM → PostgreSQL
 Agent / LangGraph → Tool → Application service → Django ORM
 Dagster → Reusable pipeline processing → Application service → Django ORM
 Application service → AI capability → Returned result → Service validation/persistence
-PostgreSQL validated data → Idempotent synchronization → Vector index / Neo4j
+PostgreSQL validated data → Idempotent synchronization → Derived vector/graph index if needed
 ```
 
 These are behavioral boundaries, not implemented interfaces. Services own business
@@ -56,6 +56,9 @@ schema ownership. There are no service APIs between new microservices here.
 ## Decisions still open
 
 [The question register](open_questions.md) records source conflicts and omissions.
-Reserved folders do not settle MVP priority, schemas, provider choices or business
-rules. Frontend implementation, freelance, fine-tuning and quantization are not
-part of this foundation.
+The 2026-09-25 decisions make the PostgreSQL baseline a pilot and require evaluated
+Phase 7 hybrid plus graph/GraphRAG before the MVP label. React/TypeScript/Vite is
+selected for the future `frontend/`; no frontend implementation is included here.
+Provider/model selection and remaining domain contracts are listed in the question
+register. Community and advanced integrations are post-MVP; freelance, fine-tuning
+and quantization retain separate future gates.

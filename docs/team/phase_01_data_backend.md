@@ -1,7 +1,8 @@
 # Phase 01 — Data model becomes a usable backend
 
-Status: execution plan only. None of the Python files, migrations, routes or tests
-named below has been implemented by this document. Read the
+Status: execution in progress. The P1 Django and identity/RBAC code is implemented,
+but its initial migration and PostgreSQL integration remain gated on P4's organization
+models. Other task rows remain plans until their owners implement them. Read the
 [full roadmap](implementation_roadmap.md) and [team workflow](development_workflow.md).
 
 ## Authority, scope and completion
@@ -122,7 +123,7 @@ must be agreed; the source does not authorize blanket hard-delete cascades.
 | candidate_languages | P2 / P01-2 | candidates/candidate_languages | W4 | L: own profile + shared language; approved level values | G02–G04 |
 | candidate_skills | P2 / P01-2 | candidates/candidate_skills | W4 | L: own profile + canonical skill; validation/source provenance not caller-controlled | G02–G05 |
 | Certifications | P2 / P01-2 | candidates/certifications | W4 | E: candidate-owned certification record; no invented training certificate issuance | G03, G05 |
-| candidate_preferences | P2 / P01-2 | candidates/candidate_preferences | W4 | E: own approved preferences; cardinality and mobility unresolved | G05 |
+| candidate_preferences | P2 / P01-2 | candidates/candidate_preferences | W4 | E: one record per candidate with work mode, relocation and maximum commute distance in km | G05 |
 | projects | P2 / P01-2 | candidates/projects | W4 | E: candidate-owned project record | G03, G05 |
 | cvs | P2 / P01-2 | candidates/cvs | W4 | E: owned document reference and allowed metadata; version/parse outputs protected; primary selection enforces uniqueness | G03, G05; parsing/generation P03-2 |
 | cv_analysis_results | P2 / P01-2 | candidates/cv_analysis_results | W5 | R: authorized analysis reads; scores/issues/suggestions produced internally | G05–G06; analysis P03-3 |
@@ -172,10 +173,10 @@ All owners use fully qualified backend app imports; do not put backend/apps on
 the import path (its platform domain is not Python's standard-library platform module).
 
 P1 publishes a reviewed API contract before domain API work: route names/versioning,
-pagination, error representation, authentication context, owner/organization scope,
-service inputs/results, writable fields and method availability. P2–P5 review their
-consumer contracts. These transport choices are planning decisions to make at G01,
-not unverified source requirements or routes silently chosen by this document.
+pagination, error representation, JWT authentication context, owner/organization
+scope, service inputs/results, writable fields and method availability. P2–P5 review
+their consumer contracts. G01 approves the authentication direction but does not
+silently choose these remaining transport details or routes.
 
 Shared relationships use canonical identifiers and agreed model references, never
 copied tables or temporary shadow models. Services validate referenced ownership;
@@ -191,28 +192,38 @@ P1 merges root registrations after it passes, not all five developers independen
 ## Decision gates before coding the affected part
 
 Question references point to the [question register](../architecture/open_questions.md).
-The owner drafts the decision; reviewers agree it with the team/product authority.
-Ownership does not authorize inventing a business rule. Record the approved answer
-in the question register and affected architecture/API documents before implementation.
+The directions below were approved on **2026-09-21** and refined by the user's
+**2026-09-25** answers in the [question register](../architecture/open_questions.md).
+In particular, Q10 replaces G06's earlier currency-field decision. Ownership still
+does not authorize inventing enum members, limits, transition rules or retention
+periods that those decisions do not supply. Record remaining details in the owning
+schema/API contract before affected implementation.
 
-| Gate | Decision / evidence | Owner; reviewers | Affected tasks | Must resolve before |
+| Gate | Approved direction (2026-09-21, refined 2026-09-25) | Owner; reviewers | Affected tasks | Required follow-through before coding |
 | --- | --- | --- | --- | --- |
-| G01 | Django-compatible user/auth approach, RBAC vs Django auth representation, role vocabulary excluding human ANETI, session/token approach, API/service contract; Q07, Q22, Q23 | P1; P4, P2 | P01-1A, P01-1B, P01-4A; all API tasks | User initialization and first identity migration; route work |
-| G02 | UUID vs association keys, null global role uniqueness, timestamps, reference/on-delete behavior, hierarchy/departments; Q05–Q06, Q19 | P1; P4, P2, P3, P5 for their relations | All P01 model tasks | Affected model/migration PR |
-| G03 | Role/resource/operation matrix, organization and candidate visibility, deletion/retention and system-field access; Q03, Q07, Q19 | P1; all domain owners | All P01 APIs and models with deletion semantics | Affected access/deletion design; no provisional unrestricted endpoints |
-| G04 | Skills/languages/education scales, alias definition, association uniqueness and reference governance; Q20, Q24 | P2; P3, P5 | P01-2, P01-3, P01-5 | Taxonomy migrations and consumer fields |
-| G05 | Candidate Distance/Relocation, preference cardinality, incomplete metadata/enums, CV versioning and raw-result staging; Q08–Q09, Q24 | P2; P3, P1 | P01-2 | Affected candidate/document migrations and serializers |
-| G06 | Salary currency, language cardinality/CV language, offer URL, missing offer enums and result definitions; Q10–Q11, Q24 | P3; P2, P4 | P01-3; P01-2 targeted analyses | Offer/result model completion |
-| G07 | Application/interview enum definitions and retained history/deletion; Q12, Q24 | P3; P1, P2 | P01-3 | Model field definitions; transition rules separately required before Phase 5 writes |
-| G08 | Source identifiers/authorization representation, provenance fields, import enum definitions and source-created ownership; Q16–Q17, Q24 | P4; P3, P1 | P01-4A, P01-3 | Source/offer/import migrations; operational policy before Phase 6 |
-| G09 | Training field/enumeration definitions, paid/free scope and missing record requirements; Q13, Q24 | P5; P4, P2 | P01-5 | Training schema completion; advanced behavior remains gated for Phase 5 |
-| G10 | Message/execution/action/notification enums, trace visibility, audit attribution and protected-record lifecycle; Q15, Q19, Q24 | P1; P4, P2 | P01-1B | Assistant/platform migrations; operational confirmation before Phase 8 |
+| G01 | Use Django `AbstractUser`, custom RBAC and JWT. Human roles: Candidate, Recruiter, Training Manager, Ministry Manager and Admin; no human ANETI role. | P1; P4, P2 | P01-1A, P01-1B, P01-4A; all API tasks | Keep the published identifiers, JWT lifecycle and shared API/service contract; browser cookie/CSRF transport is a later Q23 contract. |
+| G02 | Use UUID primary keys, `created_at` and `updated_at` on persisted entities including associations, explicit foreign keys/`on_delete`, and scoped uniqueness. Organization hierarchy uses `parent_id`; prevent cycles. No departments are needed for MVP. | P1; P4, P2, P3, P5 for their relations | All P01 model tasks | Each owner records deletion behavior and scoped uniqueness; P4 validates company/subsidiary hierarchy. |
+| G03 | Define RBAC before APIs. Profiles are private by default; candidate opt-in lets verified recruiters see headline, skills, experience, education, governorate and work preferences, excluding name, contact, birth date and CV. Receiving organizations see submitted CVs; ministry reads aggregates. CV/account deletion is soft deletion, hidden from normal access/search/AI, with no MVP restoration or scheduled purge. Protect audit fields. | P1; all domain owners | All P01 APIs and models with deletion semantics | Enforce opt-in and field-level visibility; define a reviewed retention policy for retained personal data before release. No provisional unrestricted endpoints. |
+| G04 | Use central skills, languages and degrees with governed aliases and unique associations. Start with CEFR A1–C2 and Beginner/Intermediate/Advanced/Expert skill levels. | P2; P3, P5 | P01-2, P01-3, P01-5 | P2 publishes alias shape, canonical naming and governance before taxonomy migrations. |
+| G05 | One separate preference record per candidate contains work mode, relocation and maximum commute distance in km; missing distance means no stated preference. Support CV versions starting at 1 and at most one primary CV. Keep raw extraction restricted and separate from candidate-approved normalized data. | P2; P3, P1 | P01-2 | P2 defines remaining CV/document cardinality, raw-result access/retention and document/CV status vocabularies before migrations and serializers. |
+| G06 | Offers have salary minimum/maximum in TND only, with no currency column; validate ordering. No offer-language or requested-CV-language requirement is added for MVP; existing candidate/CV language fields remain optional. Application links are HTTPS. Keep controlled contract, work-mode and status enums. | P3; P2, P4 | P01-3; P01-2 targeted analyses | P3 defines enum values and URL limits. Reject or review non-TND imported salary instead of relabeling it. This supersedes G06's earlier currency and relational offer-language directions. |
+| G07 | One internal Easy Apply application per candidate/offer, with append-only history. Recruiters advance along `SUBMITTED → UNDER_REVIEW → PRESELECTED → INTERVIEW → OFFERED → HIRED`, skipping optional forward stages, or reject while active; candidates withdraw while active. `HIRED`, `REJECTED`, `WITHDRAWN` are terminal; no reapplication. No internal tracking for external applications. | P3; P1, P2 | P01-3 | P3 defines interview-specific states and the exact transition service contract before write services. |
+| G08 | Sources have identifiers, authorization state and configuration. Admin approval records permission evidence, acquisition method and review/expiry date. Reject and record automated rows without `external_id`; use `(source, external_id)` upserts, checksums and batches; flag cross-source duplicates. | P4; P3, P1 | P01-4A, P01-3 | P4 defines manual-file behavior, employer ownership, source/import statuses and approval expiry behavior before affected migrations. |
+| G09 | Training has controlled type, modality and status; prices are TND only, with `is_free` and price `0` for free programs or price greater than `0` for paid programs. Distinguish prerequisite skills from skills taught using central references. Enrollment progresses from registered to in progress to completed or dropped. | P5; P4, P2 | P01-5 | P5 defines concrete enums, capacity/deadline rules and any assessment, attendance or certificate scope before affected work. |
+| G10 | Use controlled message, execution, action and notification states, attributable protected traces, explicit confirmation for agent-initiated profile edits, applications, enrollments and external sends, and idempotency keys. Reads/drafts need no confirmation. | P1; P4, P2 | P01-1B | P1 defines exact state machine, expiry/replay, trace redaction and retention before assistant/platform migrations and execution. |
 
 A field present in the logical model is not automatically fully specified. Explicitly
 reconcile absent lengths/nullability/defaults, string enums without vocabularies,
 unique/relationship cardinalities, score semantics, educational years vs date checks,
 document-to-CV cardinality and CV numbering before the relevant migration. Do not
 invent a generic OTHER status or guessed defaults to make the schema compile.
+
+**Current model reconciliation:** candidate distance/relocation now belong to the
+single preference record (Q09), and organization membership uses a UUID key,
+timestamps and a scoped unique constraint (G02). Training models follow
+Q13 pricing and skill-purpose decisions and reference provider organizations,
+candidate profiles and taxonomy skills with protected relationships. Their
+constraints remain unapplied until training migrations are created.
 
 ## Dependencies, parallel work and merge waves
 
@@ -293,7 +304,7 @@ Specific source requirements (DM §7) need PostgreSQL-backed tests:
 - Case-insensitive email uniqueness; one profile per user; agreed association keys.
 - One candidate/offer application, one candidate/session enrollment, at most one
   primary CV per candidate; include concurrent-write tests where races could bypass checks.
-- Valid date/year ranges, salary ordering/currency and applicable score bounds.
+- Valid date/year ranges, TND salary ordering and applicable score bounds.
 - Offer/source identifier uniqueness under the approved missing-ID policy.
 - CV belongs to the submitting candidate; links cannot cross an unauthorized tenant.
 - Publication needs organization/title/description/at least one skill: Phase 1 must
