@@ -8,4 +8,6 @@ urlpatterns = [
     path("api/v1/", include("backend.apps.taxonomy.api.urls")),
     path("api/v1/", include("backend.apps.documents.api.urls")),
     path("api/v1/", include("backend.apps.candidates.api.urls")),
+    path("api/v1/", include("backend.apps.recruitment.api.urls")),
+    path("api/v1/", include("backend.apps.matching.services.urls")),
 ]

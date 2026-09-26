@@ -23,6 +23,8 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "backend.apps.identity.apps.IdentityConfig",
+    "backend.apps.matching.apps.MatchingConfig",
+    "backend.apps.recruitment.apps.RecruitmentConfig",
     "backend.apps.training.apps.TrainingConfig",
     "backend.apps.taxonomy.apps.TaxonomyConfig",
     "backend.apps.documents.apps.DocumentsConfig",
