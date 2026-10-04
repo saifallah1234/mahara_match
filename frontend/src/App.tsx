@@ -1,0 +1,85 @@
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { AppShell } from './components/layout'
+import { StoreProvider } from './state/store'
+
+import Landing from './pages/Landing'
+import SignIn from './pages/SignIn'
+
+import CandidatDashboard from './pages/candidat/Dashboard'
+import CandidatProfil from './pages/candidat/Profil'
+import CandidatCV from './pages/candidat/CV'
+import CandidatOffres from './pages/candidat/Offres'
+import CandidatOffreDetail from './pages/candidat/OffreDetail'
+import CandidatCandidatures from './pages/candidat/Candidatures'
+import CandidatFormations from './pages/candidat/Formations'
+import CandidatAssistant from './pages/candidat/Assistant'
+
+import RecruteurDashboard from './pages/recruteur/Dashboard'
+import RecruteurEntreprise from './pages/recruteur/Entreprise'
+import RecruteurOffres from './pages/recruteur/Offres'
+import RecruteurNouvelleOffre from './pages/recruteur/NouvelleOffre'
+import RecruteurOffreDetail from './pages/recruteur/OffreDetail'
+import RecruteurCandidatures from './pages/recruteur/Candidatures'
+import RecruteurEntretiens from './pages/recruteur/Entretiens'
+
+import { FormationDashboard, FormationProgrammes, FormationSessions } from './pages/Formation'
+import { MinistereCompetences, MinistereIndicateurs } from './pages/Ministere'
+import {
+  AdminAudit,
+  AdminComptes,
+  AdminDashboard,
+  AdminImports,
+  AdminOrganisations,
+  AdminReferentiels,
+} from './pages/Admin'
+
+export default function App() {
+  return (
+    <StoreProvider>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/connexion" element={<SignIn />} />
+
+        <Route element={<AppShell />}>
+          {/* Espace candidat */}
+          <Route path="/candidat" element={<CandidatDashboard />} />
+          <Route path="/candidat/profil" element={<CandidatProfil />} />
+          <Route path="/candidat/cv" element={<CandidatCV />} />
+          <Route path="/candidat/offres" element={<CandidatOffres />} />
+          <Route path="/candidat/offres/:offerId" element={<CandidatOffreDetail />} />
+          <Route path="/candidat/candidatures" element={<CandidatCandidatures />} />
+          <Route path="/candidat/formations" element={<CandidatFormations />} />
+          <Route path="/candidat/assistant" element={<CandidatAssistant />} />
+
+          {/* Espace employeur */}
+          <Route path="/recruteur" element={<RecruteurDashboard />} />
+          <Route path="/recruteur/entreprise" element={<RecruteurEntreprise />} />
+          <Route path="/recruteur/offres" element={<RecruteurOffres />} />
+          <Route path="/recruteur/offres/nouvelle" element={<RecruteurNouvelleOffre />} />
+          <Route path="/recruteur/offres/:offerId" element={<RecruteurOffreDetail />} />
+          <Route path="/recruteur/candidatures" element={<RecruteurCandidatures />} />
+          <Route path="/recruteur/entretiens" element={<RecruteurEntretiens />} />
+
+          {/* Espace organisme de formation */}
+          <Route path="/formation" element={<FormationDashboard />} />
+          <Route path="/formation/programmes" element={<FormationProgrammes />} />
+          <Route path="/formation/sessions" element={<FormationSessions />} />
+
+          {/* Espace ministère */}
+          <Route path="/ministere" element={<MinistereIndicateurs />} />
+          <Route path="/ministere/competences" element={<MinistereCompetences />} />
+
+          {/* Espace administration */}
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/comptes" element={<AdminComptes />} />
+          <Route path="/admin/organisations" element={<AdminOrganisations />} />
+          <Route path="/admin/referentiels" element={<AdminReferentiels />} />
+          <Route path="/admin/imports" element={<AdminImports />} />
+          <Route path="/admin/audit" element={<AdminAudit />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </StoreProvider>
+  )
+}
