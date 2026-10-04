@@ -8,6 +8,7 @@ from backend.apps.assistant.api.views import (
     MessageViewSet,
     ToolCallViewSet,
 )
+from backend.apps.assistant.api.agent_run_views import AgentRunView
 
 router = DefaultRouter()
 router.register("conversations", ConversationViewSet, basename="conversation")
@@ -15,6 +16,7 @@ router.register("agent-executions", ExecutionViewSet, basename="agent-execution"
 
 urlpatterns = [
     *router.urls,
+    path("agent-runs/", AgentRunView.as_view(), name="agent-run"),
     path(
         "conversations/<uuid:conversation_id>/messages/",
         MessageViewSet.as_view({"get": "list"}),
