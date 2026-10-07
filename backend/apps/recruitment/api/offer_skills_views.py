@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -23,7 +23,10 @@ class OfferSkillViewSet(GenericViewSet[OfferSkill]):
     queryset = OfferSkill.objects.none()
     permission_classes = (IsActiveAuthenticated,)
 
-    @extend_schema(responses=OfferSkillReadSerializer(many=True))
+    @extend_schema(
+        parameters=[OpenApiParameter("offer_id", UUID, required=False)],
+        responses=OfferSkillReadSerializer(many=True),
+    )
     def list(self, request: Request) -> Response:
         queryset = offer_skill_services.list_offer_skills(
             active_request_user(request),

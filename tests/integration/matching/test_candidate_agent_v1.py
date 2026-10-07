@@ -143,7 +143,9 @@ def test_agent_run_records_llm_failure_and_rejects_foreign_conversation(
     )
 
     assert response.status_code == 503
-    execution = AgentExecution.objects.get(id=response.json()["execution_id"])
+    error = response.json()["error"]
+    assert error["code"] == "llm_unavailable"
+    execution = AgentExecution.objects.get(id=error["details"]["execution_id"])
     assert execution.status == "FAILED"
     assert execution.error_code == "llm_unavailable"
     assert execution.response_message is None

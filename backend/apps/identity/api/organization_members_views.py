@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from drf_spectacular.utils import extend_schema
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -17,17 +18,14 @@ class OrganizationMemberViewSet(GenericViewSet[OrganizationMember]):
     serializer_class = OrganizationMemberReadSerializer
     queryset = OrganizationMember.objects.none()
 
+    @extend_schema(responses=OrganizationMemberReadSerializer(many=True))
     def list(self, request: Request, organization_id: UUID) -> Response:
         queryset = member_services.list_members(
             request.user,
             organization_id,
         )
-        return Response(
-            OrganizationMemberReadSerializer(
-                queryset,
-                many=True,
-            ).data
-        )
+        page = self.paginate_queryset(queryset)
+        return self.get_paginated_response(OrganizationMemberReadSerializer(page, many=True).data)
 
     def retrieve(
         self,
@@ -42,6 +40,10 @@ class OrganizationMemberViewSet(GenericViewSet[OrganizationMember]):
         )
         return Response(OrganizationMemberReadSerializer(member).data)
 
+    @extend_schema(
+        request=OrganizationMemberCreateSerializer,
+        responses={201: OrganizationMemberReadSerializer},
+    )
     def create(
         self,
         request: Request,
@@ -63,6 +65,10 @@ class OrganizationMemberViewSet(GenericViewSet[OrganizationMember]):
             status=201,
         )
 
+    @extend_schema(
+        request=OrganizationMemberUpdateSerializer,
+        responses=OrganizationMemberReadSerializer,
+    )
     def partial_update(
         self,
         request: Request,

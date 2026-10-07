@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -26,6 +27,7 @@ class NotificationViewSet(GenericViewSet[Notification]):
             ).data
         )
 
+    @extend_schema(request=None, responses=NotificationReadSerializer)
     @action(detail=True, methods=["post"], url_path="mark-read")
     def mark_read(self, request: Request, pk: UUID) -> Response:
         return Response(

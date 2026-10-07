@@ -44,9 +44,11 @@ class JobOfferViewSet(GenericViewSet[JobOffer]):
         offer = offer_services.get_job_offer(active_request_user(request), pk)
         return Response(JobOfferReadSerializer(offer).data)
 
+    @extend_schema(request=JobOfferUpdateSerializer, responses=JobOfferReadSerializer)
     def update(self, request: Request, pk: UUID) -> Response:
         return self._update(request, pk, partial=False)
 
+    @extend_schema(request=JobOfferUpdateSerializer, responses=JobOfferReadSerializer)
     def partial_update(self, request: Request, pk: UUID) -> Response:
         return self._update(request, pk, partial=True)
 
@@ -58,6 +60,7 @@ class JobOfferViewSet(GenericViewSet[JobOffer]):
         offer = offer_services.update_job_offer(actor, offer, serializer.validated_data)
         return Response(JobOfferReadSerializer(offer).data)
 
+    @extend_schema(request=JobOfferTransitionSerializer, responses=JobOfferReadSerializer)
     @action(detail=True, methods=["post"])
     def transition(self, request: Request, pk: UUID) -> Response:
         serializer = JobOfferTransitionSerializer(data=request.data)

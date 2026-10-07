@@ -34,23 +34,32 @@ def list_enrollments(
         require_permission(actor, TrainingPermissionCode.VIEW_OWN_ENROLLMENTS)
         if candidate_id is not None and str(candidate_id) != str(profile.id):
             return TrainingEnrollment.objects.none()
-        return TrainingEnrollment.objects.filter(candidate_id=profile.id)
+        return TrainingEnrollment.objects.filter(
+            candidate_id=profile.id,
+            session__program__organization__deleted_at__isnull=True,
+            session__program__organization__verification_status="VERIFIED",
+        )
     require_permission(
         actor, TrainingPermissionCode.MANAGE_ENROLLMENTS, organization_id=organization_id
     )
-    queryset = TrainingEnrollment.objects.filter(session__program__organization_id=organization_id)
+    queryset = TrainingEnrollment.objects.filter(
+        session__program__organization_id=organization_id,
+        session__program__organization__deleted_at__isnull=True,
+    )
     return queryset.filter(candidate_id=candidate_id) if candidate_id else queryset
 
 
 def get_enrollment(actor: User, enrollment_id: UUID | str) -> TrainingEnrollment:
     try:
-        enrollment = TrainingEnrollment.objects.select_related("candidate", "session__program").get(
-            id=enrollment_id
-        )
+        enrollment = TrainingEnrollment.objects.select_related(
+            "candidate", "session__program__organization"
+        ).get(id=enrollment_id, session__program__organization__deleted_at__isnull=True)
     except TrainingEnrollment.DoesNotExist as exc:
         raise DomainNotFoundError("Enrollment not found.") from exc
 
     if enrollment.candidate.user_id == actor.id:
+        if enrollment.session.program.organization.verification_status != "VERIFIED":
+            raise DomainNotFoundError("Enrollment not found.")
         require_permission(actor, TrainingPermissionCode.VIEW_OWN_ENROLLMENTS)
     else:
         require_permission(
@@ -66,8 +75,8 @@ def enroll_candidate(actor: User, data: Mapping[str, Any]) -> TrainingEnrollment
     try:
         session = (
             TrainingSession.objects.select_for_update()
-            .select_related("program")
-            .get(id=data["session_id"])
+            .select_related("program__organization")
+            .get(id=data["session_id"], program__organization__deleted_at__isnull=True)
         )
     except TrainingSession.DoesNotExist as exc:
         raise DomainNotFoundError("Training session not found.") from exc
@@ -83,7 +92,11 @@ def enroll_candidate(actor: User, data: Mapping[str, Any]) -> TrainingEnrollment
         require_permission(actor, TrainingPermissionCode.ENROLL_SELF)
         candidate_id = own_profile(actor).id
 
-    if session.status in ("COMPLETED", "CANCELLED") or session.program.status != "ACTIVE":
+    if (
+        session.status in ("COMPLETED", "CANCELLED")
+        or session.program.status != "ACTIVE"
+        or session.program.organization.verification_status != "VERIFIED"
+    ):
         raise DomainValidationError("This training session is not open for enrollment.")
 
     current_count = TrainingEnrollment.objects.filter(session_id=session.id).count()

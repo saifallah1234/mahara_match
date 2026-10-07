@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -31,18 +32,21 @@ class SourceViewSet(GenericViewSet[DataSource]):
             SourceReadSerializer(records.get_source(active_request_user(request), pk)).data
         )
 
+    @extend_schema(request=SourceWriteSerializer, responses={201: SourceReadSerializer})
     def create(self, request: Request) -> Response:
         serializer = SourceWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         source = records.create_source(active_request_user(request), serializer.validated_data)
         return Response(SourceReadSerializer(source).data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(request=SourceWriteSerializer, responses=SourceReadSerializer)
     def partial_update(self, request: Request, pk: UUID) -> Response:
         serializer = SourceWriteSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         source = records.update_source(active_request_user(request), pk, serializer.validated_data)
         return Response(SourceReadSerializer(source).data)
 
+    @extend_schema(request=SourceAuthorizationSerializer, responses=SourceReadSerializer)
     @action(detail=True, methods=["post"])
     def authorize(self, request: Request, pk: UUID) -> Response:
         serializer = SourceAuthorizationSerializer(data=request.data)
@@ -52,6 +56,7 @@ class SourceViewSet(GenericViewSet[DataSource]):
         )
         return Response(SourceReadSerializer(source).data)
 
+    @extend_schema(request=None, responses=SourceReadSerializer)
     @action(detail=True, methods=["post"])
     def revoke(self, request: Request, pk: UUID) -> Response:
         return Response(

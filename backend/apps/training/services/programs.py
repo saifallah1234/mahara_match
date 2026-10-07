@@ -5,7 +5,8 @@ from uuid import UUID
 from django.db import IntegrityError
 from django.db.models import QuerySet
 
-from backend.apps.identity.models import User
+from backend.apps.identity.models import Organization, OrganizationType, User
+from backend.apps.identity.models.organizations import VerificationStatus
 from backend.apps.identity.services.access import require_permission
 from backend.apps.training.models import DeliveryMode, ProgramLevel, ProgramStatus, TrainingProgram
 from backend.apps.training.services.contracts import TrainingPermissionCode
@@ -21,24 +22,39 @@ def list_programs(
 ) -> QuerySet[TrainingProgram]:
     if organization_id is None:
         require_permission(actor, TrainingPermissionCode.VIEW_CATALOG)
-        return TrainingProgram.objects.filter(status=ProgramStatus.ACTIVE)
+        return TrainingProgram.objects.filter(
+            status=ProgramStatus.ACTIVE,
+            organization__deleted_at__isnull=True,
+            organization__verification_status=VerificationStatus.VERIFIED,
+        )
     require_permission(actor, TrainingPermissionCode.VIEW_CATALOG, organization_id=organization_id)
-    queryset = TrainingProgram.objects.filter(organization_id=organization_id)
+    queryset = TrainingProgram.objects.filter(
+        organization_id=organization_id,
+        organization__deleted_at__isnull=True,
+    )
     try:
         require_permission(
             actor, TrainingPermissionCode.MANAGE_PROGRAMS, organization_id=organization_id
         )
     except DomainPermissionError:
-        queryset = queryset.filter(status=ProgramStatus.ACTIVE)
+        queryset = queryset.filter(
+            status=ProgramStatus.ACTIVE,
+            organization__verification_status=VerificationStatus.VERIFIED,
+        )
     return queryset
 
 
 def get_program(actor: User, program_id: UUID | str) -> TrainingProgram:
     try:
-        program = TrainingProgram.objects.get(id=program_id)
+        program = TrainingProgram.objects.select_related("organization").get(
+            id=program_id, organization__deleted_at__isnull=True
+        )
     except TrainingProgram.DoesNotExist as exc:
         raise DomainNotFoundError("Training program not found.") from exc
-    if program.status != ProgramStatus.ACTIVE:
+    if (
+        program.status != ProgramStatus.ACTIVE
+        or program.organization.verification_status != VerificationStatus.VERIFIED
+    ):
         require_permission(
             actor,
             TrainingPermissionCode.MANAGE_PROGRAMS,
@@ -56,8 +72,13 @@ def create_program(actor: User, data: Mapping[str, Any]) -> TrainingProgram:
         actor, TrainingPermissionCode.MANAGE_PROGRAMS, organization_id=organization_id
     )
     try:
+        organization = Organization.objects.get(
+            id=organization_id,
+            type=OrganizationType.TRAINING_PROVIDER,
+            deleted_at__isnull=True,
+        )
         return TrainingProgram.objects.create(
-            organization_id=organization_id,
+            organization=organization,
             title=data["title"],
             description=data.get("description", ""),
             level=data.get("level", ProgramLevel.BEGINNER),
@@ -66,7 +87,7 @@ def create_program(actor: User, data: Mapping[str, Any]) -> TrainingProgram:
             is_free=data.get("is_free", True),
             price=data.get("price", 0),
         )
-    except IntegrityError as exc:
+    except (IntegrityError, Organization.DoesNotExist) as exc:
         raise DomainValidationError(
             details={"organization_id": ["Organization not found or invalid program data."]}
         ) from exc

@@ -24,7 +24,7 @@ def list_program_sessions(actor: User, program_id: UUID | str) -> QuerySet[Train
     require_permission(actor, TrainingPermissionCode.VIEW_CATALOG)
     try:
         organization_id = TrainingProgram.objects.values_list("organization_id", flat=True).get(
-            id=program_id
+            id=program_id, organization__deleted_at__isnull=True
         )
         require_permission(
             actor,
@@ -35,6 +35,8 @@ def list_program_sessions(actor: User, program_id: UUID | str) -> QuerySet[Train
         return TrainingSession.objects.filter(
             program_id=program_id,
             program__status=ProgramStatus.ACTIVE,
+            program__organization__deleted_at__isnull=True,
+            program__organization__verification_status="VERIFIED",
             status__in=(SessionStatus.PLANNED, SessionStatus.ONGOING),
         )
     return TrainingSession.objects.filter(program_id=program_id)
@@ -43,12 +45,15 @@ def list_program_sessions(actor: User, program_id: UUID | str) -> QuerySet[Train
 def get_session(actor: User, session_id: UUID | str) -> TrainingSession:
     require_permission(actor, TrainingPermissionCode.VIEW_CATALOG)
     try:
-        session = TrainingSession.objects.select_related("program").get(id=session_id)
+        session = TrainingSession.objects.select_related("program__organization").get(
+            id=session_id, program__organization__deleted_at__isnull=True
+        )
     except TrainingSession.DoesNotExist as exc:
         raise DomainNotFoundError("Training session not found.") from exc
-    if session.program.status != ProgramStatus.ACTIVE or session.status in (
-        SessionStatus.CANCELLED,
-        SessionStatus.COMPLETED,
+    if (
+        session.program.status != ProgramStatus.ACTIVE
+        or session.program.organization.verification_status != "VERIFIED"
+        or session.status in (SessionStatus.CANCELLED, SessionStatus.COMPLETED)
     ):
         require_permission(
             actor,
@@ -62,7 +67,9 @@ def get_session(actor: User, session_id: UUID | str) -> TrainingSession:
 
 def create_session(actor: User, data: Mapping[str, Any]) -> TrainingSession:
     try:
-        program = TrainingProgram.objects.get(id=data["program_id"])
+        program = TrainingProgram.objects.get(
+            id=data["program_id"], organization__deleted_at__isnull=True
+        )
     except TrainingProgram.DoesNotExist as exc:
         raise DomainNotFoundError("Training program not found.") from exc
 

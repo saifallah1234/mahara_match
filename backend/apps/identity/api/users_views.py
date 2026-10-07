@@ -39,9 +39,11 @@ class UserViewSet(GenericViewSet[User]):
         user = user_services.get_user(active_request_user(request), pk)
         return Response(UserReadSerializer(user).data)
 
+    @extend_schema(request=UserProfileUpdateSerializer, responses=UserReadSerializer)
     def update(self, request: Request, pk: UUID) -> Response:
         return self._update(request, pk, partial=False)
 
+    @extend_schema(request=UserProfileUpdateSerializer, responses=UserReadSerializer)
     def partial_update(self, request: Request, pk: UUID) -> Response:
         return self._update(request, pk, partial=True)
 
@@ -53,6 +55,15 @@ class UserViewSet(GenericViewSet[User]):
         user = user_services.update_profile(actor, target, serializer.validated_data)
         return Response(UserReadSerializer(user).data)
 
+    @extend_schema(
+        methods=("GET",),
+        responses=UserReadSerializer,
+    )
+    @extend_schema(
+        methods=("PUT", "PATCH"),
+        request=UserProfileUpdateSerializer,
+        responses=UserReadSerializer,
+    )
     @action(detail=False, methods=("get", "put", "patch"), url_path="me")
     def me(self, request: Request) -> Response:
         actor = active_request_user(request)

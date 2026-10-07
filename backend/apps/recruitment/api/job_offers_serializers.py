@@ -51,7 +51,7 @@ class _JobOfferWriteSerializer(serializers.Serializer[dict[str, Any]]):
     title = serializers.CharField(max_length=200)
     description = serializers.CharField()
     contract_type = serializers.CharField(max_length=30, required=False, allow_blank=True)
-    work_mode = serializers.ChoiceField(choices=["", *WorkMode.values], required=False)
+    work_mode = serializers.ChoiceField(choices=WorkMode.choices, required=False, allow_blank=True)
     experience_level = serializers.CharField(max_length=30, required=False, allow_blank=True)
     country_code = serializers.CharField(max_length=2, required=False, allow_blank=True)
     governorate = serializers.CharField(max_length=100, required=False, allow_blank=True)

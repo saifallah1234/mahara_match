@@ -45,6 +45,7 @@ class ApplicationViewSet(GenericViewSet[Application]):
         application = submit_application(active_request_user(request), serializer.validated_data)
         return Response(ApplicationReadSerializer(application).data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(request=ApplicationTransitionSerializer, responses=ApplicationReadSerializer)
     @action(detail=True, methods=["post"])
     def transition(self, request: Request, pk: UUID) -> Response:
         serializer = ApplicationTransitionSerializer(data=request.data)

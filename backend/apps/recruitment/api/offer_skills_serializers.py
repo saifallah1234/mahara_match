@@ -28,7 +28,9 @@ class OfferSkillReadSerializer(serializers.ModelSerializer[OfferSkill]):
 class OfferSkillUpdateSerializer(serializers.Serializer[dict[str, Any]]):
     # Importance scale is still an owning contract.
     importance = serializers.CharField(max_length=30, required=False, allow_blank=True)
-    required_level = serializers.ChoiceField(choices=["", *SkillLevel.values], required=False)
+    required_level = serializers.ChoiceField(
+        choices=SkillLevel.choices, required=False, allow_blank=True
+    )
     is_mandatory = serializers.BooleanField(required=False)
 
 

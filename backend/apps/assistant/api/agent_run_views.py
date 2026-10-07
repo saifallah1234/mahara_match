@@ -1,10 +1,15 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ai.agents.service import start_agent_run
-from backend.apps.assistant.api.agent_run_serializers import AgentRunWriteSerializer
+from backend.apps.assistant.api.agent_run_serializers import (
+    AgentRunErrorSerializer,
+    AgentRunReadSerializer,
+    AgentRunWriteSerializer,
+)
 from backend.apps.candidates.services.records import own_profile
 from backend.apps.identity.api.common_permissions import IsActiveAuthenticated, active_request_user
 
@@ -12,6 +17,10 @@ from backend.apps.identity.api.common_permissions import IsActiveAuthenticated, 
 class AgentRunView(APIView):
     permission_classes = (IsActiveAuthenticated,)
 
+    @extend_schema(
+        request=AgentRunWriteSerializer,
+        responses={200: AgentRunReadSerializer, 503: AgentRunErrorSerializer},
+    )
     def post(self, request: Request) -> Response:
         serializer = AgentRunWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -24,7 +33,13 @@ class AgentRunView(APIView):
         )
         if result["error_code"]:
             return Response(
-                {"error": result["error_code"], **result},
+                {
+                    "error": {
+                        "code": result["error_code"],
+                        "message": "The agent run could not be completed.",
+                        "details": result,
+                    }
+                },
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         return Response(result)
