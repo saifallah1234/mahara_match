@@ -8,13 +8,16 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from backend.apps.identity.api.common_permissions import active_request_user
+from backend.apps.identity.services.access import has_permission, require_permission
 from backend.apps.training.api.enrollments_serializers import (
     TrainingEnrollmentCreateSerializer,
     TrainingEnrollmentProgressSerializer,
     TrainingEnrollmentReadSerializer,
 )
+from backend.apps.training.api.filters import EnrollmentFilters
 from backend.apps.training.models import TrainingEnrollment
 from backend.apps.training.services import enrollments as enrollment_services
+from backend.apps.training.services.contracts import TrainingPermissionCode
 from backend.common.api.query_params import uuid_query_param
 
 
@@ -24,17 +27,21 @@ class TrainingEnrollmentViewSet(GenericViewSet[TrainingEnrollment]):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("candidate_id", UUID, required=False),
+            EnrollmentFilters,
             OpenApiParameter("organization_id", UUID, required=False),
         ],
         responses=TrainingEnrollmentReadSerializer(many=True),
     )
     def list(self, request: Request) -> Response:
+        actor = active_request_user(request)
+        if not has_permission(actor, TrainingPermissionCode.VIEW_OWN_ENROLLMENTS):
+            require_permission(actor, TrainingPermissionCode.MANAGE_ENROLLMENTS)
         queryset = enrollment_services.list_enrollments(
-            active_request_user(request),
-            candidate_id=uuid_query_param(request, "candidate_id"),
+            actor,
             organization_id=uuid_query_param(request, "organization_id"),
         )
+        queryset = EnrollmentFilters(data=request.query_params).apply(queryset)
+        queryset = queryset.order_by("enrolled_at", "id")
         page = self.paginate_queryset(queryset)
         serializer = TrainingEnrollmentReadSerializer(page, many=True)
         return self.get_paginated_response(serializer.data)

@@ -6,8 +6,10 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import QuerySet
+from django.utils import timezone
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
-from backend.apps.identity.models import User
+from backend.apps.identity.models import User, UserStatus
 from backend.apps.identity.services.access import require_permission
 from backend.apps.identity.services.contracts import IdentityPermissionCode
 from backend.common.exceptions import DomainNotFoundError, DomainValidationError
@@ -15,13 +17,21 @@ from backend.common.exceptions import DomainNotFoundError, DomainValidationError
 
 def list_users(actor: User) -> QuerySet[User]:
     require_permission(actor, IdentityPermissionCode.MANAGE_USERS)
-    return User.objects.prefetch_related("role_assignments__role").order_by("created_at", "id")
+    return (
+        User.objects.filter(deleted_at__isnull=True)
+        .prefetch_related("role_assignments__role")
+        .order_by("created_at", "id")
+    )
 
 
 def get_user(actor: User, user_id: UUID | str) -> User:
     require_permission(actor, IdentityPermissionCode.MANAGE_USERS)
     try:
-        return User.objects.prefetch_related("role_assignments__role").get(id=user_id)
+        return (
+            User.objects.filter(deleted_at__isnull=True)
+            .prefetch_related("role_assignments__role")
+            .get(id=user_id)
+        )
     except User.DoesNotExist as exc:
         raise DomainNotFoundError("User not found.") from exc
 
@@ -76,3 +86,34 @@ def update_profile(actor: User, target: User, data: Mapping[str, Any]) -> User:
             setattr(target, field, data[field])
     target.save(update_fields=[*data.keys(), "updated_at"])
     return target
+
+
+def _invalidate_credentials(user: User) -> None:
+    for token in OutstandingToken.objects.filter(user=user):
+        BlacklistedToken.objects.get_or_create(token=token)
+
+
+@transaction.atomic
+def update_status(actor: User, target: User, status: str) -> User:
+    require_permission(actor, IdentityPermissionCode.MANAGE_USERS)
+    if status not in UserStatus.values:
+        raise DomainValidationError(details={"status": ["Invalid account status."]})
+    target = User.objects.select_for_update().get(pk=target.pk)
+    if target.status == status:
+        return target
+
+    target.status = status
+    target.save(update_fields=["status", "updated_at"])
+    _invalidate_credentials(target)
+    return target
+
+
+@transaction.atomic
+def delete_own_account(actor: User) -> None:
+    require_permission(actor, IdentityPermissionCode.UPDATE_SELF)
+    user = User.objects.select_for_update().get(pk=actor.pk)
+    if user.deleted_at is None:
+        user.status = UserStatus.DISABLED
+        user.deleted_at = timezone.now()
+        user.save(update_fields=["status", "deleted_at", "updated_at"])
+    _invalidate_credentials(user)

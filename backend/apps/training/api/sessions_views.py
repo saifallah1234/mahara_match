@@ -8,6 +8,8 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from backend.apps.identity.api.common_permissions import active_request_user
+from backend.apps.identity.services.access import require_permission
+from backend.apps.training.api.filters import SessionFilters
 from backend.apps.training.api.sessions_serializers import (
     TrainingSessionCreateSerializer,
     TrainingSessionReadSerializer,
@@ -15,6 +17,7 @@ from backend.apps.training.api.sessions_serializers import (
 )
 from backend.apps.training.models import TrainingSession
 from backend.apps.training.services import sessions as session_services
+from backend.apps.training.services.contracts import TrainingPermissionCode
 from backend.common.api.query_params import uuid_query_param
 
 
@@ -23,12 +26,15 @@ class TrainingSessionViewSet(GenericViewSet[TrainingSession]):
     queryset = TrainingSession.objects.none()
 
     @extend_schema(
-        parameters=[OpenApiParameter("program_id", UUID, required=True)],
+        parameters=[OpenApiParameter("program_id", UUID, required=True), SessionFilters],
         responses=TrainingSessionReadSerializer(many=True),
     )
     def list(self, request: Request) -> Response:
+        require_permission(active_request_user(request), TrainingPermissionCode.VIEW_CATALOG)
         program_id = uuid_query_param(request, "program_id", required=True)
         queryset = session_services.list_program_sessions(active_request_user(request), program_id)
+        queryset = SessionFilters(data=request.query_params).apply(queryset)
+        queryset = queryset.order_by("start_date", "id")
         page = self.paginate_queryset(queryset)
         serializer = TrainingSessionReadSerializer(page, many=True)
         return self.get_paginated_response(serializer.data)

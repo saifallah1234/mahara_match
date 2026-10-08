@@ -35,7 +35,9 @@ def test_import_rows_only_expose_nested_list_and_standalone_detail() -> None:
     detail = cast(Any, resolve(f"/api/v1/import-rows/{uuid4()}/").func)
     nested = cast(Any, resolve(f"/api/v1/import-batches/{uuid4()}/rows/").func)
     assert detail.actions == {"get": "retrieve"}
-    assert nested.actions == {"get": "list"}
+    assert {method: action for method, action in nested.actions.items() if method != "head"} == {
+        "get": "list"
+    }
 
 
 def test_organization_members_list_uses_standard_pagination(
@@ -123,3 +125,32 @@ def test_openapi_uses_write_contracts_and_has_no_broken_import_collection() -> N
         == "#/components/schemas/TrainingEnrollmentCreate"
     )
     assert paths["/api/v1/agent-runs/"]["post"]["responses"]["503"]["content"]
+
+    token = paths["/api/v1/auth/token/"]["post"]
+    assert token["requestBody"]["content"]["application/json"]["schema"]["$ref"] == (
+        "#/components/schemas/EmailTokenObtainPair"
+    )
+    assert token["responses"]["200"]["content"]["application/json"]["schema"]["$ref"] == (
+        "#/components/schemas/AccessToken"
+    )
+    assert {parameter["name"] for parameter in token["parameters"]} == {
+        "X-CSRFToken",
+        "csrftoken",
+    }
+
+    refresh = paths["/api/v1/auth/token/refresh/"]["post"]
+    assert "requestBody" not in refresh
+    assert {parameter["name"] for parameter in refresh["parameters"]} == {
+        "X-CSRFToken",
+        "csrftoken",
+        "mahara_refresh",
+    }
+    assert paths["/api/v1/auth/csrf/"]["get"]["responses"] == {
+        "204": {"description": "No response body"}
+    }
+    assert (
+        paths["/api/v1/users/{id}/status/"]["post"]["requestBody"]["content"]["application/json"][
+            "schema"
+        ]["$ref"]
+        == "#/components/schemas/UserStatusUpdate"
+    )

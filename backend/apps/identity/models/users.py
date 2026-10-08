@@ -80,6 +80,7 @@ class User(AbstractUser):
         db_index=True,
     )
     email_verified_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     roles = models.ManyToManyField(
@@ -102,7 +103,7 @@ class User(AbstractUser):
 
     @property
     def is_active(self) -> bool:  # type: ignore[override]
-        return self.status == UserStatus.ACTIVE
+        return self.status == UserStatus.ACTIVE and self.deleted_at is None
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         self.email = UserManager.normalize_identity_email(self.email)

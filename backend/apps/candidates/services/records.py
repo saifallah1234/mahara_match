@@ -5,6 +5,7 @@ from uuid import UUID
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, models, transaction
 from django.db.models import Max, QuerySet
+from django.utils import timezone
 
 from backend.apps.candidates.models import (
     CV,
@@ -77,7 +78,10 @@ def update_profile(actor: User, data: Mapping[str, Any]) -> CandidateProfile:
 
 def list_records[RecordT: models.Model](actor: User, model: type[RecordT]) -> QuerySet[RecordT]:
     profile = own_profile(actor)
-    return cast(Any, model).objects.filter(candidate=profile).order_by("created_at", "id")
+    queryset = cast(Any, model).objects.filter(candidate=profile)
+    if model is CV:
+        queryset = queryset.filter(deleted_at__isnull=True)
+    return queryset.order_by("created_at", "id")
 
 
 def get_record[RecordT: models.Model](
@@ -176,9 +180,18 @@ def update_cv(actor: User, cv_id: UUID | str, data: Mapping[str, Any]) -> CV:
     return _save_validated(cv)
 
 
+@transaction.atomic
+def delete_cv(actor: User, cv_id: UUID | str) -> None:
+    cv = get_record(actor, CV, cv_id)
+    cv.deleted_at = timezone.now()
+    cv.save(update_fields=["deleted_at", "updated_at"])
+
+
 def list_cv_analyses(actor: User) -> QuerySet[CVAnalysisResult]:
     profile = own_profile(actor)
-    return CVAnalysisResult.objects.filter(cv__candidate=profile).order_by("-analyzed_at", "id")
+    return CVAnalysisResult.objects.filter(
+        cv__candidate=profile, cv__deleted_at__isnull=True
+    ).order_by("-analyzed_at", "id")
 
 
 def get_cv_analysis(actor: User, analysis_id: UUID | str) -> CVAnalysisResult:

@@ -8,6 +8,8 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from backend.apps.identity.api.common_permissions import active_request_user
+from backend.apps.identity.services.access import require_permission
+from backend.apps.training.api.filters import ProgramFilters
 from backend.apps.training.api.programs_serializers import (
     TrainingProgramCreateSerializer,
     TrainingProgramReadSerializer,
@@ -15,6 +17,7 @@ from backend.apps.training.api.programs_serializers import (
 )
 from backend.apps.training.models import TrainingProgram
 from backend.apps.training.services import programs as program_services
+from backend.apps.training.services.contracts import TrainingPermissionCode
 from backend.common.api.query_params import uuid_query_param
 
 
@@ -23,14 +26,17 @@ class TrainingProgramViewSet(GenericViewSet[TrainingProgram]):
     queryset = TrainingProgram.objects.none()
 
     @extend_schema(
-        parameters=[OpenApiParameter("organization_id", UUID, required=False)],
+        parameters=[OpenApiParameter("organization_id", UUID, required=False), ProgramFilters],
         responses=TrainingProgramReadSerializer(many=True),
     )
     def list(self, request: Request) -> Response:
+        require_permission(active_request_user(request), TrainingPermissionCode.VIEW_CATALOG)
         queryset = program_services.list_programs(
             active_request_user(request),
             organization_id=uuid_query_param(request, "organization_id"),
         )
+        queryset = ProgramFilters(data=request.query_params).apply(queryset)
+        queryset = queryset.order_by("-created_at", "id")
         page = self.paginate_queryset(queryset)
         serializer = TrainingProgramReadSerializer(page, many=True)
         return self.get_paginated_response(serializer.data)

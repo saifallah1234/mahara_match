@@ -2,6 +2,7 @@ from typing import Any, cast
 
 import pytest
 from django.urls import resolve
+from drf_spectacular.generators import SchemaGenerator
 
 from backend.apps.candidates.api.serializers import CandidateProfileSerializer, CVSerializer
 from backend.apps.candidates.models import (
@@ -22,13 +23,17 @@ pytestmark = pytest.mark.unit
 
 
 def _actions(path: str) -> dict[str, str]:
-    return cast(Any, resolve(path).func).actions
+    return {
+        method: action
+        for method, action in cast(Any, resolve(path).func).actions.items()
+        if method != "head"
+    }
 
 
-def test_candidate_routes_have_no_delete() -> None:
-    assert "delete" not in _actions("/api/v1/cvs/00000000-0000-0000-0000-000000000001/")
+def test_candidate_routes_expose_only_approved_delete() -> None:
+    assert _actions("/api/v1/cvs/00000000-0000-0000-0000-000000000001/")["delete"] == ("destroy")
     assert _actions("/api/v1/cv-analysis-results/") == {"get": "list"}
-    assert _actions("/api/v1/documents/") == {"get": "list"}
+    assert _actions("/api/v1/documents/") == {"get": "list", "post": "create"}
 
 
 def test_candidate_sensitive_fields_are_read_only() -> None:
@@ -59,3 +64,49 @@ def test_required_candidate_constraints_exist() -> None:
         "candidate_skills_unique",
         "candidate_skills_years_nonnegative",
     }
+
+
+def test_discovery_routes_and_openapi_use_redacted_contract() -> None:
+    assert _actions("/api/v1/candidate-profiles/") == {"get": "list"}
+    assert _actions("/api/v1/candidate-profiles/00000000-0000-0000-0000-000000000001/") == {
+        "get": "retrieve"
+    }
+    assert _actions("/api/v1/candidate-profiles/me/") == {
+        "get": "me",
+        "post": "me",
+        "put": "me",
+        "patch": "me",
+    }
+    schema = SchemaGenerator().get_schema(public=True)
+    paths = cast(dict[str, Any], schema["paths"])
+    schemas = schema["components"]["schemas"]
+    listing = paths["/api/v1/candidate-profiles/"]["get"]
+    response = listing["responses"]["200"]["content"]["application/json"]["schema"]
+    assert response["$ref"] == "#/components/schemas/PaginatedRecruiterCandidateList"
+    detail = paths["/api/v1/candidate-profiles/{id}/"]["get"]
+    assert detail["responses"]["200"]["content"]["application/json"]["schema"]["$ref"] == (
+        "#/components/schemas/RecruiterCandidate"
+    )
+    assert set(schemas["RecruiterCandidate"]["properties"]) == {
+        "id",
+        "headline",
+        "skills",
+        "experiences",
+        "educations",
+        "governorate",
+        "preferences",
+    }
+    assert {parameter["name"] for parameter in listing["parameters"]} == {
+        "page",
+        "page_size",
+        "skill",
+        "education_level",
+        "governorate",
+        "work_mode",
+        "relocation",
+        "search",
+    }
+    self_read = paths["/api/v1/candidate-profiles/me/"]["get"]
+    assert self_read["responses"]["200"]["content"]["application/json"]["schema"]["$ref"] == (
+        "#/components/schemas/CandidateProfile"
+    )

@@ -1,6 +1,7 @@
 import os
 from datetime import timedelta
 from pathlib import Path
+from typing import Literal
 from urllib.parse import unquote, urlsplit
 
 BASE_DIR = Path(__file__).resolve().parents[3]
@@ -141,7 +142,24 @@ SIMPLE_JWT = {
     "TOKEN_REFRESH_SERIALIZER": (
         "backend.apps.identity.api.authentication_serializers.ActiveTokenRefreshSerializer"
     ),
+    "TOKEN_VERIFY_SERIALIZER": (
+        "backend.apps.identity.api.authentication_serializers.ActiveTokenVerifySerializer"
+    ),
 }
+
+AUTH_REFRESH_COOKIE_NAME = "mahara_refresh"
+AUTH_REFRESH_COOKIE_PATH = "/api/v1/auth/"
+AUTH_COOKIE_SECURE = not DEBUG
+AUTH_COOKIE_SAMESITE: Literal["Lax"] = "Lax"
+CSRF_COOKIE_SECURE = AUTH_COOKIE_SECURE
+CSRF_COOKIE_SAMESITE = AUTH_COOKIE_SAMESITE
+
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT") or os.getenv("OBJECT_STORAGE_ENDPOINT", "")
+MINIO_BUCKET = os.getenv("MINIO_BUCKET") or os.getenv("OBJECT_STORAGE_BUCKET", "")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY") or os.getenv("OBJECT_STORAGE_ACCESS_KEY", "")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY") or os.getenv("OBJECT_STORAGE_SECRET_KEY", "")
+MINIO_USE_SSL = os.getenv("MINIO_USE_SSL", "false").lower() == "true"
+DOCUMENT_MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Mahara Match API",

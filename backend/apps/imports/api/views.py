@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from backend.apps.identity.api.common_permissions import active_request_user
+from backend.apps.imports.api.filters import BatchFilters, RowFilters
 from backend.apps.imports.api.serializers import (
     BatchReadSerializer,
     RowReadSerializer,
@@ -68,8 +69,11 @@ class BatchViewSet(GenericViewSet[ImportBatch]):
     serializer_class = BatchReadSerializer
     queryset = ImportBatch.objects.none()
 
+    @extend_schema(parameters=[BatchFilters], responses=BatchReadSerializer(many=True))
     def list(self, request: Request) -> Response:
-        page = self.paginate_queryset(records.list_batches(active_request_user(request)))
+        queryset = records.list_batches(active_request_user(request))
+        queryset = BatchFilters(data=request.query_params).apply(queryset)
+        page = self.paginate_queryset(queryset)
         return self.get_paginated_response(BatchReadSerializer(page, many=True).data)
 
     def retrieve(self, request: Request, pk: UUID) -> Response:
@@ -82,8 +86,11 @@ class RowViewSet(GenericViewSet[ImportRow]):
     serializer_class = RowReadSerializer
     queryset = ImportRow.objects.none()
 
+    @extend_schema(parameters=[RowFilters], responses=RowReadSerializer(many=True))
     def list(self, request: Request, batch_id: UUID) -> Response:
-        page = self.paginate_queryset(records.list_rows(active_request_user(request), batch_id))
+        queryset = records.list_rows(active_request_user(request), batch_id)
+        queryset = RowFilters(data=request.query_params).apply(queryset)
+        page = self.paginate_queryset(queryset)
         return self.get_paginated_response(RowReadSerializer(page, many=True).data)
 
     def retrieve(self, request: Request, pk: UUID) -> Response:

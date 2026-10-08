@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from backend.apps.identity.api.common_permissions import active_request_user
+from backend.apps.platform.api.filters import AuditFilters
 from backend.apps.platform.api.serializers import AuditReadSerializer, NotificationReadSerializer
 from backend.apps.platform.models import AuditLog, Notification
 from backend.apps.platform.services import records
@@ -39,8 +40,11 @@ class AuditViewSet(GenericViewSet[AuditLog]):
     serializer_class = AuditReadSerializer
     queryset = AuditLog.objects.none()
 
+    @extend_schema(parameters=[AuditFilters], responses=AuditReadSerializer(many=True))
     def list(self, request: Request) -> Response:
-        page = self.paginate_queryset(records.list_audit_logs(active_request_user(request)))
+        queryset = records.list_audit_logs(active_request_user(request))
+        queryset = AuditFilters(data=request.query_params).apply(queryset)
+        page = self.paginate_queryset(queryset)
         return self.get_paginated_response(AuditReadSerializer(page, many=True).data)
 
     def retrieve(self, request: Request, pk: UUID) -> Response:

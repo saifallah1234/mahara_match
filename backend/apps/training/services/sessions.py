@@ -2,13 +2,16 @@ from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
+from django.db import transaction
 from django.db.models import QuerySet
 
 from backend.apps.identity.models import User
 from backend.apps.identity.services.access import require_permission
 from backend.apps.training.models import (
+    EnrollmentStatus,
     ProgramStatus,
     SessionStatus,
+    TrainingEnrollment,
     TrainingProgram,
     TrainingSession,
 )
@@ -88,14 +91,36 @@ def create_session(actor: User, data: Mapping[str, Any]) -> TrainingSession:
     )
 
 
+@transaction.atomic
 def update_session(
     actor: User, session: TrainingSession, data: Mapping[str, Any]
 ) -> TrainingSession:
+    try:
+        session = (
+            TrainingSession.objects.select_for_update(of=("self",))
+            .select_related("program")
+            .get(pk=session.pk, program__organization__deleted_at__isnull=True)
+        )
+    except TrainingSession.DoesNotExist as exc:
+        raise DomainNotFoundError("Training session not found.") from exc
     require_permission(
         actor,
         TrainingPermissionCode.MANAGE_SESSIONS,
         organization_id=session.program.organization_id,
     )
+    if (
+        session.status in (SessionStatus.COMPLETED, SessionStatus.CANCELLED)
+        and data.get("status", session.status) != session.status
+    ):
+        raise DomainValidationError("A completed or cancelled session cannot change status.")
+    if (
+        "capacity" in data
+        and data["capacity"]
+        < TrainingEnrollment.objects.filter(session=session)
+        .exclude(status=EnrollmentStatus.DROPPED)
+        .count()
+    ):
+        raise DomainValidationError(details={"capacity": ["Cannot be below occupied capacity."]})
     _validate_dates(
         data.get("start_date", session.start_date),
         data.get("end_date", session.end_date),
@@ -116,13 +141,7 @@ def update_session(
 
 
 def delete_session(actor: User, session: TrainingSession) -> None:
-    require_permission(
-        actor,
-        TrainingPermissionCode.MANAGE_SESSIONS,
-        organization_id=session.program.organization_id,
-    )
-    session.status = SessionStatus.CANCELLED
-    session.save(update_fields=["status", "updated_at"])
+    update_session(actor, session, {"status": SessionStatus.CANCELLED})
 
 
 def _validate_dates(start_date: Any, end_date: Any, deadline: Any) -> None:

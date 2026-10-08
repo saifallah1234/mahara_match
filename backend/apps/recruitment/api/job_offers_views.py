@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from backend.apps.identity.api.common_permissions import active_request_user
+from backend.apps.recruitment.api.filters import JobOfferFilters
 from backend.apps.recruitment.api.job_offers_permissions import IsActiveAuthenticated
 from backend.apps.recruitment.api.job_offers_serializers import (
     JobOfferCreateSerializer,
@@ -25,9 +26,10 @@ class JobOfferViewSet(GenericViewSet[JobOffer]):
     queryset = JobOffer.objects.none()
     permission_classes = (IsActiveAuthenticated,)
 
-    @extend_schema(responses=JobOfferReadSerializer(many=True))
+    @extend_schema(parameters=[JobOfferFilters], responses=JobOfferReadSerializer(many=True))
     def list(self, request: Request) -> Response:
         queryset = offer_services.list_job_offers(active_request_user(request))
+        queryset = JobOfferFilters(data=request.query_params).apply(queryset)
         page = self.paginate_queryset(queryset)
         return self.get_paginated_response(JobOfferReadSerializer(page, many=True).data)
 
