@@ -1,9 +1,15 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/layout'
+import { ProtectedRoute, RoleRoute } from './components/authRoutes'
+import { AuthProvider } from './state/auth'
 import { StoreProvider } from './state/store'
+import { CandidateProvider, useCandidate } from './state/candidate'
 
 import Landing from './pages/Landing'
 import SignIn from './pages/SignIn'
+import Register from './pages/Register'
+import AdminOnboarding from './pages/AdminOnboarding'
+import { Workspaces, NoAccess } from './pages/Workspaces'
 
 import CandidatDashboard from './pages/candidat/Dashboard'
 import CandidatProfil from './pages/candidat/Profil'
@@ -12,7 +18,6 @@ import CandidatOffres from './pages/candidat/Offres'
 import CandidatOffreDetail from './pages/candidat/OffreDetail'
 import CandidatCandidatures from './pages/candidat/Candidatures'
 import CandidatFormations from './pages/candidat/Formations'
-import CandidatAssistant from './pages/candidat/Assistant'
 
 import RecruteurDashboard from './pages/recruteur/Dashboard'
 import RecruteurEntreprise from './pages/recruteur/Entreprise'
@@ -35,12 +40,18 @@ import {
 
 export default function App() {
   return (
-    <StoreProvider>
+    <AuthProvider><StoreProvider>
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/connexion" element={<SignIn />} />
+        <Route path="/inscription" element={<Register />} />
 
-        <Route element={<AppShell />}>
+        <Route element={<ProtectedRoute />}>
+          <Route path="/espaces" element={<Workspaces />} />
+          <Route path="/aucun-acces" element={<NoAccess />} />
+          <Route element={<AppShell />}>
+          <Route element={<RoleRoute role="CANDIDATE" />}>
+          <Route element={<CandidateWorkspace />}>
           {/* Espace candidat */}
           <Route path="/candidat" element={<CandidatDashboard />} />
           <Route path="/candidat/profil" element={<CandidatProfil />} />
@@ -49,9 +60,11 @@ export default function App() {
           <Route path="/candidat/offres/:offerId" element={<CandidatOffreDetail />} />
           <Route path="/candidat/candidatures" element={<CandidatCandidatures />} />
           <Route path="/candidat/formations" element={<CandidatFormations />} />
-          <Route path="/candidat/assistant" element={<CandidatAssistant />} />
+          </Route>
+          </Route>
 
           {/* Espace employeur */}
+          <Route element={<RoleRoute role="RECRUITER" />}>
           <Route path="/recruteur" element={<RecruteurDashboard />} />
           <Route path="/recruteur/entreprise" element={<RecruteurEntreprise />} />
           <Route path="/recruteur/offres" element={<RecruteurOffres />} />
@@ -59,27 +72,50 @@ export default function App() {
           <Route path="/recruteur/offres/:offerId" element={<RecruteurOffreDetail />} />
           <Route path="/recruteur/candidatures" element={<RecruteurCandidatures />} />
           <Route path="/recruteur/entretiens" element={<RecruteurEntretiens />} />
+          </Route>
 
           {/* Espace organisme de formation */}
+          <Route element={<RoleRoute role="TRAINING_MANAGER" />}>
           <Route path="/formation" element={<FormationDashboard />} />
           <Route path="/formation/programmes" element={<FormationProgrammes />} />
           <Route path="/formation/sessions" element={<FormationSessions />} />
+          </Route>
 
           {/* Espace ministère */}
+          <Route element={<RoleRoute role="MINISTRY_MANAGER" />}>
           <Route path="/ministere" element={<MinistereIndicateurs />} />
           <Route path="/ministere/competences" element={<MinistereCompetences />} />
+          </Route>
 
           {/* Espace administration */}
+          <Route element={<RoleRoute role="ADMIN" />}>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/comptes" element={<AdminComptes />} />
+          <Route path="/admin/demandes" element={<AdminOnboarding />} />
           <Route path="/admin/organisations" element={<AdminOrganisations />} />
           <Route path="/admin/referentiels" element={<AdminReferentiels />} />
           <Route path="/admin/imports" element={<AdminImports />} />
           <Route path="/admin/audit" element={<AdminAudit />} />
+          </Route>
+          </Route>
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </StoreProvider>
+    </StoreProvider></AuthProvider>
   )
+}
+
+function CandidateWorkspace() {
+  return <CandidateProvider><CandidateWorkspaceContent /></CandidateProvider>
+}
+
+function CandidateWorkspaceContent() {
+  const { loading, error, message, profile, clearMessage, reload } = useCandidate()
+  return <>
+    {loading && <div role="status" className="mx-auto max-w-5xl p-5">Chargement de votre espace…</div>}
+    {error && <div role="alert" className="mx-auto max-w-5xl p-5 text-coral">{error} <button className="underline" onClick={() => void reload()}>Réessayer</button></div>}
+    {message && <div role="status" className="mx-auto max-w-5xl p-5 text-teal">{message} <button className="underline" onClick={clearMessage}>Fermer</button></div>}
+    {(profile || (!loading && !error)) && <Outlet />}
+  </>
 }

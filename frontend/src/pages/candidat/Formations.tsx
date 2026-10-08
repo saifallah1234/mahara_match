@@ -1,245 +1,41 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { PageBody, PageHeader } from '../../components/layout'
 import { Badge, Button, EmptyState, Field, Panel, Select, Tabs } from '../../components/ui'
-import { useStore } from '../../state/store'
-import { skillGaps } from '../../lib/matching'
-import { DELIVERY_LABEL, SKILL_LEVEL_LABEL, formatDate, formatPrice } from '../../lib/format'
-import type { DeliveryMode } from '../../lib/types'
+import { useCandidate } from '../../state/candidate'
+import { formatDate, formatPrice } from '../../lib/format'
 
-type Tab = 'recommandees' | 'catalogue' | 'mes-formations'
-
+type Tab = 'catalogue' | 'mine'
+const delivery: Record<string, string> = { ONLINE: 'À distance', PRESENTIAL: 'Présentiel', HYBRID: 'Hybride' }
+const level: Record<string, string> = { BEGINNER: 'Débutant', INTERMEDIATE: 'Intermédiaire', ADVANCED: 'Avancé' }
+const enrollmentStatus: Record<string, string> = { REGISTERED: 'Inscrit', IN_PROGRESS: 'En cours', COMPLETED: 'Terminé', DROPPED: 'Annulé' }
 export default function CandidatFormations() {
-  const { currentProfile, programs, sessions, enrollments, offers, skills, organizationOf, enroll } = useStore()
-  const [tab, setTab] = useState<Tab>('recommandees')
+  const { programs, sessions, enrollments, enroll, cancelEnrollment } = useCandidate()
+  const [tab, setTab] = useState<Tab>('catalogue')
   const [mode, setMode] = useState('')
-
-  const gaps = useMemo(
-    () => (currentProfile ? skillGaps(currentProfile, offers, skills) : []),
-    [currentProfile, offers, skills],
-  )
-
-  if (!currentProfile) return null
-
-  const published = programs.filter((p) => p.status === 'PUBLISHED')
-  const gapIds = gaps.map((g) => g.skillId)
-
-  /** Une formation n'est recommandée que si elle répond à un écart identifiable. */
-  const recommended = published
-    .map((program) => ({
-      program,
-      reasons: program.skillIds.filter((id) => gapIds.includes(id)),
-    }))
-    .filter((r) => r.reasons.length > 0)
-    .sort((a, b) => b.reasons.length - a.reasons.length)
-
-  const catalogue = published.filter((p) => !mode || p.deliveryMode === mode)
-  const mine = enrollments.filter((e) => e.candidateId === currentProfile.id)
-
-  function sessionsOf(programId: string) {
-    return sessions.filter((s) => s.programId === programId && (s.status === 'OUVERTE' || s.status === 'PLANIFIEE'))
-  }
-
-  return (
-    <>
-      <PageHeader
-        title="Formations"
-      />
-
-      <PageBody className="space-y-5">
-        <Tabs<Tab>
-          active={tab}
-          onChange={setTab}
-          tabs={[
-            { id: 'recommandees', label: 'Recommandées', count: recommended.length },
-            { id: 'catalogue', label: 'Catalogue', count: published.length },
-            { id: 'mes-formations', label: 'Mes inscriptions', count: mine.length },
-          ]}
-        />
-
-        {tab === 'recommandees' && (
-          <>
-            {recommended.length === 0 ? (
-              <Panel>
-                <EmptyState title="Aucune formation recommandée pour l’instant">
-                  Vos compétences confirmées couvrent les offres ouvertes consultées. Les recommandations apparaissent
-                  dès qu’un écart est repéré.
-                </EmptyState>
-              </Panel>
-            ) : (
-              <div className="space-y-4">
-                {recommended.map(({ program, reasons }) => {
-                  const open = sessionsOf(program.id)
-                  return (
-                    <Panel key={program.id}>
-                      <div className="border-b border-line px-5 py-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <h2 className="text-[15px] font-semibold text-navy">{program.title}</h2>
-                            <p className="mt-0.5 text-[13px] text-slate">
-                              {organizationOf(program.organizationId)?.legalName} ·{' '}
-                              {DELIVERY_LABEL[program.deliveryMode]} · {program.durationHours} h ·{' '}
-                              {SKILL_LEVEL_LABEL[program.level]}
-                            </p>
-                          </div>
-                          <p className="shrink-0 text-[14px] font-medium text-navy">{formatPrice(program.priceTnd)}</p>
-                        </div>
-
-                        <div className="mt-3 rounded-[6px] border-l-[3px] border-l-teal bg-mist/60 px-4 py-2.5">
-                          <p className="text-[13px] text-navy">
-                            <span className="font-medium">Pourquoi cette formation </span>— elle enseigne{' '}
-                            {reasons
-                              .map((id) => skills.find((s) => s.id === id)?.canonicalName)
-                              .filter(Boolean)
-                              .join(', ')}
-                            , compétence{reasons.length > 1 ? 's' : ''} demandée{reasons.length > 1 ? 's' : ''} par des
-                            offres ouvertes et absente{reasons.length > 1 ? 's' : ''} de votre profil.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="px-5 py-4">
-                        <p className="text-[13.5px] leading-relaxed text-navy">{program.description}</p>
-                        <p className="mt-2 text-[13px] text-slate">
-                          <span className="font-medium text-navy">Prérequis </span>
-                          {program.prerequisites}
-                        </p>
-                      </div>
-
-                      {open.length === 0 ? (
-                        <p className="border-t border-line px-5 py-3.5 text-[13px] text-slate">
-                          Aucune session ouverte à l’inscription. Contact : {program.contactEmail}
-                        </p>
-                      ) : (
-                        <ul className="divide-y divide-line/70 border-t border-line">
-                          {open.map((trainingSession) => {
-                            const already = mine.some((e) => e.sessionId === trainingSession.id)
-                            return (
-                              <li
-                                key={trainingSession.id}
-                                className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5"
-                              >
-                                <div>
-                                  <p className="text-[13.5px] text-navy">
-                                    Du {formatDate(trainingSession.startDate)} au {formatDate(trainingSession.endDate)}
-                                  </p>
-                                  <p className="text-[12.5px] text-slate">
-                                    {trainingSession.locationOrUrl} · inscriptions jusqu’au{' '}
-                                    {formatDate(trainingSession.registrationDeadline)}
-                                  </p>
-                                </div>
-                                {already ? (
-                                  <Badge tone="positif">Inscrite</Badge>
-                                ) : (
-                                  <Button size="sm" variant="secondaire" onClick={() => enroll(trainingSession.id)}>
-                                    S’inscrire
-                                  </Button>
-                                )}
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      )}
-                    </Panel>
-                  )
-                })}
-              </div>
-            )}
-
-          </>
-        )}
-
-        {tab === 'catalogue' && (
-          <>
-            <Panel>
-              <div className="grid gap-4 p-5 sm:grid-cols-3">
-                <Field label="Modalité">
-                  <Select value={mode} onChange={(e) => setMode(e.target.value)}>
-                    <option value="">Toutes</option>
-                    {(Object.keys(DELIVERY_LABEL) as DeliveryMode[]).map((m) => (
-                      <option key={m} value={m}>
-                        {DELIVERY_LABEL[m]}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-            </Panel>
-
-            <div className="grid gap-3 lg:grid-cols-2">
-              {catalogue.map((program) => (
-                <article key={program.id} className="rounded-[10px] border border-line bg-white p-4 shadow-panel">
-                  <h2 className="text-[15px] font-semibold text-navy">{program.title}</h2>
-                  <p className="mt-0.5 text-[13px] text-slate">{organizationOf(program.organizationId)?.legalName}</p>
-                  <p className="mt-2 text-[13px] leading-relaxed text-navy">{program.description}</p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {program.skillIds.map((id) => (
-                      <Badge key={id} tone="teal">
-                        {skills.find((s) => s.id === id)?.canonicalName}
-                      </Badge>
-                    ))}
-                  </div>
-                  <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[12.5px]">
-                    <div className="flex justify-between">
-                      <dt className="text-slate">Modalité</dt>
-                      <dd className="text-navy">{DELIVERY_LABEL[program.deliveryMode]}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-slate">Durée</dt>
-                      <dd className="text-navy">{program.durationHours} h</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-slate">Niveau</dt>
-                      <dd className="text-navy">{SKILL_LEVEL_LABEL[program.level]}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-slate">Coût</dt>
-                      <dd className="text-navy">{formatPrice(program.priceTnd)}</dd>
-                    </div>
-                  </dl>
-                </article>
-              ))}
-            </div>
-          </>
-        )}
-
-        {tab === 'mes-formations' && (
-          <Panel title="Mes inscriptions">
-            {mine.length === 0 ? (
-              <EmptyState title="Aucune inscription">
-                Les formations recommandées correspondent aux compétences qui vous manquent sur les offres ouvertes.
-              </EmptyState>
-            ) : (
-              <ul className="divide-y divide-line/70">
-                {mine.map((enrollment) => {
-                  const trainingSession = sessions.find((s) => s.id === enrollment.sessionId)
-                  const program = programs.find((p) => p.id === trainingSession?.programId)
-                  if (!program || !trainingSession) return null
-                  return (
-                    <li key={enrollment.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-                      <div className="min-w-0">
-                        <p className="text-[14px] font-medium text-navy">{program.title}</p>
-                        <p className="mt-0.5 text-[12.5px] text-slate">
-                          {organizationOf(program.organizationId)?.legalName} · du{' '}
-                          {formatDate(trainingSession.startDate)} au {formatDate(trainingSession.endDate)}
-                        </p>
-                      </div>
-                      <Badge tone={enrollment.status === 'TERMINE' ? 'positif' : 'encours'}>
-                        {enrollment.status === 'INSCRIT'
-                          ? 'Inscrite'
-                          : enrollment.status === 'EN_COURS'
-                            ? `En cours — ${enrollment.completionRate} %`
-                            : enrollment.status === 'TERMINE'
-                              ? 'Terminée'
-                              : 'Abandonnée'}
-                      </Badge>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </Panel>
-        )}
-      </PageBody>
-    </>
-  )
+  const [busy, setBusy] = useState('')
+  async function action(id: string, work: () => Promise<void>) { setBusy(id); try { await work() } catch { /* The workspace shows the API error. */ } finally { setBusy('') } }
+  const catalogue = programs.filter((program) => program.status === 'ACTIVE' && (!mode || program.delivery_mode === mode))
+  return <>
+    <PageHeader title="Formations" />
+    <PageBody className="space-y-5">
+      <Tabs<Tab> active={tab} onChange={setTab} tabs={[{ id: 'catalogue', label: 'Catalogue', count: programs.length }, { id: 'mine', label: 'Mes inscriptions', count: enrollments.length }]} />
+      {tab === 'catalogue' && <><Panel><div className="max-w-xs p-5"><Field label="Modalité"><Select value={mode} onChange={(event) => setMode(event.target.value)}><option value="">Toutes</option>{Object.entries(delivery).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></Field></div></Panel>
+        {!catalogue.length && <Panel><EmptyState title="Aucune formation publiée" /></Panel>}
+        {catalogue.map((program) => <Panel key={program.id} title={program.title} description={`${program.organization_name} · ${delivery[program.delivery_mode] ?? program.delivery_mode} · ${level[program.level] ?? program.level}`}>
+          <div className="space-y-3 p-5 text-sm"><p className="text-navy">{program.description}</p><p className="text-slate">{program.is_free ? 'Gratuit' : formatPrice(Number(program.price))}</p></div>
+          <ul className="divide-y divide-line">{sessions.filter((session) => session.program === program.id).map((session) => {
+            const existing = enrollments.find((item) => item.session === session.id)
+            const open = ['PLANNED', 'ONGOING'].includes(session.status) && new Date(session.registration_deadline) >= new Date()
+            return <li key={session.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm"><div><p>Du {formatDate(session.start_date)} au {formatDate(session.end_date)}</p><p className="text-slate">{session.location_or_url} · inscription avant le {formatDate(session.registration_deadline)}</p></div>{existing ? <Badge tone={existing.status === 'DROPPED' ? 'neutre' : 'positif'}>{existing.status === 'DROPPED' ? 'Annulée' : 'Inscrit'}</Badge> : <Button size="sm" disabled={!open || busy === session.id} onClick={() => void action(session.id, () => enroll(session.id))}>{open ? 'S’inscrire' : 'Inscriptions fermées'}</Button>}</li>
+          })}</ul>
+        </Panel>)}
+      </>}
+      {tab === 'mine' && <Panel title="Mes inscriptions">{!enrollments.length ? <EmptyState title="Aucune inscription" /> : <ul className="divide-y divide-line">{enrollments.map((item) => {
+        // ponytail: completed sessions leave the candidate catalog; show the ID until enrollment summaries are exposed.
+        const session = sessions.find((entry) => entry.id === item.session)
+        const program = programs.find((entry) => entry.id === session?.program)
+        return <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm"><div><p className="font-medium text-navy">{program?.title ?? `Session ${item.session.slice(0, 8)}`}</p><p className="text-slate">{session ? `${formatDate(session.start_date)} · ` : ''}{enrollmentStatus[item.status] ?? item.status}</p></div><Button size="sm" variant="danger" disabled={busy === item.id || ['COMPLETED', 'DROPPED'].includes(item.status)} onClick={() => void action(item.id, () => cancelEnrollment(item.id))}>Annuler</Button></li>
+      })}</ul>}</Panel>}
+    </PageBody>
+  </>
 }

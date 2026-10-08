@@ -11,45 +11,10 @@ import type {
   Interview,
   JobOffer,
   Notification,
-  Organization,
   TrainingEnrollment,
   TrainingProgram,
   TrainingSession,
-  User,
 } from '../lib/types'
-
-/* ------------------------------------------------------------------ */
-/* Organisations                                                       */
-/* ------------------------------------------------------------------ */
-
-export const ORGANIZATIONS: Organization[] = [
-  { id: 'org-telnet', type: 'COMPANY', legalName: 'Groupe TelNet', matriculeFiscal: '0914257TAM000', governorate: 'Tunis', city: 'Tunis', websiteUrl: 'https://telnet.tn', description: 'Ingénierie logicielle et systèmes embarqués.', verificationStatus: 'VERIFIED', createdAt: '2025-11-04T09:00:00Z' },
-  { id: 'org-telnet-ariana', parentId: 'org-telnet', type: 'SUBSIDIARY', legalName: 'TelNet Ariana', matriculeFiscal: '0914258TAM001', governorate: 'Ariana', city: 'Ariana', verificationStatus: 'VERIFIED', createdAt: '2025-11-04T09:10:00Z' },
-  { id: 'org-telnet-sfax', parentId: 'org-telnet', type: 'SUBSIDIARY', legalName: 'TelNet Sfax', matriculeFiscal: '0914259TAM002', governorate: 'Sfax', city: 'Sfax', verificationStatus: 'VERIFIED', createdAt: '2026-01-12T09:00:00Z' },
-  { id: 'org-cofat', type: 'COMPANY', legalName: 'COFAT Bizerte', matriculeFiscal: '0441209BAM000', governorate: 'Bizerte', city: 'Menzel Jemil', description: 'Faisceaux électriques pour l’automobile.', verificationStatus: 'VERIFIED', createdAt: '2025-12-02T10:00:00Z' },
-  { id: 'org-medis', type: 'COMPANY', legalName: 'Laboratoires Médis', matriculeFiscal: '0332118NAM000', governorate: 'Nabeul', city: 'Nabeul', description: 'Industrie pharmaceutique.', verificationStatus: 'VERIFIED', createdAt: '2026-02-18T08:30:00Z' },
-  { id: 'org-sartex', type: 'COMPANY', legalName: 'Sartex Group', matriculeFiscal: '0556331MAM000', governorate: 'Monastir', city: 'Ksar Hellal', description: 'Confection et textile.', verificationStatus: 'PENDING', createdAt: '2026-09-21T14:20:00Z' },
-  { id: 'org-codeline', type: 'TRAINING_PROVIDER', legalName: 'Code Line Academy', matriculeFiscal: '1182447TAM000', governorate: 'Tunis', city: 'Lac 2', description: 'Formations courtes en développement et données.', verificationStatus: 'VERIFIED', createdAt: '2025-10-15T11:00:00Z' },
-  { id: 'org-iset', type: 'TRAINING_PROVIDER', legalName: 'ISET Bizerte — Formation continue', matriculeFiscal: '0771556BAM000', governorate: 'Bizerte', city: 'Bizerte', verificationStatus: 'VERIFIED', createdAt: '2025-10-20T11:00:00Z' },
-  { id: 'org-ministere', type: 'MINISTRY', legalName: 'Ministère de l’Emploi et de la Formation professionnelle', governorate: 'Tunis', city: 'Tunis', verificationStatus: 'VERIFIED', createdAt: '2025-09-01T08:00:00Z' },
-]
-
-/* ------------------------------------------------------------------ */
-/* Utilisateurs — un par rôle, plus des candidats pour les listes      */
-/* ------------------------------------------------------------------ */
-
-export const USERS: User[] = [
-  { id: 'u-emna', email: 'emna.khelifi@example.tn', firstName: 'Emna', lastName: 'Khelifi', phone: '+216 20 114 882', status: 'ACTIVE', roles: ['CANDIDATE'], emailVerifiedAt: '2026-08-02T10:12:00Z', lastLoginAt: '2026-09-30T18:40:00Z' },
-  { id: 'u-yassine', email: 'yassine.gharbi@example.tn', firstName: 'Yassine', lastName: 'Gharbi', status: 'ACTIVE', roles: ['CANDIDATE'], lastLoginAt: '2026-09-28T09:05:00Z' },
-  { id: 'u-nour', email: 'nour.belhaj@example.tn', firstName: 'Nour', lastName: 'Belhaj', status: 'ACTIVE', roles: ['CANDIDATE'], lastLoginAt: '2026-09-29T17:22:00Z' },
-  { id: 'u-mehdi', email: 'mehdi.trabelsi@example.tn', firstName: 'Mehdi', lastName: 'Trabelsi', status: 'ACTIVE', roles: ['CANDIDATE'], lastLoginAt: '2026-09-25T12:00:00Z' },
-  { id: 'u-sarra', email: 'sarra.jlassi@example.tn', firstName: 'Sarra', lastName: 'Jlassi', status: 'ACTIVE', roles: ['CANDIDATE'], lastLoginAt: '2026-09-30T08:44:00Z' },
-  { id: 'u-hamza', email: 'hamza.ouali@example.tn', firstName: 'Hamza', lastName: 'Ouali', status: 'PENDING', roles: ['CANDIDATE'] },
-  { id: 'u-sofiane', email: 'sofiane.mabrouk@telnet.tn', firstName: 'Sofiane', lastName: 'Mabrouk', status: 'ACTIVE', roles: ['RECRUITER'], organizationId: 'org-telnet-ariana', jobTitle: 'Responsable recrutement', lastLoginAt: '2026-09-30T16:10:00Z' },
-  { id: 'u-leila', email: 'leila.ferchichi@codeline.tn', firstName: 'Leila', lastName: 'Ferchichi', status: 'ACTIVE', roles: ['TRAINING_MANAGER'], organizationId: 'org-codeline', jobTitle: 'Responsable pédagogique', lastLoginAt: '2026-09-29T14:00:00Z' },
-  { id: 'u-nadia', email: 'nadia.bouzid@emploi.gov.tn', firstName: 'Nadia', lastName: 'Bouzid', status: 'ACTIVE', roles: ['MINISTRY_MANAGER'], organizationId: 'org-ministere', jobTitle: 'Chargée des statistiques', lastLoginAt: '2026-09-30T09:00:00Z' },
-  { id: 'u-admin', email: 'admin@mahara-match.tn', firstName: 'Rania', lastName: 'Saidi', status: 'ACTIVE', roles: ['ADMIN'], jobTitle: 'Administratrice plateforme', lastLoginAt: '2026-09-30T19:02:00Z' },
-]
 
 /* ------------------------------------------------------------------ */
 /* Profils candidats                                                   */

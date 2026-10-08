@@ -8,6 +8,7 @@ from backend.apps.recruitment.models import JobOffer, JobOfferStatus
 
 class JobOfferReadSerializer(serializers.ModelSerializer[JobOffer]):
     organization_id = serializers.UUIDField(read_only=True)
+    organization_name = serializers.CharField(source="organization.legal_name", read_only=True)
     created_by_id = serializers.UUIDField(read_only=True)
     source_id = serializers.UUIDField(read_only=True, allow_null=True)
     description_language_id = serializers.UUIDField(read_only=True, allow_null=True)
@@ -18,6 +19,7 @@ class JobOfferReadSerializer(serializers.ModelSerializer[JobOffer]):
         fields = (
             "id",
             "organization_id",
+            "organization_name",
             "created_by_id",
             "source_id",
             "external_id",

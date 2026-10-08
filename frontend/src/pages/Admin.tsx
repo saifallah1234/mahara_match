@@ -184,7 +184,9 @@ export function AdminComptes() {
                     </div>
                   </Cell>
                   <Cell className="text-[13px] text-slate">
-                    {organizationOf(user.organizationId)?.legalName ?? 'Portée plateforme'}
+                    {user.roleAssignments?.filter((entry) => entry.organizationId).map((entry) =>
+                      organizationOf(entry.organizationId)?.legalName ?? entry.organizationId
+                    ).join(', ') || 'Portée plateforme'}
                   </Cell>
                   <Cell className="text-[13px] text-slate">{formatDate(user.lastLoginAt)}</Cell>
                   <Cell>

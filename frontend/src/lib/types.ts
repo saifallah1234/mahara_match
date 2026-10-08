@@ -32,6 +32,7 @@ export interface User {
   emailVerifiedAt?: string
   lastLoginAt?: string
   roles: RoleCode[]
+  roleAssignments?: Array<{ roleCode: RoleCode; organizationId?: UUID }>
   /** organisation de rattachement, nulle pour un rôle global (ADMIN) */
   organizationId?: UUID
   jobTitle?: string

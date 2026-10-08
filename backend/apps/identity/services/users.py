@@ -9,7 +9,7 @@ from django.db.models import QuerySet
 from django.utils import timezone
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
-from backend.apps.identity.models import User, UserStatus
+from backend.apps.identity.models import OnboardingRequest, User, UserStatus
 from backend.apps.identity.services.access import require_permission
 from backend.apps.identity.services.contracts import IdentityPermissionCode
 from backend.common.exceptions import DomainNotFoundError, DomainValidationError
@@ -37,7 +37,6 @@ def get_user(actor: User, user_id: UUID | str) -> User:
 
 
 def get_own_profile(actor: User) -> User:
-    require_permission(actor, IdentityPermissionCode.READ_SELF)
     return User.objects.prefetch_related("role_assignments__role").get(id=actor.id)
 
 
@@ -51,9 +50,46 @@ def role_assignment_summaries(user: User) -> list[dict[str, Any]]:
     ]
 
 
+def workspace_summaries(user: User) -> list[dict[str, Any]]:
+    if not user.is_active:
+        return []
+    assignments = user.role_assignments.select_related("role", "organization").order_by(
+        "role__code", "organization__legal_name"
+    )
+    workspaces = []
+    for assignment in assignments:
+        organization = assignment.organization
+        if organization is not None:
+            if organization.deleted_at or organization.verification_status != "VERIFIED":
+                continue
+            if not organization.members.filter(user=user).exists():
+                continue
+        workspaces.append(
+            {
+                "role_code": assignment.role.code,
+                "organization": (
+                    {
+                        "id": organization.id,
+                        "legal_name": organization.legal_name,
+                        "type": organization.type,
+                        "verification_status": organization.verification_status,
+                    }
+                    if organization is not None
+                    else None
+                ),
+            }
+        )
+    return workspaces
+
+
 @transaction.atomic
 def create_user(actor: User, data: Mapping[str, Any]) -> User:
     require_permission(actor, IdentityPermissionCode.MANAGE_USERS)
+    return create_account(data)
+
+
+@transaction.atomic
+def create_account(data: Mapping[str, Any], *, status: str = UserStatus.PENDING) -> User:
     email = User.objects.normalize_identity_email(str(data["email"]))
     password = str(data["password"])
     candidate = User(email=email, first_name=data["first_name"], last_name=data["last_name"])
@@ -69,6 +105,7 @@ def create_user(actor: User, data: Mapping[str, Any]) -> User:
             first_name=data["first_name"],
             last_name=data["last_name"],
             phone=data.get("phone", ""),
+            status=status,
         )
     except IntegrityError as exc:
         raise DomainValidationError(details={"email": ["This email is already in use."]}) from exc
@@ -99,6 +136,15 @@ def update_status(actor: User, target: User, status: str) -> User:
     if status not in UserStatus.values:
         raise DomainValidationError(details={"status": ["Invalid account status."]})
     target = User.objects.select_for_update().get(pk=target.pk)
+    if (
+        status == UserStatus.ACTIVE
+        and OnboardingRequest.objects.filter(user=target)
+        .exclude(status=OnboardingRequest.Status.APPROVED)
+        .exists()
+    ):
+        raise DomainValidationError(
+            "Approve the organization request before activating this account."
+        )
     if target.status == status:
         return target
 

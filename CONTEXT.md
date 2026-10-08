@@ -31,9 +31,14 @@ roles remain Candidate, Recruiter, Training Manager, Ministry Manager and Admin.
 Offers use TND only with no currency column, superseding the earlier G06 direction.
 One candidate preference holds work mode, relocation and maximum commute distance;
 one internal Easy Apply application per candidate/offer retains status history.
-Frontend technology is React, TypeScript and Vite under `frontend/`. Q01–Q26 in
+Frontend technology is React, TypeScript and Vite under `frontend/`. Q01–Q27 in
 the [question register](docs/architecture/open_questions.md) record the full
 decisions and the concrete details still owed by each domain owner.
+
+**Identity onboarding decision (2026-10-08):** candidate registration activates
+immediately with a private profile. Recruiter/provider requests remain pending
+until an administrator verifies the organization and grants scoped access.
+Ministry and admin accounts are provisioned only by privileged administrators.
 
 **Discussion refinements (2026-09-25):** no departments or department labels in
 the MVP. Leave existing optional candidate/CV language fields; do not add offer
@@ -44,9 +49,11 @@ Recruiters may skip optional forward application stages or reject an active
 application; candidates may withdraw while active. Hired, rejected and withdrawn
 are terminal, with no reapplication to the same offer. Automated import rows
 without `external_id` are rejected. Raw CV extraction and conversation history
-have no age-based automatic deletion. CV/account deletion is soft deletion with
-no MVP restoration, scheduled purge or backup system; retained-data policy still
-needs review before release.
+have no age-based automatic deletion. Account deletion remains soft deletion.
+Deleted CV metadata remains for historical references; the CV object-storage bytes
+are purged when there are no applications or every linked application is rejected
+(2026-10-08 candidate workspace decision). A daily command retries failed purges.
+Retained-data policy still needs review before release.
 
 The task adds technical decisions not stated in those documents: a Django/DRF
 modular monolith, Django ORM as schema authority, Python 3.12, uv, and the chosen
@@ -148,8 +155,9 @@ CV processing separates text extraction (PyMuPDF) and OCR for scanned/image inpu
 (Tesseract or equivalent) from NLP/LLM parsing, ATS analysis and CV generation.
 Extracted profile information must be confirmed by the candidate. Under G05, raw
 CV results are stored separately from candidate-validated normalized data and
-remain linked to the CV without an age-based automatic deletion timer. CV/account
-deletion is soft deletion; retained-data policy still needs review before release
+remain linked to the CV without an age-based automatic deletion timer. Account
+deletion is soft deletion; deleted CV bytes follow the eligibility rule above.
+Retained-data policy still needs review before release
 (DM §4.B; PDF p. 9).
 
 RAG uses retrieved internal sources; GraphRAG adds relationships among

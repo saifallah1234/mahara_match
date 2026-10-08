@@ -21,7 +21,11 @@ def organization_ids_with_permission(actor: User, permission_code: str) -> set[U
         )
         .filter(
             Q(organization__isnull=True)
-            | Q(organization__members__user=actor, organization__deleted_at__isnull=True)
+            | Q(
+                organization__members__user=actor,
+                organization__deleted_at__isnull=True,
+                organization__verification_status="VERIFIED",
+            )
         )
         .values_list("organization_id", flat=True)
     )

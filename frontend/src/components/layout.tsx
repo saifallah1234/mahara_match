@@ -92,7 +92,6 @@ export const NAVIGATION: Record<RoleCode, NavItem[]> = {
     { to: '/candidat/offres', label: 'Offres', icon: 'search' },
     { to: '/candidat/candidatures', label: 'Mes candidatures', icon: 'applications' },
     { to: '/candidat/formations', label: 'Formations', icon: 'training' },
-    { to: '/candidat/assistant', label: 'Assistant', icon: 'assistant' },
   ],
   RECRUITER: [
     { to: '/recruteur', label: 'Tableau de bord', icon: 'dashboard', end: true },
@@ -113,6 +112,7 @@ export const NAVIGATION: Record<RoleCode, NavItem[]> = {
   ADMIN: [
     { to: '/admin', label: 'Tableau de bord', icon: 'dashboard', end: true },
     { to: '/admin/comptes', label: 'Comptes et rôles', icon: 'accounts' },
+    { to: '/admin/demandes', label: 'Demandes d’accès', icon: 'people' },
     { to: '/admin/organisations', label: 'Organisations', icon: 'company' },
     { to: '/admin/referentiels', label: 'Référentiels', icon: 'referential' },
     { to: '/admin/imports', label: 'Imports', icon: 'imports' },
@@ -125,7 +125,7 @@ export const NAVIGATION: Record<RoleCode, NavItem[]> = {
 /* ------------------------------------------------------------------ */
 
 export function AppShell() {
-  const { session, signOut, toasts, dismissToast } = useStore()
+  const { session, signOut, toasts, dismissToast, dataError } = useStore()
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
 
@@ -185,12 +185,13 @@ export function AppShell() {
               <span className="block truncate text-[11px] text-white/50">{user.email}</span>
             </span>
           </div>
+          {session.user.roles.length > 1 && <Link className="mt-1 block px-3 py-2 text-[13px] text-cyan" to="/espaces">Changer d’espace</Link>}
           <button
-            onClick={signOut}
+            onClick={() => void signOut().catch(() => {})}
             className="mt-1 flex w-full items-center gap-3 rounded-[6px] px-3 py-2 text-[13px] text-white/65 transition-colors hover:bg-white/5 hover:text-white"
           >
             <Icon name="logout" />
-            Changer d’espace
+            Se déconnecter
           </button>
         </div>
       </aside>
@@ -217,6 +218,8 @@ export function AppShell() {
           <Wordmark tone="sombre" />
         </header>
 
+        <div className="border-b border-amber/30 bg-amber/10 px-5 py-2 text-xs text-navy">Les données métier de cet espace restent des données de démonstration. Les actions métier locales ne sont pas enregistrées sur le serveur.</div>
+        {dataError && <div role="alert" className="border-b border-coral/30 bg-coral/10 px-5 py-2 text-sm text-coral">{dataError}</div>}
         <main className="flex-1">
           <Outlet />
         </main>

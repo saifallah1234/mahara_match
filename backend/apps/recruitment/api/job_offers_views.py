@@ -28,7 +28,9 @@ class JobOfferViewSet(GenericViewSet[JobOffer]):
 
     @extend_schema(parameters=[JobOfferFilters], responses=JobOfferReadSerializer(many=True))
     def list(self, request: Request) -> Response:
-        queryset = offer_services.list_job_offers(active_request_user(request))
+        queryset = offer_services.list_job_offers(active_request_user(request)).select_related(
+            "organization"
+        )
         queryset = JobOfferFilters(data=request.query_params).apply(queryset)
         page = self.paginate_queryset(queryset)
         return self.get_paginated_response(JobOfferReadSerializer(page, many=True).data)

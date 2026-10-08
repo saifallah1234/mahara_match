@@ -35,7 +35,9 @@ class TrainingProgramViewSet(GenericViewSet[TrainingProgram]):
             active_request_user(request),
             organization_id=uuid_query_param(request, "organization_id"),
         )
-        queryset = ProgramFilters(data=request.query_params).apply(queryset)
+        queryset = (
+            ProgramFilters(data=request.query_params).apply(queryset).select_related("organization")
+        )
         queryset = queryset.order_by("-created_at", "id")
         page = self.paginate_queryset(queryset)
         serializer = TrainingProgramReadSerializer(page, many=True)

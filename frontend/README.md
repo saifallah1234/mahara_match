@@ -17,8 +17,15 @@ npm run dev        # http://localhost:5173
 Autres commandes : `npm run build` (compile et vérifie les types), `npm run preview`
 (sert le build de production).
 
-L'écran de connexion propose un compte par rôle. Aucun mot de passe : la session
-est simulée côté client tant que l'authentification réelle n'est pas branchée.
+L'écran de connexion utilise l'API Django : e-mail et mot de passe, jeton d'accès
+en mémoire, rafraîchissement par cookie HttpOnly et sélection d'espace après
+authentification. En développement, Vite transmet `/api` au backend sur le port 8000.
+Lancer Django avec `backend.config.settings.development` : cette configuration
+autorise les origines CSRF `http://localhost:5173` et `http://127.0.0.1:5173`.
+Cela fonctionne aussi depuis un navigateur Windows lorsque les serveurs tournent
+dans WSL et que les ports locaux sont accessibles.
+`npm test` vérifie les règles de redirection. Les données métier des tableaux de
+bord restent une démonstration et sont signalées comme telles dans l'interface.
 
 ---
 
@@ -49,9 +56,11 @@ src/
     referentials.ts   Compétences, niveaux, langues, matrice RBAC
     seed.ts           Jeu de données de démonstration
   api/
-    client.ts         Point de bascule vers le backend + règles métier
+    client.ts         Transport HTTP, rafraîchissement et règles métier de démonstration
+    auth.ts           Contrats d'identité et appels API
   state/
-    store.tsx         État applicatif et actions
+    auth.tsx          Session authentifiée et espace sélectionné
+    store.tsx         Données métier de démonstration et identité réelle
   components/
     ui.tsx            Boutons, panneaux, champs, tableaux, modales
     domain.tsx        Registre de correspondance, frise de statuts, provenance CV
@@ -109,13 +118,12 @@ interne qui agit sous l'identité et les permissions de l'utilisateur.
 
 ---
 
-## Brancher le backend
+## Données métier encore à brancher
 
-Toute la couche réseau est isolée dans `src/api/client.ts`. Les données
-viennent aujourd'hui de `src/data/seed.ts`.
+L'authentification et les listes d'identité de l'administration viennent de
+l'API réelle. Les autres données métier viennent encore de `src/data/seed.ts`.
 
-1. Renseigner `VITE_API_URL` dans un fichier `.env` (voir `.env.example`).
-2. Remplacer le corps des fonctions de lecture par un appel `request(...)` :
+1. Brancher chaque domaine sur ses services API avec `request(...)` :
 
 ```ts
 export async function listOffers(): Promise<JobOffer[]> {
@@ -123,16 +131,17 @@ export async function listOffers(): Promise<JobOffer[]> {
 }
 ```
 
-3. Dans `src/state/store.tsx`, remplacer les `useState(SEED)` par un chargement
+2. Dans `src/state/store.tsx`, remplacer les `useState(SEED)` par un chargement
    via ces fonctions.
 
-Les signatures et les types ne changent pas, donc aucune page n'est à modifier.
+Les types de domaine actuels sont conçus pour la démonstration et peuvent
+nécessiter une adaptation aux contrats API réels.
 `checkApply` et `checkTransition` restent utiles côté client pour désactiver
 les actions impossibles, mais le backend doit refaire ces contrôles : ils ne
 font pas autorité depuis le navigateur.
 
-Les noms de champs sont en camelCase côté interface. Si l'API renvoie du
-snake_case, ajouter la conversion dans `request()` plutôt que dans les pages.
+Les noms de champs sont en camelCase côté interface; adapter chaque réponse API
+à la frontière du domaine concerné.
 
 ---
 

@@ -12,6 +12,10 @@ PostgreSQL integration remain gated on the Person 4 `Organization` and
   blacklisted after rotation, logout or an account-status change.
 - Only `ACTIVE` users may obtain or refresh tokens. Tokens contain identity, not
   cached roles or permissions.
+- Browser registration uses `POST auth/register` after CSRF bootstrap. It accepts
+  email, password, first_name, last_name, optional phone, and `account_type`
+  (`CANDIDATE`, `RECRUITER`, or `TRAINING_MANAGER`). Organization applicants also
+  provide `organization_name` and `matricule_fiscal`. It returns `{user_id,status}`.
 - Lists use `page` and `page_size`, defaulting to 20 and capped at 100.
 - Errors use `{"error":{"code":"...","message":"...","details":{...}}}`.
 - OpenAPI is served at `/api/v1/schema/` and Swagger UI at `/api/v1/docs/`.
@@ -30,9 +34,13 @@ inactive. Token verification also checks the current account status.
 | Resource | Methods | Authority |
 | --- | --- | --- |
 | `auth/csrf` | GET | Public CSRF-cookie bootstrap |
+| `auth/register` | POST | Public candidate registration or pending organization request; CSRF required |
 | `auth/token`, `auth/token/refresh`, `auth/token/verify` | POST | Public token operations; login and refresh require CSRF |
 | `auth/logout` | POST | Active authenticated user |
 | `users/me` | GET, PUT, PATCH | Own first name, last name and phone |
+| `onboarding-requests` | GET | `identity.rbac.manage`; paginated review queue |
+| `onboarding-requests/{id}/approve` | POST | `identity.rbac.manage`; `{organization_id}` |
+| `onboarding-requests/{id}/reject` | POST | `identity.rbac.manage` |
 | `users` | GET, POST | `identity.user.manage` |
 | `users/{id}` | GET, PUT, PATCH | `identity.user.manage` |
 | `users/{id}/status` | POST | Set one declared account status; `identity.user.manage` |
@@ -53,6 +61,21 @@ starts in `PENDING`. The privileged status action accepts only `PENDING`, `ACTIV
 side effect is encoded because neither is approved. Status assignment is idempotent.
 Every actual status change blacklists all outstanding refresh credentials. Existing
 access credentials stop authenticating as soon as the account is not `ACTIVE`.
+
+`GET users/me` is available to every active authenticated user, including one
+with no roles. It retains `role_assignments` and adds `workspaces`, each with a
+`role_code` and either a null organization or its id, legal name, type and
+verification status. Scoped workspaces require a current membership in a
+verified, non-deleted organization. Domain permissions use the same eligibility.
+
+Candidate registration atomically creates an active account, global candidate
+role and private profile; it does not mark the email verified. Recruiter and
+training-manager registration creates a pending account and review request.
+An administrator matches or creates and verifies an organization, then approves
+against its ID. Approval checks the request's matricule fiscal and organization
+type, creates membership and scoped role, and activates the account atomically.
+Rejected requests remain pending accounts. Ministry and admin accounts are
+provisioned only through privileged identity operations.
 
 ## Application-service contract
 

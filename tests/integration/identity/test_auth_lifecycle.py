@@ -2,12 +2,14 @@ from http.cookies import Morsel
 
 import pytest
 from django.conf import settings
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
 
 from backend.apps.identity.models import Role, RoleCode, User, UserRole, UserStatus
 from backend.apps.identity.services.bootstrap import seed_identity_rbac
+from backend.config.settings.development import CSRF_TRUSTED_ORIGINS
 
 pytestmark = pytest.mark.django_db
 
@@ -48,6 +50,24 @@ def assert_error_envelope(response, status_code: int) -> None:
 
 def assert_blacklisted(refresh: str) -> None:
     assert BlacklistedToken.objects.filter(token__token=refresh).exists()
+
+
+@pytest.mark.parametrize(
+    ("origin", "expected_status"),
+    [(origin, 401) for origin in CSRF_TRUSTED_ORIGINS] + [("http://untrusted.example", 403)],
+)
+@override_settings(CSRF_TRUSTED_ORIGINS=CSRF_TRUSTED_ORIGINS)
+def test_session_bootstrap_checks_browser_origin(origin: str, expected_status: int) -> None:
+    client, csrf = csrf_client()
+    response = client.post(
+        reverse("token-refresh"),
+        format="json",
+        HTTP_HOST="localhost:8000",
+        HTTP_ORIGIN=origin,
+        HTTP_X_CSRFTOKEN=csrf,
+    )
+    # With no refresh cookie, an accepted origin reaches the unauthenticated response.
+    assert_error_envelope(response, expected_status)
 
 
 def test_login_requires_csrf_and_returns_refresh_only_as_hardened_cookie() -> None:

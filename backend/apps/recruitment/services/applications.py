@@ -48,7 +48,8 @@ def download_application_cv(actor: User, application_id: UUID | str) -> tuple[Do
     application = get_application(actor, application_id)
     cv = application.cv
     if (
-        cv.deleted_at is not None
+        (cv.deleted_at is not None and application.status in {"REJECTED", "WITHDRAWN", "HIRED"})
+        or cv.bytes_purged_at is not None
         or cv.candidate_id != application.candidate_id
         or cv.document.owner_user_id != application.candidate.user_id
     ):

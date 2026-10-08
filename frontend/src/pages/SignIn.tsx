@@ -1,63 +1,55 @@
-import { useNavigate } from 'react-router-dom'
-import { Wordmark } from '../components/layout'
-import { useStore } from '../state/store'
-import { ROLE_HOME, ROLE_LABEL } from '../lib/format'
-import type { RoleCode, UUID } from '../lib/types'
-
-/** Comptes de démonstration : un par rôle, pour parcourir chaque espace. */
-const ACCOUNTS: Array<{ userId: UUID; role: RoleCode; name: string; context: string }> = [
-  { userId: 'u-emna', role: 'CANDIDATE', name: 'Emna Khelifi', context: 'Jeune diplômée, Bizerte — 3 candidatures en cours' },
-  { userId: 'u-sofiane', role: 'RECRUITER', name: 'Sofiane Mabrouk', context: 'TelNet Ariana — 4 offres publiées' },
-  { userId: 'u-leila', role: 'TRAINING_MANAGER', name: 'Leila Ferchichi', context: 'Code Line Academy — 4 programmes' },
-  { userId: 'u-nadia', role: 'MINISTRY_MANAGER', name: 'Nadia Bouzid', context: 'Ministère — indicateurs nationaux' },
-  { userId: 'u-admin', role: 'ADMIN', name: 'Rania Saidi', context: 'Administration de la plateforme' },
-]
+import { useState, type FormEvent } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ApiError } from '../api/client'
+import { AuthLayout } from '../components/AuthLayout'
+import { Button, Field, Input, Note } from '../components/ui'
+import { ROLE_HOME } from '../lib/format'
+import { loginPath } from '../lib/authRouting'
+import { useAuth } from '../state/auth'
 
 export default function SignIn() {
-  const { signIn } = useStore()
+  const { login, restore, status, user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const from = (location.state as { from?: string } | null)?.from
 
-  function enter(userId: UUID, role: RoleCode) {
-    signIn(userId, role)
-    navigate(ROLE_HOME[role])
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    setBusy(true)
+    setError('')
+    try {
+      const current = await login(email, password)
+      navigate(loginPath(current.workspaces, from), { replace: true, state: { from } })
+    } catch (failure) {
+      setError(failure instanceof ApiError && failure.status === 401
+        ? 'Identifiants incorrects ou compte inactif.' : 'Connexion impossible. Réessayez.')
+    } finally { setBusy(false) }
   }
 
-  return (
-    <div className="flex min-h-screen flex-col bg-navy">
-      <header className="mx-auto w-full max-w-3xl px-5 py-6 sm:px-8">
-        <a href="/" onClick={(e) => { e.preventDefault(); navigate('/') }}>
-          <Wordmark />
-        </a>
-      </header>
-
-      <main className="mx-auto w-full max-w-3xl flex-1 px-5 pb-12 sm:px-8">
-        <h1 className="text-[26px] text-white">Choisissez un espace</h1>
-        <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-white/65">
-          La démonstration ouvre directement l’espace du rôle sélectionné, avec un jeu de données fictives cohérent
-          entre tous les acteurs. Vous pouvez changer d’espace à tout moment depuis le menu.
-        </p>
-
-        <ul className="mt-8 grid gap-px overflow-hidden rounded-[10px] bg-white/10 sm:grid-cols-2">
-          {ACCOUNTS.map((account) => (
-            <li key={account.userId}>
-              <button
-                onClick={() => enter(account.userId, account.role)}
-                className="group flex h-full w-full flex-col gap-1 bg-navy px-5 py-4 text-left transition-colors hover:bg-navy-soft"
-              >
-                <span className="text-[13px] text-cyan">{ROLE_LABEL[account.role]}</span>
-                <span className="text-[15px] font-medium text-white">{account.name}</span>
-                <span className="text-[12.5px] leading-relaxed text-white/55">{account.context}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        <p className="mt-6 text-[12px] leading-relaxed text-white/45">
-          En production, cet écran est remplacé par une authentification par e-mail et mot de passe, ou par un
-          fournisseur d’identité externe. Les permissions restent portées par les rôles et l’organisation de
-          rattachement.
-        </p>
-      </main>
-    </div>
-  )
+  return <AuthLayout title="Heureux de vous retrouver" description="Connectez-vous pour accéder à votre espace Mahara Match.">
+    {status === 'authenticated' && user ? <>
+      <Note>Vous êtes connecté avec {user.email}.</Note>
+      <Link className="mt-5 inline-flex font-medium text-teal hover:underline" to={user.workspaces.length === 1 ? ROLE_HOME[user.workspaces[0].role_code] : '/espaces'}>Ouvrir mon espace →</Link>
+    </> : status === 'loading' ? <p role="status" className="py-6 text-sm text-slate">Chargement de la session…</p>
+      : status === 'error' ? <div className="space-y-4">
+        <div role="alert"><Note tone="danger">Session indisponible. Réessayez dans quelques instants.</Note></div>
+        <Button onClick={() => void restore()}>Réessayer</Button>
+      </div> : <>
+        <form className="space-y-5" aria-busy={busy} onSubmit={(event) => void submit(event)}>
+          <Field label="Adresse e-mail" required>
+            <Input type="email" autoComplete="username" placeholder="vous@exemple.tn" required value={email} onChange={(event) => setEmail(event.target.value)} />
+          </Field>
+          <Field label="Mot de passe" required>
+            <Input type="password" autoComplete="current-password" placeholder="Votre mot de passe" required value={password} onChange={(event) => setPassword(event.target.value)} />
+          </Field>
+          {error && <div role="alert"><Note tone="danger">{error}</Note></div>}
+          <Button type="submit" className="w-full py-3" disabled={busy}>{busy ? 'Connexion…' : 'Se connecter'}</Button>
+        </form>
+        <p className="mt-6 border-t border-line pt-5 text-center text-sm text-slate">Pas encore de compte ? <Link className="font-medium text-teal hover:underline" to="/inscription">Créer un compte</Link></p>
+      </>}
+  </AuthLayout>
 }

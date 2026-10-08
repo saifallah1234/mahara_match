@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -9,7 +10,6 @@ import {
 import {
   APPLICATIONS,
   AUDIT_LOGS,
-  CANDIDATE_PROFILES,
   CVS,
   CV_ANALYSES,
   DATA_SOURCES,
@@ -18,11 +18,9 @@ import {
   INTERVIEWS,
   JOB_OFFERS,
   NOTIFICATIONS,
-  ORGANIZATIONS,
   TRAINING_ENROLLMENTS,
   TRAINING_PROGRAMS,
   TRAINING_SESSIONS,
-  USERS,
 } from '../data/seed'
 import { SKILLS } from '../data/referentials'
 import type {
@@ -41,6 +39,9 @@ import type {
   UUID,
 } from '../lib/types'
 import { checkApply, checkTransition } from '../api/client'
+import { ApiError, request } from '../api/client'
+import { useAuth } from './auth'
+import { allPages, type CurrentUser } from '../api/auth'
 
 interface Session {
   user: User
@@ -72,11 +73,11 @@ interface StoreValue {
   auditLogs: AuditLog[]
   notifications: typeof NOTIFICATIONS
   skills: typeof SKILLS
+  dataError: string | null
 
   /* Session */
   session: Session | null
-  signIn: (userId: UUID, role: RoleCode) => void
-  signOut: () => void
+  signOut: () => Promise<void>
 
   /* Sélecteurs */
   currentProfile: CandidateProfile | null
@@ -111,9 +112,10 @@ let idSeq = 0
 const nextId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${idSeq++}`
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [users, setUsers] = useState<User[]>(USERS)
-  const [organizations, setOrganizations] = useState<Organization[]>(ORGANIZATIONS)
-  const [profiles, setProfiles] = useState<CandidateProfile[]>(CANDIDATE_PROFILES)
+  const auth = useAuth()
+  const [users, setUsers] = useState<User[]>([])
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [profiles, setProfiles] = useState<CandidateProfile[]>([])
   const [cvs] = useState<CVDocument[]>(CVS)
   const [offers, setOffers] = useState<JobOffer[]>(JOB_OFFERS)
   const [applications, setApplications] = useState<Application[]>(APPLICATIONS)
@@ -123,8 +125,69 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [enrollments, setEnrollments] = useState<TrainingEnrollment[]>(TRAINING_ENROLLMENTS)
   const [skills, setSkills] = useState(SKILLS)
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(AUDIT_LOGS)
-  const [session, setSession] = useState<Session | null>(null)
+  const [dataError, setDataError] = useState<string | null>(null)
+  const session = useMemo<Session | null>(() => {
+    if (!auth.user || !auth.workspace) return null
+    const user = auth.user
+    return {
+      user: {
+        id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name,
+        status: user.status, roles: user.workspaces.map((space) => space.role_code),
+        roleAssignments: user.role_assignments.map((entry) => ({ roleCode: entry.role_code, organizationId: entry.organization_id ?? undefined })),
+        organizationId: auth.workspace.organization?.id,
+      },
+      role: auth.workspace.role_code,
+    }
+  }, [auth.user, auth.workspace])
   const [toasts, setToasts] = useState<Toast[]>([])
+  const visibleUsers = session?.role === 'ADMIN' ? users : session ? [session.user] : []
+  const visibleOrganizations = session?.role === 'ADMIN' ? organizations
+    : organizations.filter((org) => org.id === session?.user.organizationId)
+
+  useEffect(() => {
+    let active = true
+    setDataError(null)
+    if (!session) { setUsers([]); setOrganizations([]); setProfiles([]); return }
+    setUsers([session.user])
+    const organization = auth.workspace?.organization
+    setOrganizations(organization ? [{
+      id: organization.id, legalName: organization.legal_name,
+      type: organization.type as Organization['type'],
+      verificationStatus: organization.verification_status as Organization['verificationStatus'],
+      createdAt: '',
+    }] : [])
+    if (session.role === 'ADMIN') {
+      void allPages<CurrentUser>('/users/').then((accounts) => { if (active) setUsers(accounts.map((user) => ({
+        id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name,
+        status: user.status, roles: user.role_assignments.map((assignment) => assignment.role_code),
+        roleAssignments: user.role_assignments.map((entry) => ({ roleCode: entry.role_code, organizationId: entry.organization_id ?? undefined })),
+        organizationId: user.role_assignments.find((assignment) => assignment.organization_id)?.organization_id ?? undefined,
+      }))) }).catch((error) => { if (active) setDataError(error instanceof ApiError && error.status === 403 ? 'Accès refusé aux comptes.' : 'Impossible de charger les comptes.') })
+      void allPages<{ id: string; legal_name: string; type: Organization['type']; verification_status: Organization['verificationStatus']; created_at: string; matricule_fiscal: string; city: string; governorate: string }>('/organizations/')
+        .then((orgs) => { if (active) setOrganizations(orgs.map((org) => ({
+          id: org.id, legalName: org.legal_name, type: org.type,
+          verificationStatus: org.verification_status, createdAt: org.created_at,
+          matriculeFiscal: org.matricule_fiscal, city: org.city, governorate: org.governorate,
+        }))) }).catch((error) => { if (active) setDataError(error instanceof ApiError && error.status === 403 ? 'Accès refusé aux organisations.' : 'Impossible de charger les organisations.') })
+    }
+    if (session.role === 'CANDIDATE') {
+      void request<{ id: string; governorate: string; city: string; headline: string; summary: string; employment_status: string; desired_job_title: string; availability_date: string | null; profile_visibility: CandidateProfile['profileVisibility']; completion_score: string }>('/candidate-profiles/me/')
+        .then((profile) => { if (active) setProfiles([{
+          id: profile.id, userId: session.user.id, governorate: profile.governorate,
+          city: profile.city, headline: profile.headline, summary: profile.summary,
+          employmentStatus: profile.employment_status, desiredJobTitle: profile.desired_job_title,
+          availabilityDate: profile.availability_date ?? undefined,
+          profileVisibility: profile.profile_visibility, completionScore: Number(profile.completion_score),
+          maxDistanceKm: 0, relocation: 'CANNOT_RELOCATE', preferredWorkMode: 'ONSITE',
+          experiences: [], educations: [], certifications: [], projects: [], skills: [], languages: [],
+        }]) }).catch((error) => {
+          if (!active) return
+          setProfiles([])
+          setDataError(error instanceof ApiError && error.status === 403 ? 'Accès refusé au profil.' : 'Impossible de charger le profil.')
+        })
+    } else setProfiles([])
+    return () => { active = false }
+  }, [session?.user.id, session?.role, session?.user.organizationId])
 
   const pushToast = useCallback((tone: Toast['tone'], message: string) => {
     const id = ++toastSeq
@@ -139,32 +202,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   /** Toute opération sensible laisse une trace, y compris celles de l'agent. */
   const trace = useCallback(
     (action: string, entityType: string, entityId: string, actorKind: AuditLog['actorKind'] = 'UTILISATEUR') => {
-      setSession((current) => {
-        const label = current ? `${current.user.firstName} ${current.user.lastName}` : 'Système'
-        setAuditLogs((logs) => [
-          { id: nextId('al'), actorLabel: actorKind === 'AGENT_IA' ? 'Agent conversationnel' : label, actorKind, action, entityType, entityId, createdAt: new Date().toISOString() },
-          ...logs,
-        ])
-        return current
-      })
+      const label = session ? `${session.user.firstName} ${session.user.lastName}` : 'Système'
+      setAuditLogs((logs) => [
+        { id: nextId('al'), actorLabel: actorKind === 'AGENT_IA' ? 'Agent conversationnel' : label, actorKind, action, entityType, entityId, createdAt: new Date().toISOString() },
+        ...logs,
+      ])
     },
-    [],
+    [session],
   )
+  const signOut = auth.logout
 
-  const signIn = useCallback((userId: UUID, role: RoleCode) => {
-    const user = USERS.find((u) => u.id === userId)
-    if (user) setSession({ user, role })
-  }, [])
-
-  const signOut = useCallback(() => setSession(null), [])
-
-  const userOf = useCallback((id: UUID) => users.find((u) => u.id === id), [users])
+  const userOf = useCallback((id: UUID) => visibleUsers.find((u) => u.id === id), [visibleUsers])
   const profileOf = useCallback((id: UUID) => profiles.find((p) => p.id === id), [profiles])
   const offerOf = useCallback((id: UUID) => offers.find((o) => o.id === id), [offers])
   const cvOf = useCallback((id: UUID) => cvs.find((c) => c.id === id), [cvs])
   const organizationOf = useCallback(
-    (id?: UUID) => (id ? organizations.find((o) => o.id === id) : undefined),
-    [organizations],
+    (id?: UUID) => (id ? visibleOrganizations.find((o) => o.id === id) : undefined),
+    [visibleOrganizations],
   )
 
   const currentProfile = useMemo(() => {
@@ -314,20 +368,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const verifyOrganization = useCallback<StoreValue['verifyOrganization']>(
     (orgId, decision) => {
-      setOrganizations((list) => list.map((o) => (o.id === orgId ? { ...o, verificationStatus: decision } : o)))
-      trace('Vérification d’organisation', 'Organisation', orgId)
-      pushToast('succes', decision === 'VERIFIED' ? 'Organisation vérifiée.' : 'Organisation rejetée.')
+      void request(`/organizations/${orgId}/${decision === 'VERIFIED' ? 'verify' : 'reject'}/`, { method: 'POST' })
+        .then(() => {
+          setOrganizations((list) => list.map((o) => (o.id === orgId ? { ...o, verificationStatus: decision } : o)))
+          pushToast('succes', decision === 'VERIFIED' ? 'Organisation vérifiée.' : 'Organisation rejetée.')
+        }).catch(() => pushToast('echec', 'La décision a été refusée.'))
     },
-    [pushToast, trace],
+    [pushToast],
   )
 
   const setUserStatus = useCallback<StoreValue['setUserStatus']>(
     (userId, status) => {
-      setUsers((list) => list.map((u) => (u.id === userId ? { ...u, status } : u)))
-      trace('Changement de statut de compte', 'Compte', userId)
-      pushToast('succes', 'Statut du compte mis à jour.')
+      void request(`/users/${userId}/status/`, { method: 'POST', body: JSON.stringify({ status }) })
+        .then(() => {
+          setUsers((list) => list.map((u) => (u.id === userId ? { ...u, status } : u)))
+          pushToast('succes', 'Statut du compte mis à jour.')
+        }).catch(() => pushToast('echec', 'Le changement de statut a été refusé.'))
     },
-    [pushToast, trace],
+    [pushToast],
   )
 
   const addSkillAlias = useCallback<StoreValue['addSkillAlias']>(
@@ -342,8 +400,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   )
 
   const value: StoreValue = {
-    users,
-    organizations,
+    users: visibleUsers,
+    organizations: visibleOrganizations,
     profiles,
     cvs,
     offers,
@@ -359,8 +417,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     auditLogs,
     notifications: NOTIFICATIONS,
     skills,
+    dataError,
     session,
-    signIn,
     signOut,
     currentProfile,
     organizationOf,

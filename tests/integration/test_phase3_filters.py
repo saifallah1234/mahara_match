@@ -31,6 +31,47 @@ def client_for(actor: Any) -> APIClient:
     return client
 
 
+def test_candidate_read_fields_use_visible_records(phase3: dict[str, Any]) -> None:
+    offer = JobOffer.objects.create(
+        organization=phase3["recruiter_org"],
+        created_by=phase3["recruiter"],
+        title="Visible job",
+        description="Work",
+        status="PUBLISHED",
+        easy_apply=True,
+    )
+    document = Document.objects.create(
+        owner_user=phase3["candidate"],
+        type="CV",
+        storage_uri="private/cv",
+        file_name="cv.pdf",
+        mime_type="application/pdf",
+        size_bytes=1,
+        uploaded_at=timezone.now(),
+    )
+    cv = CV.objects.create(
+        candidate=phase3["candidate_profile"], document=document, title="CV", version_number=1
+    )
+    Application.objects.create(candidate=cv.candidate, offer=offer, cv=cv, status="SUBMITTED")
+    offer.status = "CLOSED"
+    offer.save(update_fields=["status"])
+
+    client = client_for(phase3["candidate"])
+    assert (
+        client.get(reverse("application-list")).json()["results"][0]["offer_title"] == "Visible job"
+    )
+    offer.status = "PUBLISHED"
+    offer.save(update_fields=["status"])
+    assert (
+        client.get(reverse("job-offer-list")).json()["results"][0]["organization_name"]
+        == phase3["recruiter_org"].legal_name
+    )
+    assert (
+        client.get(reverse("training:program-list")).json()["results"][0]["organization_name"]
+        == phase3["provider_org"].legal_name
+    )
+
+
 @pytest.fixture
 def catalog(phase3: dict[str, Any]) -> dict[str, Any]:
     now = timezone.now()

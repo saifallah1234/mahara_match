@@ -1,8 +1,7 @@
 # Candidate API v1 contract
 
 The candidate, document, taxonomy, recruitment and identity apps have applied
-initial migrations. Database smoke checks cover the migrated schema and key access
-paths; dedicated integration tests remain future work.
+initial migrations. Integration tests cover access, upload, download and deletion.
 
 - `/api/v1/candidate-profiles/me/`: GET, POST (create once), PUT and PATCH for the
   current candidate. `completion_score` and identity linkage are system managed.
@@ -10,10 +9,11 @@ paths; dedicated integration tests remain future work.
   discovery list and detail (GET only), with the redacted contract below.
 - `/api/v1/experiences/`, `/educations/`, `/candidate-languages/`,
   `/candidate-skills/`, `/certifications/`, `/candidate-preferences/`, `/projects/`
-  and `/cvs/`: candidate owned list, create, retrieve, PUT and PATCH. No DELETE.
-- `/api/v1/documents/`: owner scoped list and retrieve. Storage metadata creation
-  is available to trusted application services, not the HTTP API. The storage URI
-  is never returned by the candidate document endpoint.
+  and `/cvs/`: candidate owned list, create, retrieve, PUT and PATCH. CV versions
+  also support DELETE; structured profile records do not.
+- `/api/v1/documents/`: owner scoped list and retrieve, multipart upload with
+  `file` and `type=CV`, and authenticated `/documents/{id}/download/`. The storage
+  URI is never returned by the candidate document endpoint.
 - `/api/v1/skills/`, `/languages/`, `/education-levels/`: authenticated read only
   reference catalogs.
 - `/api/v1/cv-analysis-results/`: candidate owned read only ATS results.
@@ -25,6 +25,14 @@ version number is allocated per candidate and at most one CV can be primary.
 Scan/parse results, raw parsed JSON, skill validation provenance, completion scores
 and ATS analysis results have no candidate write route. Only candidate confirmed
 information is written to structured records.
+
+Deleting a CV hides it from the candidate CV/document lists and prevents new
+applications with it. An existing application retains its exact file while open.
+After deletion, a closed application cannot download the file, even if another
+open application still can. Object bytes are purged when the CV has no applications
+or every linked application is rejected. Metadata and application references stay.
+The idempotent `purge_deleted_cvs` management command retries storage failures;
+schedule it daily in deployment.
 
 One `candidate_preferences` record per candidate contains work mode, relocation
 and maximum preferred commute distance in kilometres (Q09). Missing distance means no

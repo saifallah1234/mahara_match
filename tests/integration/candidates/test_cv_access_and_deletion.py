@@ -281,16 +281,115 @@ def test_historical_application_reference_remains_after_cv_deletion() -> None:
 
 
 @patch("backend.apps.documents.services.documents.object_storage.download_object")
-def test_deleted_cv_download_is_blocked(download_object) -> None:
+def test_deleted_cv_remains_available_to_open_application(download_object) -> None:
     user, profile = candidate()
     cv = cv_for(user, profile, 1, PDF_V1)
     application = application_for(profile, cv, organization("10"))
     client = client_for(user)
     client.delete(reverse("cv-detail", args=(cv.id,)))
+    download_object.return_value = PDF_V1
 
     assert client.get(reverse("document-download", args=(cv.document_id,))).status_code == 404
-    assert client.get(reverse("application-cv", args=(application.id,))).status_code == 404
-    download_object.assert_not_called()
+    assert streamed(client.get(reverse("application-cv", args=(application.id,)))) == PDF_V1
+    download_object.assert_called_once_with(cv.document.storage_uri)
+
+
+@patch("backend.apps.candidates.services.records.object_storage.delete_object")
+@patch("backend.apps.documents.services.documents.object_storage.download_object")
+def test_deleted_cv_purges_only_after_every_application_rejected(
+    download_object, delete_object
+) -> None:
+    from backend.apps.candidates.services.records import purge_cv_bytes
+
+    user, profile = candidate()
+    cv = cv_for(user, profile, 1, PDF_V1)
+    first = application_for(profile, cv, organization("21"))
+    second = application_for(profile, cv, organization("22"))
+    client = client_for(user)
+    download_object.return_value = PDF_V1
+    assert client.delete(reverse("cv-detail", args=(cv.id,))).status_code == 204
+    delete_object.assert_not_called()
+
+    first.status = ApplicationStatus.REJECTED
+    first.save(update_fields=["status"])
+    assert client.get(reverse("application-cv", args=(first.id,))).status_code == 404
+    assert streamed(client.get(reverse("application-cv", args=(second.id,)))) == PDF_V1
+    assert purge_cv_bytes(cv.id) is False
+
+    second.status = ApplicationStatus.REJECTED
+    second.save(update_fields=["status"])
+    assert purge_cv_bytes(cv.id) is True
+    assert purge_cv_bytes(cv.id) is False
+    cv.refresh_from_db()
+    assert cv.bytes_purged_at is not None
+    delete_object.assert_called_once_with(cv.document.storage_uri)
+
+
+@patch("backend.apps.candidates.services.records.object_storage.delete_object")
+def test_purge_command_retries_storage_failure(delete_object) -> None:
+    from django.core.management import call_command
+
+    user, profile = candidate()
+    cv = cv_for(user, profile, 1, PDF_V1)
+    delete_object.side_effect = RuntimeError("storage unavailable")
+    assert client_for(user).delete(reverse("cv-detail", args=(cv.id,))).status_code == 204
+    cv.refresh_from_db()
+    assert cv.bytes_purged_at is None
+
+    delete_object.side_effect = None
+    call_command("purge_deleted_cvs")
+    cv.refresh_from_db()
+    assert cv.bytes_purged_at is not None
+    assert delete_object.call_count == 2
+
+
+@patch("backend.apps.candidates.services.records.object_storage.delete_object")
+def test_final_rejection_purges_deleted_cv_immediately(delete_object) -> None:
+    from backend.apps.recruitment.services.application_lifecycle import transition_application
+
+    user, profile = candidate()
+    cv = cv_for(user, profile, 1, PDF_V1)
+    org = organization("23")
+    application = application_for(profile, cv, org)
+    reviewer = account("reviewer-final@example.test")
+    recruiter(reviewer, org)
+    assert client_for(user).delete(reverse("cv-detail", args=(cv.id,))).status_code == 204
+    transition_application(reviewer, application.id, ApplicationStatus.REJECTED)
+
+    cv.refresh_from_db()
+    assert cv.bytes_purged_at is not None
+    delete_object.assert_called_once_with(cv.document.storage_uri)
+
+
+@pytest.mark.parametrize("status", [ApplicationStatus.WITHDRAWN, ApplicationStatus.HIRED])
+@patch("backend.apps.candidates.services.records.object_storage.delete_object")
+def test_withdrawn_or_hired_application_retains_deleted_cv(delete_object, status: str) -> None:
+    from backend.apps.candidates.services.records import purge_cv_bytes
+
+    user, profile = candidate()
+    cv = cv_for(user, profile, 1, PDF_V1)
+    application = application_for(profile, cv, organization("24"))
+    application.status = status
+    application.save(update_fields=["status"])
+    assert client_for(user).delete(reverse("cv-detail", args=(cv.id,))).status_code == 204
+
+    assert purge_cv_bytes(cv.id) is False
+    assert (
+        client_for(user).get(reverse("application-cv", args=(application.id,))).status_code == 404
+    )
+    cv.refresh_from_db()
+    assert cv.bytes_purged_at is None
+    delete_object.assert_not_called()
+
+
+@patch("backend.apps.candidates.services.records.object_storage.delete_object")
+def test_deleted_cv_without_applications_purges_immediately(delete_object) -> None:
+    user, profile = candidate()
+    cv = cv_for(user, profile, 1, PDF_V1)
+    assert client_for(user).delete(reverse("cv-detail", args=(cv.id,))).status_code == 204
+    cv.refresh_from_db()
+    assert cv.bytes_purged_at is not None
+    delete_object.assert_called_once_with(cv.document.storage_uri)
 
 
 def test_deleted_account_cannot_authenticate_or_use_normal_apis() -> None:

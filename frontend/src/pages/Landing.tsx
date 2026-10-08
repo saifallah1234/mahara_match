@@ -1,12 +1,8 @@
 import { Link } from 'react-router-dom'
-import { MatchLedger } from '../components/domain'
 import { Wordmark } from '../components/layout'
-import { computeMatch } from '../lib/matching'
-import { CANDIDATE_PROFILES, JOB_OFFERS } from '../data/seed'
-import { SKILLS } from '../data/referentials'
 
 const ACTORS = [
-  { role: 'Chercheur d’emploi', detail: 'Profil, CV ATS, offres recommandées, suivi des candidatures, formations.' },
+  { role: 'Chercheur d’emploi', detail: 'Profil, CV, recherche d’offres, suivi des candidatures et formations.' },
   { role: 'Employeur / Recruteur', detail: 'Espace entreprise et filiales, offres, présélection expliquée, entretiens.' },
   { role: 'Organisme de formation', detail: 'Catalogue, sessions, inscriptions, suivi des compétences acquises.' },
   { role: 'Responsable du ministère', detail: 'Tableaux de bord nationaux et régionaux, statistiques exportables.' },
@@ -15,10 +11,9 @@ const ACTORS = [
 
 const AUTOMATED = [
   'Recherche et filtrage des offres',
-  'Extraction et structuration du CV',
-  'Score de correspondance expliqué',
-  'Rédaction de messages de candidature',
-  'Suivi des statuts et notifications',
+  'Dépôt et téléchargement des CV',
+  'Suivi des candidatures et des entretiens',
+  'Inscription aux formations',
 ]
 
 const HUMAN = [
@@ -29,10 +24,6 @@ const HUMAN = [
 ]
 
 export default function Landing() {
-  const profile = CANDIDATE_PROFILES[0]
-  const offer = JOB_OFFERS[0]
-  const match = computeMatch(profile, offer, SKILLS)
-
   return (
     <div className="min-h-screen">
       {/* En-tête */}
@@ -43,29 +34,29 @@ export default function Landing() {
             to="/connexion"
             className="rounded-[6px] bg-teal px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-deep"
           >
-            Ouvrir la démonstration
+            Se connecter
           </Link>
         </div>
       </header>
 
-      {/* Héros : le calcul lui-même, pas une promesse */}
+      {/* Présentation */}
       <section className="grid-veil bg-navy">
         <div className="mx-auto grid max-w-6xl gap-10 px-5 pb-16 pt-10 sm:px-8 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-14 lg:pb-20">
           <div>
             <p className="text-[13px] text-cyan">Plateforme nationale · emploi, compétences et formation</p>
             <h1 className="mt-3 text-[34px] leading-[1.1] text-white sm:text-[42px]">
-              Un score de correspondance que l’on peut refaire à la main.
+              Vos démarches d’emploi au même endroit.
             </h1>
             <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-white/70">
               Mahara Match relie chercheurs d’emploi, employeurs, formateurs et ministère autour des compétences
-              réelles. L’IA prépare et explique ; la décision reste humaine.
+              réelles. Consultez les offres, suivez vos candidatures et trouvez des formations.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
                 to="/connexion"
                 className="rounded-[6px] bg-teal px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-teal-deep"
               >
-                Entrer dans la plateforme
+                Se connecter
               </Link>
               <a
                 href="#acteurs"
@@ -75,35 +66,30 @@ export default function Landing() {
               </a>
             </div>
             <p className="mt-6 text-[12px] text-white/45">
-              Faculté des Sciences de Bizerte · 2026–2027 · données de démonstration
+              Faculté des Sciences de Bizerte · 2026–2027
             </p>
           </div>
 
           <div>
-            <p className="mb-3 text-[13px] text-white/60">
-              Offre OF-218 · Développeur junior, Ariana — profil d’Emna Khelifi
-            </p>
-            <MatchLedger match={match} compact />
-            <p className="mt-3 text-[12px] leading-relaxed text-white/55">
-              Docker n’apparaît pas dans le profil. La plateforme le signale et propose les formations qui enseignent
-              cette compétence, plutôt que d’écarter la candidature.
-            </p>
+            <div className="rounded-[10px] border border-white/15 bg-white/10 p-6 text-white">
+              <h2 className="text-lg font-semibold">Espace candidat</h2>
+              <p className="mt-3 text-sm text-white/75">Renseignez votre profil, importez un CV, postulez aux offres publiées et consultez vos dossiers.</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Le partage des rôles entre machine et humain */}
+      {/* Fonctionnalités */}
       <section className="border-b border-line bg-white">
         <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
-          <h2 className="text-[26px] text-navy">L’IA prépare, l’humain décide</h2>
+          <h2 className="text-[26px] text-navy">Des démarches suivies au même endroit</h2>
           <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-slate">
-            Mahara Match n’automatise pas la décision de recrutement. Il automatise le répétitif et rend chaque
-            recommandation vérifiable.
+            Les informations du profil et des dossiers proviennent des services de la plateforme.
           </p>
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2">
             <div className="rounded-[10px] border border-line bg-mist/40 p-5">
-              <h3 className="text-[14px] font-semibold text-navy">Automatisé par la plateforme</h3>
+              <h3 className="text-[14px] font-semibold text-navy">Dans l’espace candidat</h3>
               <ul className="mt-3 space-y-2">
                 {AUTOMATED.map((item) => (
                   <li key={item} className="flex gap-2.5 text-[13.5px] text-navy">
@@ -154,8 +140,8 @@ export default function Landing() {
               {[
                 ['Accès par rôles', 'Permissions par rôle et par organisation.'],
                 ['Confirmation', 'Aucune action externe sans accord explicite.'],
-                ['Sources citées', 'Chaque explication renvoie à ce qui l’a produite.'],
-                ['Journal d’audit', 'Opérations sensibles tracées, agent compris.'],
+                ['Dossiers suivis', 'Statuts et entretiens consultables.'],
+                ['Historique', 'Les candidatures restent consultables après clôture.'],
               ].map(([title, detail]) => (
                 <li key={title}>
                   <p className="text-[13.5px] font-medium text-navy">{title}</p>
