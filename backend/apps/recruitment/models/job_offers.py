@@ -25,6 +25,7 @@ class JobOffer(models.Model):
         on_delete=models.PROTECT,
         related_name="job_offers",
     )
+    company_name: Any = models.CharField(max_length=255, blank=True)
     created_by: Any = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

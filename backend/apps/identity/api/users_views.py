@@ -12,6 +12,7 @@ from backend.apps.identity.api.users_serializers import (
     UserCreateSerializer,
     UserProfileUpdateSerializer,
     UserReadSerializer,
+    UserStatusUpdateSerializer,
 )
 from backend.apps.identity.models import User
 from backend.apps.identity.services import users as user_services
@@ -39,9 +40,11 @@ class UserViewSet(GenericViewSet[User]):
         user = user_services.get_user(active_request_user(request), pk)
         return Response(UserReadSerializer(user).data)
 
+    @extend_schema(request=UserProfileUpdateSerializer, responses=UserReadSerializer)
     def update(self, request: Request, pk: UUID) -> Response:
         return self._update(request, pk, partial=False)
 
+    @extend_schema(request=UserProfileUpdateSerializer, responses=UserReadSerializer)
     def partial_update(self, request: Request, pk: UUID) -> Response:
         return self._update(request, pk, partial=True)
 
@@ -53,9 +56,40 @@ class UserViewSet(GenericViewSet[User]):
         user = user_services.update_profile(actor, target, serializer.validated_data)
         return Response(UserReadSerializer(user).data)
 
-    @action(detail=False, methods=("get", "put", "patch"), url_path="me")
+    @extend_schema(
+        description="Set an account status. Requires identity.user.manage.",
+        request=UserStatusUpdateSerializer,
+        responses=UserReadSerializer,
+    )
+    @action(detail=True, methods=("post",), url_path="status")
+    def status(self, request: Request, pk: UUID) -> Response:
+        actor = active_request_user(request)
+        target = user_services.get_user(actor, pk)
+        serializer = UserStatusUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = user_services.update_status(actor, target, serializer.validated_data["status"])
+        return Response(UserReadSerializer(user).data)
+
+    @extend_schema(
+        methods=("GET",),
+        responses=UserReadSerializer,
+    )
+    @extend_schema(
+        methods=("PUT", "PATCH"),
+        request=UserProfileUpdateSerializer,
+        responses=UserReadSerializer,
+    )
+    @extend_schema(
+        methods=("DELETE",),
+        description="Soft-delete the authenticated account and invalidate its credentials.",
+        responses={204: None},
+    )
+    @action(detail=False, methods=("get", "put", "patch", "delete"), url_path="me")
     def me(self, request: Request) -> Response:
         actor = active_request_user(request)
+        if request.method == "DELETE":
+            user_services.delete_own_account(actor)
+            return Response(status=status.HTTP_204_NO_CONTENT)
         user = user_services.get_own_profile(actor)
         if request.method == "GET":
             return Response(UserReadSerializer(user).data)

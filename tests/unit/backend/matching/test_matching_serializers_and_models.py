@@ -27,4 +27,6 @@ def test_offer_matches_route_is_read_only() -> None:
     from django.urls import resolve
 
     func: Any = resolve("/api/v1/offer-matches/").func
-    assert func.actions == {"get": "list"}
+    assert {method: action for method, action in func.actions.items() if method != "head"} == {
+        "get": "list"
+    }

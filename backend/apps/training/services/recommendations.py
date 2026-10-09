@@ -23,23 +23,32 @@ def list_recommendations(
         require_permission(actor, TrainingPermissionCode.VIEW_OWN_RECOMMENDATIONS)
         if candidate_id is not None and str(candidate_id) != str(profile.id):
             return TrainingRecommendation.objects.none()
-        return TrainingRecommendation.objects.filter(candidate_id=profile.id)
+        return TrainingRecommendation.objects.filter(
+            candidate_id=profile.id,
+            program__organization__deleted_at__isnull=True,
+            program__organization__verification_status="VERIFIED",
+        )
     require_permission(
         actor, TrainingPermissionCode.MANAGE_RECOMMENDATIONS, organization_id=organization_id
     )
-    queryset = TrainingRecommendation.objects.filter(program__organization_id=organization_id)
+    queryset = TrainingRecommendation.objects.filter(
+        program__organization_id=organization_id,
+        program__organization__deleted_at__isnull=True,
+    )
     return queryset.filter(candidate_id=candidate_id) if candidate_id else queryset
 
 
 def get_recommendation(actor: User, recommendation_id: UUID | str) -> TrainingRecommendation:
     try:
-        recommendation = TrainingRecommendation.objects.select_related("candidate", "program").get(
-            id=recommendation_id
-        )
+        recommendation = TrainingRecommendation.objects.select_related(
+            "candidate", "program__organization"
+        ).get(id=recommendation_id, program__organization__deleted_at__isnull=True)
     except TrainingRecommendation.DoesNotExist as exc:
         raise DomainNotFoundError("Recommendation not found.") from exc
 
     if recommendation.candidate.user_id == actor.id:
+        if recommendation.program.organization.verification_status != "VERIFIED":
+            raise DomainNotFoundError("Recommendation not found.")
         require_permission(actor, TrainingPermissionCode.VIEW_OWN_RECOMMENDATIONS)
     else:
         require_permission(
@@ -52,7 +61,9 @@ def get_recommendation(actor: User, recommendation_id: UUID | str) -> TrainingRe
 
 def record_recommendation(actor: User, data: Mapping[str, Any]) -> TrainingRecommendation:
     try:
-        program = TrainingProgram.objects.get(id=data["program_id"])
+        program = TrainingProgram.objects.get(
+            id=data["program_id"], organization__deleted_at__isnull=True
+        )
     except TrainingProgram.DoesNotExist as exc:
         raise DomainNotFoundError("Training program not found.") from exc
     require_permission(

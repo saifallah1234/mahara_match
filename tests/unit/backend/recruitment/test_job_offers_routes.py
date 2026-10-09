@@ -7,7 +7,11 @@ pytestmark = pytest.mark.unit
 
 
 def _actions(path: str) -> dict[str, str]:
-    return cast(Any, resolve(path).func).actions
+    return {
+        method: action
+        for method, action in cast(Any, resolve(path).func).actions.items()
+        if method != "head"
+    }
 
 
 # These tests pass once P1 includes backend.apps.recruitment.api.urls under /api/v1/.

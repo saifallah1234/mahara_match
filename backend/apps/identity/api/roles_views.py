@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from drf_spectacular.utils import extend_schema
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -21,6 +22,7 @@ class RoleViewSet(GenericViewSet[Role]):
     def retrieve(self, request: Request, pk: UUID) -> Response:
         return Response(RoleReadSerializer(role_services.get_role(request.user, pk)).data)
 
+    @extend_schema(request=RoleUpdateSerializer, responses=RoleReadSerializer)
     def partial_update(self, request: Request, pk: UUID) -> Response:
         role = role_services.get_role(request.user, pk)
         serializer = RoleUpdateSerializer(data=request.data, partial=True)

@@ -1,3 +1,4 @@
+from backend.apps.identity.models.onboarding_requests import OnboardingRequest
 from backend.apps.identity.models.organization_members import OrganizationMember
 from backend.apps.identity.models.organizations import Organization, OrganizationType
 from backend.apps.identity.models.permissions import Permission
@@ -16,5 +17,6 @@ __all__ = [
     "UserStatus",
     "Organization",
     "OrganizationMember",
+    "OnboardingRequest",
     "OrganizationType",
 ]

@@ -1,6 +1,7 @@
 import os
 from datetime import timedelta
 from pathlib import Path
+from typing import Literal
 from urllib.parse import unquote, urlsplit
 
 BASE_DIR = Path(__file__).resolve().parents[3]
@@ -141,11 +142,48 @@ SIMPLE_JWT = {
     "TOKEN_REFRESH_SERIALIZER": (
         "backend.apps.identity.api.authentication_serializers.ActiveTokenRefreshSerializer"
     ),
+    "TOKEN_VERIFY_SERIALIZER": (
+        "backend.apps.identity.api.authentication_serializers.ActiveTokenVerifySerializer"
+    ),
 }
+
+AUTH_REFRESH_COOKIE_NAME = "mahara_refresh"
+AUTH_REFRESH_COOKIE_PATH = "/api/v1/auth/"
+AUTH_COOKIE_SECURE = not DEBUG
+AUTH_COOKIE_SAMESITE: Literal["Lax"] = "Lax"
+CSRF_COOKIE_SECURE = AUTH_COOKIE_SECURE
+CSRF_COOKIE_SAMESITE = AUTH_COOKIE_SAMESITE
+
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT") or os.getenv("OBJECT_STORAGE_ENDPOINT", "")
+MINIO_BUCKET = os.getenv("MINIO_BUCKET") or os.getenv("OBJECT_STORAGE_BUCKET", "")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY") or os.getenv("OBJECT_STORAGE_ACCESS_KEY", "")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY") or os.getenv("OBJECT_STORAGE_SECRET_KEY", "")
+MINIO_USE_SSL = os.getenv("MINIO_USE_SSL", "false").lower() == "true"
+DOCUMENT_MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Mahara Match API",
     "DESCRIPTION": "Controlled backend interfaces for Mahara Match.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "ENUM_NAME_OVERRIDES": {
+        "ApplicationStatusEnum": "backend.apps.recruitment.models.applications.ApplicationStatus.choices",
+        "DeliveryModeEnum": "backend.apps.training.models.training_programs.DeliveryMode.choices",
+        "EnrollmentStatusEnum": "backend.apps.training.models.training_enrollments.EnrollmentStatus.choices",
+        "InterviewStatusEnum": "backend.apps.recruitment.models.interviews.InterviewStatus.choices",
+        "InterviewTypeEnum": "backend.apps.recruitment.models.interviews.InterviewType.choices",
+        "JobOfferStatusEnum": "backend.apps.recruitment.models.job_offers.JobOfferStatus.choices",
+        "LanguageLevelEnum": "backend.apps.candidates.models.entities.LanguageLevel.choices",
+        "OrganizationTypeEnum": "backend.apps.identity.models.organizations.OrganizationType.choices",
+        "ProfileVisibilityEnum": "backend.apps.candidates.models.entities.ProfileVisibility.choices",
+        "ProgramLevelEnum": "backend.apps.training.models.training_programs.ProgramLevel.choices",
+        "ProgramStatusEnum": "backend.apps.training.models.training_programs.ProgramStatus.choices",
+        "RelocationEnum": "backend.apps.candidates.models.entities.Relocation.choices",
+        "SessionStatusEnum": "backend.apps.training.models.training_sessions.SessionStatus.choices",
+        "SkillLevelEnum": "backend.apps.candidates.models.entities.SkillLevel.choices",
+        "TrainingSkillPurposeEnum": "backend.apps.training.models.training_skills.TrainingSkillPurpose.choices",
+        "UserStatusEnum": "backend.apps.identity.models.users.UserStatus.choices",
+        "VerificationStatusEnum": "backend.apps.identity.models.organizations.VerificationStatus.choices",
+        "WorkModeEnum": "backend.apps.candidates.models.entities.WorkMode.choices",
+    },
 }

@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -30,6 +31,9 @@ class OrganizationViewSet(GenericViewSet[Organization]):
             ).data
         )
 
+    @extend_schema(
+        request=OrganizationCreateSerializer, responses={201: OrganizationReadSerializer}
+    )
     def create(self, request: Request) -> Response:
         serializer = OrganizationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -42,6 +46,7 @@ class OrganizationViewSet(GenericViewSet[Organization]):
             status=201,
         )
 
+    @extend_schema(request=OrganizationUpdateSerializer, responses=OrganizationReadSerializer)
     def partial_update(self, request: Request, pk: UUID) -> Response:
         organization = organization_services.get_organization(request.user, pk)
         serializer = OrganizationUpdateSerializer(
@@ -56,6 +61,7 @@ class OrganizationViewSet(GenericViewSet[Organization]):
         )
         return Response(OrganizationReadSerializer(organization).data)
 
+    @extend_schema(request=None, responses=OrganizationReadSerializer)
     @action(detail=True, methods=["post"])
     def verify(self, request: Request, pk: UUID) -> Response:
         organization = organization_services.get_organization(request.user, pk)
@@ -65,6 +71,7 @@ class OrganizationViewSet(GenericViewSet[Organization]):
         )
         return Response(OrganizationReadSerializer(organization).data)
 
+    @extend_schema(request=None, responses=OrganizationReadSerializer)
     @action(detail=True, methods=["post"])
     def reject(self, request: Request, pk: UUID) -> Response:
         organization = organization_services.get_organization(request.user, pk)

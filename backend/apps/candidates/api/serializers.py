@@ -11,6 +11,8 @@ from backend.apps.candidates.models import (
     Education,
     Experience,
     Project,
+    Relocation,
+    WorkMode,
 )
 from backend.apps.documents.models import Document
 from backend.apps.taxonomy.models import Skill
@@ -36,6 +38,63 @@ class CandidateProfileSerializer(serializers.ModelSerializer[CandidateProfile]):
             "updated_at",
         )
         read_only_fields = ("id", "completion_score", "created_at", "updated_at")
+
+
+class RecruiterSkillSerializer(serializers.ModelSerializer[CandidateSkill]):
+    class Meta:
+        model = CandidateSkill
+        fields = ("skill", "level", "years_experience")
+        read_only_fields = fields
+
+
+class RecruiterExperienceSerializer(serializers.ModelSerializer[Experience]):
+    class Meta:
+        model = Experience
+        fields = ("organization_name", "job_title", "start_date", "end_date")
+        read_only_fields = fields
+
+
+class RecruiterEducationSerializer(serializers.ModelSerializer[Education]):
+    class Meta:
+        model = Education
+        fields = ("education_level", "institution", "field_of_study", "start_year", "end_year")
+        read_only_fields = fields
+
+
+class RecruiterPreferenceSerializer(serializers.ModelSerializer[CandidatePreference]):
+    class Meta:
+        model = CandidatePreference
+        fields = ("work_mode", "relocation", "distance")
+        read_only_fields = fields
+
+
+class RecruiterCandidateSerializer(serializers.ModelSerializer[CandidateProfile]):
+    skills = RecruiterSkillSerializer(many=True, read_only=True)
+    experiences = RecruiterExperienceSerializer(many=True, read_only=True)
+    educations = RecruiterEducationSerializer(many=True, read_only=True)
+    preferences = RecruiterPreferenceSerializer(read_only=True, allow_null=True)
+
+    class Meta:
+        model = CandidateProfile
+        fields = (
+            "id",
+            "headline",
+            "skills",
+            "experiences",
+            "educations",
+            "governorate",
+            "preferences",
+        )
+        read_only_fields = fields
+
+
+class CandidateDiscoveryQuerySerializer(serializers.Serializer[dict[str, object]]):
+    skill = serializers.UUIDField(required=False)
+    education_level = serializers.UUIDField(required=False)
+    governorate = serializers.CharField(max_length=100, required=False)
+    work_mode = serializers.ChoiceField(choices=WorkMode.choices, required=False)
+    relocation = serializers.ChoiceField(choices=Relocation.choices, required=False)
+    search = serializers.CharField(max_length=200, required=False)
 
 
 class ExperienceSerializer(serializers.ModelSerializer[Experience]):

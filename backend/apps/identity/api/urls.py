@@ -1,9 +1,18 @@
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 
-from backend.apps.identity.api.authentication_views import LogoutView
+from backend.apps.identity.api.authentication_views import (
+    ActiveTokenVerifyView,
+    CookieTokenObtainPairView,
+    CookieTokenRefreshView,
+    CsrfCookieView,
+    LogoutView,
+)
+from backend.apps.identity.api.onboarding_views import (
+    OnboardingRequestViewSet,
+    RegistrationView,
+)
 from backend.apps.identity.api.organization_members_views import (
     OrganizationMemberViewSet,
 )
@@ -23,13 +32,30 @@ router.register("role-permissions", RolePermissionViewSet, basename="role-permis
 router.register("organizations", OrganizationViewSet, basename="organization")
 
 urlpatterns = [
-    path("auth/token/", TokenObtainPairView.as_view(), name="token-obtain-pair"),
-    path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
-    path("auth/token/verify/", TokenVerifyView.as_view(), name="token-verify"),
+    path("auth/csrf/", CsrfCookieView.as_view(), name="csrf-cookie"),
+    path("auth/register/", RegistrationView.as_view(), name="register"),
+    path("auth/token/", CookieTokenObtainPairView.as_view(), name="token-obtain-pair"),
+    path("auth/token/refresh/", CookieTokenRefreshView.as_view(), name="token-refresh"),
+    path("auth/token/verify/", ActiveTokenVerifyView.as_view(), name="token-verify"),
     path("auth/logout/", LogoutView.as_view(), name="logout"),
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("", include(router.urls)),
+    path(
+        "onboarding-requests/",
+        OnboardingRequestViewSet.as_view({"get": "list"}),
+        name="onboarding-request-list",
+    ),
+    path(
+        "onboarding-requests/<uuid:pk>/approve/",
+        OnboardingRequestViewSet.as_view({"post": "approve"}),
+        name="onboarding-request-approve",
+    ),
+    path(
+        "onboarding-requests/<uuid:pk>/reject/",
+        OnboardingRequestViewSet.as_view({"post": "reject"}),
+        name="onboarding-request-reject",
+    ),
     path(
         "organizations/<uuid:organization_id>/members/",
         OrganizationMemberViewSet.as_view(

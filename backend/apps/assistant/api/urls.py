@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
+from backend.apps.assistant.api.agent_run_views import AgentRunView
 from backend.apps.assistant.api.views import (
     ActionViewSet,
     ConversationViewSet,
@@ -15,6 +16,7 @@ router.register("agent-executions", ExecutionViewSet, basename="agent-execution"
 
 urlpatterns = [
     *router.urls,
+    path("agent-runs/", AgentRunView.as_view(), name="agent-run"),
     path(
         "conversations/<uuid:conversation_id>/messages/",
         MessageViewSet.as_view({"get": "list"}),

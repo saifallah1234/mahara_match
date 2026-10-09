@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -27,6 +28,7 @@ class UserRoleViewSet(GenericViewSet[UserRole]):
         assignment = user_role_services.get_user_role(active_request_user(request), pk)
         return Response(UserRoleReadSerializer(assignment).data)
 
+    @extend_schema(request=UserRoleCreateSerializer, responses={201: UserRoleReadSerializer})
     def create(self, request: Request) -> Response:
         serializer = UserRoleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

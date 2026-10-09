@@ -5,6 +5,7 @@ from uuid import UUID
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, models, transaction
 from django.db.models import Max, QuerySet
+from django.utils import timezone
 
 from backend.apps.candidates.models import (
     CV,
@@ -13,13 +14,14 @@ from backend.apps.candidates.models import (
     Project,
     ProjectSkill,
 )
-from backend.apps.documents.services.documents import get_owned_document
+from backend.apps.documents.services.documents import DocumentStorageError, get_owned_document
 from backend.apps.identity.models import RoleCode, User, UserRole
 from backend.common.exceptions import (
     DomainNotFoundError,
     DomainPermissionError,
     DomainValidationError,
 )
+from backend.common.storage import object_storage
 
 
 def require_candidate(actor: User) -> None:
@@ -77,7 +79,10 @@ def update_profile(actor: User, data: Mapping[str, Any]) -> CandidateProfile:
 
 def list_records[RecordT: models.Model](actor: User, model: type[RecordT]) -> QuerySet[RecordT]:
     profile = own_profile(actor)
-    return cast(Any, model).objects.filter(candidate=profile).order_by("created_at", "id")
+    queryset = cast(Any, model).objects.filter(candidate=profile)
+    if model is CV:
+        queryset = queryset.filter(deleted_at__isnull=True)
+    return queryset.order_by("created_at", "id")
 
 
 def get_record[RecordT: models.Model](
@@ -176,9 +181,41 @@ def update_cv(actor: User, cv_id: UUID | str, data: Mapping[str, Any]) -> CV:
     return _save_validated(cv)
 
 
+@transaction.atomic
+def delete_cv(actor: User, cv_id: UUID | str) -> None:
+    cv = CV.objects.select_for_update().get(pk=get_record(actor, CV, cv_id).pk)
+    cv.deleted_at = timezone.now()
+    cv.is_primary = False
+    cv.save(update_fields=["deleted_at", "is_primary", "updated_at"])
+    try:
+        purge_cv_bytes(cv.id)
+    except DocumentStorageError:
+        pass  # The daily purge command retries storage failures.
+
+
+@transaction.atomic
+def purge_cv_bytes(cv_id: UUID | str) -> bool:
+    from backend.apps.recruitment.models import Application, ApplicationStatus
+
+    cv = CV.objects.select_for_update().select_related("document").get(pk=cv_id)
+    if cv.deleted_at is None or cv.bytes_purged_at is not None:
+        return False
+    if Application.objects.filter(cv=cv).exclude(status=ApplicationStatus.REJECTED).exists():
+        return False
+    try:
+        object_storage.delete_object(cv.document.storage_uri)
+    except Exception as exc:
+        raise DocumentStorageError() from exc
+    cv.bytes_purged_at = timezone.now()
+    cv.save(update_fields=["bytes_purged_at", "updated_at"])
+    return True
+
+
 def list_cv_analyses(actor: User) -> QuerySet[CVAnalysisResult]:
     profile = own_profile(actor)
-    return CVAnalysisResult.objects.filter(cv__candidate=profile).order_by("-analyzed_at", "id")
+    return CVAnalysisResult.objects.filter(
+        cv__candidate=profile, cv__deleted_at__isnull=True
+    ).order_by("-analyzed_at", "id")
 
 
 def get_cv_analysis(actor: User, analysis_id: UUID | str) -> CVAnalysisResult:
