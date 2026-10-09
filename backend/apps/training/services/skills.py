@@ -19,10 +19,15 @@ from backend.common.exceptions import DomainNotFoundError, DomainValidationError
 
 def list_program_skills(actor: User, program_id: UUID | str) -> QuerySet[TrainingSkill]:
     try:
-        program = TrainingProgram.objects.get(id=program_id)
+        program = TrainingProgram.objects.select_related("organization").get(
+            id=program_id, organization__deleted_at__isnull=True
+        )
     except TrainingProgram.DoesNotExist as exc:
         raise DomainNotFoundError("Training program not found.") from exc
-    if program.status == ProgramStatus.ACTIVE:
+    if (
+        program.status == ProgramStatus.ACTIVE
+        and program.organization.verification_status == "VERIFIED"
+    ):
         require_permission(actor, TrainingPermissionCode.VIEW_CATALOG)
     else:
         require_permission(
@@ -34,10 +39,15 @@ def list_program_skills(actor: User, program_id: UUID | str) -> QuerySet[Trainin
 def get_skill(actor: User, skill_id: UUID | str) -> TrainingSkill:
     require_permission(actor, TrainingPermissionCode.VIEW_CATALOG)
     try:
-        skill = TrainingSkill.objects.select_related("program").get(id=skill_id)
+        skill = TrainingSkill.objects.select_related("program__organization").get(
+            id=skill_id, program__organization__deleted_at__isnull=True
+        )
     except TrainingSkill.DoesNotExist as exc:
         raise DomainNotFoundError("Training skill not found.") from exc
-    if skill.program.status == ProgramStatus.ACTIVE:
+    if (
+        skill.program.status == ProgramStatus.ACTIVE
+        and skill.program.organization.verification_status == "VERIFIED"
+    ):
         require_permission(actor, TrainingPermissionCode.VIEW_CATALOG)
     else:
         require_permission(
@@ -50,7 +60,9 @@ def get_skill(actor: User, skill_id: UUID | str) -> TrainingSkill:
 
 def add_skill(actor: User, data: Mapping[str, Any]) -> TrainingSkill:
     try:
-        program = TrainingProgram.objects.get(id=data["program_id"])
+        program = TrainingProgram.objects.get(
+            id=data["program_id"], organization__deleted_at__isnull=True
+        )
     except TrainingProgram.DoesNotExist as exc:
         raise DomainNotFoundError("Training program not found.") from exc
 

@@ -8,6 +8,7 @@ from backend.apps.recruitment.models import JobOffer, JobOfferStatus
 
 class JobOfferReadSerializer(serializers.ModelSerializer[JobOffer]):
     organization_id = serializers.UUIDField(read_only=True)
+    organization_name = serializers.CharField(source="organization.legal_name", read_only=True)
     created_by_id = serializers.UUIDField(read_only=True)
     source_id = serializers.UUIDField(read_only=True, allow_null=True)
     description_language_id = serializers.UUIDField(read_only=True, allow_null=True)
@@ -18,6 +19,7 @@ class JobOfferReadSerializer(serializers.ModelSerializer[JobOffer]):
         fields = (
             "id",
             "organization_id",
+            "organization_name",
             "created_by_id",
             "source_id",
             "external_id",
@@ -51,7 +53,7 @@ class _JobOfferWriteSerializer(serializers.Serializer[dict[str, Any]]):
     title = serializers.CharField(max_length=200)
     description = serializers.CharField()
     contract_type = serializers.CharField(max_length=30, required=False, allow_blank=True)
-    work_mode = serializers.ChoiceField(choices=["", *WorkMode.values], required=False)
+    work_mode = serializers.ChoiceField(choices=WorkMode.choices, required=False, allow_blank=True)
     experience_level = serializers.CharField(max_length=30, required=False, allow_blank=True)
     country_code = serializers.CharField(max_length=2, required=False, allow_blank=True)
     governorate = serializers.CharField(max_length=100, required=False, allow_blank=True)

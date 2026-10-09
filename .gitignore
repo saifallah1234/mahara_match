@@ -48,4 +48,5 @@ logs/
 *.onnx
 *.pt
 *.pth
+video/
 # Do not ignore source PDFs, .env.example, Django migrations, or uv.lock.

@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -26,6 +27,7 @@ class PermissionViewSet(GenericViewSet[Permission]):
         permission = permission_services.get_permission(request.user, pk)
         return Response(PermissionReadSerializer(permission).data)
 
+    @extend_schema(request=PermissionCreateSerializer, responses={201: PermissionReadSerializer})
     def create(self, request: Request) -> Response:
         serializer = PermissionCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

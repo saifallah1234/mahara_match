@@ -6,7 +6,8 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from backend.apps.candidates.models import CV
-from backend.apps.candidates.services.records import get_record, own_profile
+from backend.apps.candidates.services.records import get_record, own_profile, purge_cv_bytes
+from backend.apps.documents.services.documents import DocumentStorageError
 from backend.apps.identity.models import User
 from backend.apps.identity.services.access import require_permission
 from backend.apps.recruitment.models import (
@@ -45,7 +46,11 @@ def _valid_recruiter_transition(current: str, target: str) -> bool:
 @transaction.atomic
 def submit_application(actor: User, data: Mapping[str, Any]) -> Application:
     candidate = own_profile(actor)
-    cv = get_record(actor, CV, data["cv_id"])
+    cv_id = get_record(actor, CV, data["cv_id"]).pk
+    try:
+        cv = CV.objects.select_for_update().get(pk=cv_id, deleted_at__isnull=True)
+    except CV.DoesNotExist as exc:
+        raise DomainNotFoundError("CV not found.") from exc
     try:
         offer = JobOffer.objects.select_for_update().get(
             id=data["offer_id"], deleted_at__isnull=True, status=JobOfferStatus.PUBLISHED
@@ -114,4 +119,9 @@ def transition_application(
     application.status = target
     application.save(update_fields=["status", "withdrawn_at", "updated_at"])
     ApplicationStatusHistory.objects.create(application=application, status=target, reason=reason)
+    if target == ApplicationStatus.REJECTED:
+        try:
+            purge_cv_bytes(application.cv_id)
+        except DocumentStorageError:
+            pass  # The daily purge command retries storage failures.
     return application

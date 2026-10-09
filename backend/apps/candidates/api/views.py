@@ -1,5 +1,6 @@
 from typing import Any
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -7,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from backend.apps.candidates.api.serializers import (
+    CandidateDiscoveryQuerySerializer,
     CandidateLanguageSerializer,
     CandidatePreferenceSerializer,
     CandidateProfileSerializer,
@@ -17,6 +19,7 @@ from backend.apps.candidates.api.serializers import (
     EducationSerializer,
     ExperienceSerializer,
     ProjectSerializer,
+    RecruiterCandidateSerializer,
 )
 from backend.apps.candidates.models import (
     CV,
@@ -30,13 +33,34 @@ from backend.apps.candidates.models import (
     Experience,
     Project,
 )
-from backend.apps.candidates.services import records
+from backend.apps.candidates.services import discovery, records
 from backend.apps.identity.api.common_permissions import active_request_user
 
 
 class CandidateProfileViewSet(GenericViewSet[CandidateProfile]):
     serializer_class = CandidateProfileSerializer
     queryset = CandidateProfile.objects.none()
+
+    @extend_schema(
+        parameters=[CandidateDiscoveryQuerySerializer],
+        responses=RecruiterCandidateSerializer(many=True),
+        description="Redacted discovery for authorized recruiters. Only RECRUITERS opt-in profiles.",
+    )
+    def list(self, request: Request) -> Response:
+        queryset = discovery.list_candidates(active_request_user(request))
+        filters = CandidateDiscoveryQuerySerializer(data=request.query_params)
+        filters.is_valid(raise_exception=True)
+        queryset = discovery.filter_candidates(queryset, filters.validated_data)
+        page = self.paginate_queryset(queryset)
+        return self.get_paginated_response(RecruiterCandidateSerializer(page, many=True).data)
+
+    @extend_schema(
+        responses=RecruiterCandidateSerializer,
+        description="Redacted recruiter detail. Hidden, PUBLIC and inactive candidates return 404.",
+    )
+    def retrieve(self, request: Request, pk: str | None = None) -> Response:
+        profile = discovery.get_candidate(active_request_user(request), str(pk))
+        return Response(RecruiterCandidateSerializer(profile).data)
 
     @action(detail=False, methods=("get", "post", "put", "patch"), url_path="me")
     def me(self, request: Request) -> Response:
@@ -135,6 +159,10 @@ class ProjectViewSet(OwnedRecordViewSet):
 class CVViewSet(OwnedRecordViewSet):
     model = CV
     serializer_class = CVSerializer
+
+    def destroy(self, request: Request, pk: str | None = None) -> Response:
+        records.delete_cv(active_request_user(request), str(pk))
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CVAnalysisResultViewSet(GenericViewSet[CVAnalysisResult]):

@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
@@ -14,7 +15,7 @@ from backend.apps.assistant.api.serializers import (
     MessageReadSerializer,
     ToolCallReadSerializer,
 )
-from backend.apps.assistant.models import Conversation
+from backend.apps.assistant.models import AgentExecution, Conversation
 from backend.apps.assistant.services import records
 from backend.apps.identity.api.common_permissions import active_request_user
 
@@ -27,6 +28,7 @@ class ConversationViewSet(GenericViewSet[Conversation]):
         page = self.paginate_queryset(records.list_conversations(active_request_user(request)))
         return self.get_paginated_response(ConversationReadSerializer(page, many=True).data)
 
+    @extend_schema(request=ConversationWriteSerializer, responses={201: ConversationReadSerializer})
     def create(self, request: Request) -> Response:
         serializer = ConversationWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -44,6 +46,7 @@ class ConversationViewSet(GenericViewSet[Conversation]):
             ).data
         )
 
+    @extend_schema(request=ConversationWriteSerializer, responses=ConversationReadSerializer)
     def partial_update(self, request: Request, pk: UUID) -> Response:
         serializer = ConversationWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -71,6 +74,7 @@ class MessageViewSet(GenericViewSet):
 
 class ExecutionViewSet(GenericViewSet):
     serializer_class = ExecutionReadSerializer
+    queryset = AgentExecution.objects.none()
 
     def list(self, request: Request) -> Response:
         page = self.paginate_queryset(records.list_executions(active_request_user(request)))

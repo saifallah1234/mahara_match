@@ -16,6 +16,8 @@ candidate sees their own results. Verified recruiters see results for applicants
 to their organization's offers; the API does not expose pre-application profile
 or CV data through match explanations.
 
-No scoring writer or matching formula is implemented while Q26 weights,
-eligibility and explanation rules remain open. No matching migration has been
-created. Cross-domain operations use owning services.
+The candidate agent's V1 calculator persists a deterministic `skill-coverage-v1`
+score: matched canonical skills divided by all skills attached to a published
+offer. Experience and location remain unknown, and a candidate with no recorded
+skills receives no scored matches. This is a narrow pilot baseline, not a final
+Q26 eligibility or ranking policy. Cross-domain reads use owning services.

@@ -1,0 +1,116 @@
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------
+   Mahara Match — jetons de design
+   Palette reprise telle quelle de la présentation du projet.
+   ------------------------------------------------------------------ */
+@theme {
+  --color-navy: #10252f;
+  --color-navy-soft: #0b2e40;
+  --color-teal: #0e7c86;
+  --color-teal-deep: #0a5a62;
+  --color-teal-dark: #0a4a5a;
+  --color-cyan: #7fe0e6;
+  --color-cyan-soft: #cfe9ec;
+  --color-coral: #e63946;
+  --color-coral-soft: #ffb3b9;
+  --color-slate: #56707b;
+  --color-slate-soft: #5f9aa6;
+  --color-line: #d3dee1;
+  --color-mist: #eaf1f2;
+  --color-cream: #f7f5f0;
+  --color-leaf: #2e9e6b;
+  --color-amber: #e9a23b;
+
+  --font-sans: 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --radius-panel: 10px;
+  --radius-control: 6px;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-cream);
+    color: var(--color-navy);
+    font-family: var(--font-sans);
+    font-weight: 400;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    margin: 0;
+  }
+
+  /* Les chiffres s'alignent en colonne dans les tableaux et les registres. */
+  table,
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-teal);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+  }
+
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  [dir='rtl'] {
+    text-align: right;
+  }
+}
+
+@layer utilities {
+  /* Trame discrète réservée aux surfaces sombres de l'en-tête. */
+  .grid-veil {
+    background-image:
+      linear-gradient(to right, rgba(127, 224, 230, 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(127, 224, 230, 0.07) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .shadow-panel {
+    box-shadow: 0 1px 2px rgba(16, 37, 47, 0.04);
+  }
+
+  .shadow-lift {
+    box-shadow: 0 10px 30px -12px rgba(16, 37, 47, 0.25);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

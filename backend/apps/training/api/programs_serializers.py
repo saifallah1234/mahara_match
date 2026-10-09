@@ -8,12 +8,14 @@ from backend.apps.training.models import DeliveryMode, ProgramLevel, ProgramStat
 
 class TrainingProgramReadSerializer(serializers.ModelSerializer[TrainingProgram]):
     organization_id = serializers.UUIDField(read_only=True)
+    organization_name = serializers.CharField(source="organization.legal_name", read_only=True)
 
     class Meta:
         model = TrainingProgram
         fields = (
             "id",
             "organization_id",
+            "organization_name",
             "title",
             "description",
             "level",

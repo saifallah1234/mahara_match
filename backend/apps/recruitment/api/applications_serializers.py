@@ -6,6 +6,7 @@ from backend.apps.recruitment.models import Application, ApplicationStatus
 class ApplicationReadSerializer(serializers.ModelSerializer[Application]):
     candidate_id = serializers.UUIDField(read_only=True)
     offer_id = serializers.UUIDField(read_only=True)
+    offer_title = serializers.CharField(source="offer.title", read_only=True)
     cv_id = serializers.UUIDField(read_only=True)
 
     class Meta:
@@ -14,6 +15,7 @@ class ApplicationReadSerializer(serializers.ModelSerializer[Application]):
             "id",
             "candidate_id",
             "offer_id",
+            "offer_title",
             "cv_id",
             "status",
             "cover_letter",

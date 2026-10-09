@@ -10,6 +10,7 @@ are TND: free programs cost `0`, paid programs cost more than `0`.
 
 Seed identity and training permissions with `python manage.py seed_rbac` after
 the required database migrations have been applied. The initial training migration
-is applied. Capacity and registration-deadline policies beyond the existing
-session fields, and recommendation scoring criteria, remain open in the
-[question register](../../../docs/architecture/open_questions.md).
+is applied. Approved Phase 3C deadline, capacity, cancellation and terminal-state
+rules are implemented; see the [API/lifecycle contract](../../../docs/api/filtering_v1.md).
+Recommendation scoring, assessment, attendance and certificates remain outside
+this phase.

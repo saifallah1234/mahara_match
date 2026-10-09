@@ -19,7 +19,11 @@ pytestmark = pytest.mark.unit
 
 
 def _actions(path: str) -> dict[str, str]:
-    return cast(Any, resolve(path).func).actions
+    return {
+        method: action
+        for method, action in cast(Any, resolve(path).func).actions.items()
+        if method != "head"
+    }
 
 
 def test_public_routes_do_not_accept_trace_or_import_writes() -> None:

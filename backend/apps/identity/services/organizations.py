@@ -26,7 +26,7 @@ def _validate_hierarchy(
         )
 
     try:
-        parent = Organization.objects.get(id=parent_id)
+        parent = Organization.objects.get(id=parent_id, deleted_at__isnull=True)
     except Organization.DoesNotExist as exc:
         raise DomainValidationError(
             details={"parent_id": ["Parent organization not found."]}
@@ -63,14 +63,20 @@ def _validate_unique_identifiers(
 def list_organizations(actor: Any) -> QuerySet[Organization]:
     require_permission(actor, IdentityPermissionCode.MANAGE_ORGANIZATIONS)
 
-    return Organization.objects.select_related("parent").order_by("legal_name", "id")
+    return (
+        Organization.objects.filter(deleted_at__isnull=True)
+        .select_related("parent")
+        .order_by("legal_name", "id")
+    )
 
 
 def get_organization(actor: Any, organization_id: UUID | str) -> Organization:
     require_permission(actor, IdentityPermissionCode.MANAGE_ORGANIZATIONS)
 
     try:
-        return Organization.objects.select_related("parent").get(id=organization_id)
+        return Organization.objects.select_related("parent").get(
+            id=organization_id, deleted_at__isnull=True
+        )
     except Organization.DoesNotExist as exc:
         raise DomainNotFoundError("Organization not found.") from exc
 

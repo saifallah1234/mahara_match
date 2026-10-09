@@ -254,6 +254,8 @@ class CV(CandidateOwnedModel):
     parse_status = models.CharField(max_length=30, blank=True)
     parsed_data_json = models.JSONField(null=True, blank=True)
     version_number = models.PositiveIntegerField()
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    bytes_purged_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "cvs"
