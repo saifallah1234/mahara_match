@@ -12,7 +12,10 @@ dependencies = [
     "langchain-ollama>=0.3,<2",
     "langgraph>=0.2,<2",
     "minio>=7.2,<8",
+    "playwright>=1.63.0",
     "psycopg[binary]>=3.2,<4",
+    "python-dotenv>=1.2.4",
+    "seleniumbase>=4.55.0",
 ]
 
 [dependency-groups]
