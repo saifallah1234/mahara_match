@@ -1,0 +1,37 @@
+import { allPages } from './auth.ts'
+import { request } from './client.ts'
+
+export type Program = {
+  id: string; organization_id: string; organization_name: string; title: string; description: string
+  level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'; delivery_mode: 'ONLINE' | 'PRESENTIAL' | 'HYBRID'
+  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED'; is_free: boolean; price: string
+}
+export type Session = {
+  id: string; program: string; start_date: string; end_date: string; capacity: number
+  location_or_url: string; registration_deadline: string; status: 'PLANNED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED'
+}
+export type Enrollment = {
+  id: string; session: string; candidate_id: string
+  status: 'REGISTERED' | 'IN_PROGRESS' | 'COMPLETED' | 'DROPPED'; enrolled_at: string; completion_rate: string | null
+}
+export type ProgramInput = Pick<Program, 'title' | 'description' | 'level' | 'delivery_mode' | 'status' | 'is_free'> & {
+  organization_id: string; price: number
+}
+export type SessionInput = {
+  program_id: string; start_date: string; end_date: string; capacity: number
+  location_or_url: string; registration_deadline: string
+}
+
+const send = <T>(method: string, path: string, body?: object) =>
+  request<T>(path, { method, body: body ? JSON.stringify(body) : undefined })
+
+export const listPrograms = (organizationId: string) =>
+  allPages<Program>(`/training/programs/?organization_id=${organizationId}`)
+export const listSessions = (programId: string) =>
+  allPages<Session>(`/training/sessions/?program_id=${programId}`)
+export const listEnrollments = (organizationId?: string) =>
+  allPages<Enrollment>(`/training/enrollments/${organizationId ? `?organization_id=${organizationId}` : ''}`)
+export const createProgram = (d: ProgramInput) => send<Program>('POST', '/training/programs/', d)
+export const updateProgram = (id: string, d: Partial<ProgramInput>) => send<Program>('PATCH', `/training/programs/${id}/`, d)
+export const createSession = (d: SessionInput) => send<Session>('POST', '/training/sessions/', d)
+export const updateSession = (id: string, d: Partial<{ status: Session['status'] }>) => send<Session>('PATCH', `/training/sessions/${id}/`, d)

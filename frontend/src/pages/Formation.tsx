@@ -1,191 +1,91 @@
 import { useState } from 'react'
-import { PageBody, PageHeader } from './../components/layout'
-import { Badge, Button, Cell, EmptyState, Field, Modal, Panel, Row, Select, StatTile, Table, Textarea, Input } from './../components/ui'
-import { useStore } from '../state/store'
-import { DELIVERY_LABEL, SKILL_LEVEL_LABEL, formatDate, formatPrice } from '../lib/format'
-import type { DeliveryMode, SessionStatus, SkillLevel, TrainingProgram } from '../lib/types'
+import { PageBody, PageHeader } from '../components/layout'
+import { Badge, Button, Cell, EmptyState, Field, Input, Panel, Row, Select, StatTile, Table, Textarea } from '../components/ui'
+import { useAuth } from '../state/auth'
+import { useTraining } from '../state/training'
+import { formatDate } from '../lib/format'
+import type { Program, ProgramInput } from '../api/training'
 
-const SESSION_TONE: Record<SessionStatus, 'positif' | 'encours' | 'neutre' | 'negatif' | 'attention'> = {
-  OUVERTE: 'positif',
-  PLANIFIEE: 'encours',
-  COMPLETE: 'attention',
-  TERMINEE: 'neutre',
-  ANNULEE: 'negatif',
-}
-
-const SESSION_TEXT: Record<SessionStatus, string> = {
-  OUVERTE: 'Inscriptions ouvertes',
-  PLANIFIEE: 'Planifiée',
-  COMPLETE: 'Complète',
-  TERMINEE: 'Terminée',
-  ANNULEE: 'Annulée',
-}
-
-/* ------------------------------------------------------------------ */
+const MODE = { ONLINE: 'En ligne', PRESENTIAL: 'Présentiel', HYBRID: 'Hybride' } as const
+const LEVEL = { BEGINNER: 'Débutant', INTERMEDIATE: 'Intermédiaire', ADVANCED: 'Avancé' } as const
+const PSTATUS = { DRAFT: 'Brouillon', ACTIVE: 'Actif', ARCHIVED: 'Archivé' } as const
+const SSTATUS = { PLANNED: 'Planifiée', ONGOING: 'En cours', COMPLETED: 'Terminée', CANCELLED: 'Annulée' } as const
+const price = (p: Program) => (p.is_free ? 'Gratuit' : `${p.price} TND`)
+const ENROLL = { REGISTERED: 'Inscrit', IN_PROGRESS: 'En cours', COMPLETED: 'Terminé', DROPPED: 'Abandonné' } as const
 
 export function FormationDashboard() {
-  const { session, programs, sessions, enrollments, offers, skills } = useStore()
-  if (!session) return null
-
-  const mine = programs.filter((p) => p.organizationId === session.user.organizationId)
-  const published = mine.filter((p) => p.status === 'PUBLISHED')
-  const mySessions = sessions.filter((s) => mine.some((p) => p.id === s.programId))
-  const myEnrollments = enrollments.filter((e) => mySessions.some((s) => s.id === e.sessionId))
-
-  /* Demande du marché pour les compétences que l'organisme enseigne. */
-  const taught = [...new Set(published.flatMap((p) => p.skillIds))]
-  const demand = taught
-    .map((skillId) => ({
-      skillId,
-      name: skills.find((s) => s.id === skillId)?.canonicalName ?? skillId,
-      count: offers.filter((o) => o.status === 'PUBLISHED' && o.skills.some((os) => os.skillId === skillId)).length,
-    }))
-    .sort((a, b) => b.count - a.count)
-
+  const { workspace } = useAuth()
+  const { programs, sessions, enrollments, loading, error } = useTraining()
   return (
     <>
-      <PageHeader
-        title="Espace formation"
-      />
-
+      <PageHeader title={workspace?.organization?.legal_name ?? 'Espace formation'} />
       <PageBody className="space-y-6">
+        {error && <p role="alert" className="text-coral">{error}</p>}
+        {loading && <p className="text-slate">Chargement…</p>}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatTile value={published.length} label="Formations publiées" note={`${mine.length} au catalogue`} />
-          <StatTile value={mySessions.filter((s) => s.status === 'OUVERTE').length} label="Sessions ouvertes" tone="teal" />
-          <StatTile value={myEnrollments.length} label="Inscriptions" tone="leaf" />
-          <StatTile value={taught.length} label="Compétences couvertes" />
+          <StatTile value={programs.filter((p) => p.status === 'ACTIVE').length} label="Programmes actifs" note={`${programs.length} au total`} />
+          <StatTile value={sessions.filter((s) => s.status === 'PLANNED').length} label="Sessions planifiées" tone="teal" />
+          <StatTile value={sessions.filter((s) => s.status === 'ONGOING').length} label="Sessions en cours" tone="leaf" />
+          <StatTile value={enrollments.length} label="Inscriptions" tone="coral" />
         </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Panel title="Demande du marché" description="Nombre d’offres ouvertes réclamant une compétence que vous enseignez.">
-            {demand.length === 0 ? (
-              <EmptyState title="Aucune formation publiée" />
-            ) : (
-              <ul className="divide-y divide-line/70">
-                {demand.map((entry) => (
-                  <li key={entry.skillId} className="flex items-center justify-between px-5 py-3 text-[13.5px]">
-                    <span className="font-medium text-navy">{entry.name}</span>
-                    <span className="tnum text-slate">
-                      {entry.count} offre{entry.count > 1 ? 's' : ''}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-
-          <Panel title="Prochaines sessions">
-            <ul className="divide-y divide-line/70">
-              {mySessions
-                .filter((s) => s.status === 'OUVERTE' || s.status === 'PLANIFIEE')
-                .map((trainingSession) => {
-                  const program = mine.find((p) => p.id === trainingSession.programId)
-                  const count = enrollments.filter((e) => e.sessionId === trainingSession.id).length
-                  return (
-                    <li key={trainingSession.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3">
-                      <div className="min-w-0">
-                        <p className="text-[13.5px] font-medium text-navy">{program?.title}</p>
-                        <p className="text-[12.5px] text-slate">
-                          Dès le {formatDate(trainingSession.startDate)} · {count} / {trainingSession.capacity} places
-                        </p>
-                      </div>
-                      <Badge tone={SESSION_TONE[trainingSession.status]}>{SESSION_TEXT[trainingSession.status]}</Badge>
-                    </li>
-                  )
-                })}
-            </ul>
-          </Panel>
-        </div>
-
       </PageBody>
     </>
   )
 }
 
-/* ------------------------------------------------------------------ */
-
 export function FormationProgrammes() {
-  const { session, programs, skills, publishProgram, organizationOf } = useStore()
+  const { workspace } = useAuth()
+  const { programs, loading, error, createProgram, setProgramStatus } = useTraining()
   const [open, setOpen] = useState(false)
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [prerequisites, setPrerequisites] = useState('')
-  const [hours, setHours] = useState('')
-  const [price, setPrice] = useState('')
-  const [mode, setMode] = useState<DeliveryMode>('PRESENTIEL')
-  const [level, setLevel] = useState<SkillLevel>('DEBUTANT')
-  const [chosen, setChosen] = useState<string[]>([])
+  const [f, setF] = useState({ title: '', description: '', level: 'BEGINNER', delivery_mode: 'ONLINE', is_free: true, price: '' })
+  const orgId = workspace?.organization?.id
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
 
-  if (!session) return null
-  const mine = programs.filter((p) => p.organizationId === session.user.organizationId)
-
-  const problems: string[] = []
-  if (!title.trim()) problems.push('Le titre est obligatoire.')
-  if (!description.trim()) problems.push('La description est obligatoire.')
-  if (!hours) problems.push('La durée est obligatoire.')
-  if (chosen.length === 0) problems.push('Au moins une compétence visée doit être sélectionnée.')
-
-  function create(status: 'DRAFT' | 'PUBLISHED') {
-    const program: TrainingProgram = {
-      id: `tp-${Date.now().toString(36)}`,
-      organizationId: session!.user.organizationId!,
-      title: title.trim(),
-      description: description.trim(),
-      level,
-      deliveryMode: mode,
-      status,
-      durationHours: Number(hours),
-      priceTnd: price ? Number(price) : undefined,
-      prerequisites: prerequisites.trim() || 'Aucun prérequis particulier.',
-      contactEmail: session!.user.email,
-      skillIds: chosen,
+  async function submit(status: Program['status']) {
+    if (!orgId) return
+    const input: ProgramInput = {
+      organization_id: orgId, title: f.title.trim(), description: f.description.trim(),
+      level: f.level as Program['level'], delivery_mode: f.delivery_mode as Program['delivery_mode'],
+      status, is_free: f.is_free, price: f.is_free ? 0 : Number(f.price) || 0,
     }
-    publishProgram(program)
-    setOpen(false)
-    setTitle('')
-    setDescription('')
-    setHours('')
-    setPrice('')
-    setChosen([])
+    try { await createProgram(input); setOpen(false); setF({ ...f, title: '', description: '', price: '' }) } catch { /* affiché en haut */ }
   }
 
   return (
     <>
-      <PageHeader
-        title="Programmes de formation"
-        action={<Button onClick={() => setOpen(true)}>Publier une formation</Button>}
-      />
-
-      <PageBody>
+      <PageHeader title="Programmes" action={<Button onClick={() => setOpen(!open)}>{open ? 'Fermer' : 'Nouveau programme'}</Button>} />
+      <PageBody className="space-y-6">
+        {error && <p role="alert" className="text-coral">{error}</p>}
+        {open && (
+          <Panel title="Nouveau programme">
+            <div className="grid gap-4 p-5 sm:grid-cols-2">
+              <div className="sm:col-span-2"><Field label="Titre" required><Input value={f.title} onChange={set('title')} /></Field></div>
+              <div className="sm:col-span-2"><Field label="Description"><Textarea rows={4} value={f.description} onChange={set('description')} /></Field></div>
+              <Field label="Niveau"><Select value={f.level} onChange={set('level')}>{Object.entries(LEVEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
+              <Field label="Mode"><Select value={f.delivery_mode} onChange={set('delivery_mode')}>{Object.entries(MODE).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
+              <label className="flex items-center gap-2 text-[13.5px]"><input type="checkbox" checked={f.is_free} onChange={(e) => setF({ ...f, is_free: e.target.checked })} /> Gratuit</label>
+              {!f.is_free && <Field label="Prix (TND)"><Input type="number" value={f.price} onChange={set('price')} /></Field>}
+              <div className="flex gap-2 sm:col-span-2">
+                <Button variant="discret" disabled={!f.title.trim()} onClick={() => void submit('DRAFT')}>Brouillon</Button>
+                <Button disabled={!f.title.trim() || (!f.is_free && !(Number(f.price) > 0))} onClick={() => void submit('ACTIVE')}>Publier</Button>
+              </div>
+            </div>
+          </Panel>
+        )}
         <Panel>
-          {mine.length === 0 ? (
-            <EmptyState title="Aucun programme" action={<Button onClick={() => setOpen(true)}>Créer un programme</Button>} />
+          {loading ? <p className="p-5 text-slate">Chargement…</p> : programs.length === 0 ? (
+            <EmptyState title="Aucun programme">Créez votre premier programme de formation.</EmptyState>
           ) : (
-            <Table head={['Formation', 'Compétences visées', 'Modalité', 'Durée', 'Coût', 'Statut']}>
-              {mine.map((program) => (
-                <Row key={program.id}>
-                  <Cell>
-                    <p className="font-medium text-navy">{program.title}</p>
-                    <p className="text-[12.5px] text-slate">{organizationOf(program.organizationId)?.legalName}</p>
-                  </Cell>
-                  <Cell>
-                    <div className="flex flex-wrap gap-1.5">
-                      {program.skillIds.map((id) => (
-                        <Badge key={id} tone="teal">
-                          {skills.find((s) => s.id === id)?.canonicalName}
-                        </Badge>
-                      ))}
-                    </div>
-                  </Cell>
-                  <Cell className="text-[13px] text-slate">{DELIVERY_LABEL[program.deliveryMode]}</Cell>
-                  <Cell className="tnum text-[13px] text-slate">{program.durationHours} h</Cell>
-                  <Cell className="text-[13px] text-slate">{formatPrice(program.priceTnd)}</Cell>
-                  <Cell>
-                    <Badge
-                      tone={program.status === 'PUBLISHED' ? 'positif' : program.status === 'DRAFT' ? 'neutre' : 'attention'}
-                    >
-                      {program.status === 'PUBLISHED' ? 'Publiée' : program.status === 'DRAFT' ? 'Brouillon' : 'Archivée'}
-                    </Badge>
+            <Table head={['Programme', 'Mode', 'Prix', 'Statut', '']}>
+              {programs.map((p) => (
+                <Row key={p.id}>
+                  <Cell><span className="font-medium text-navy">{p.title}</span><p className="text-[12.5px] text-slate">{LEVEL[p.level]}</p></Cell>
+                  <Cell className="text-[13px]">{MODE[p.delivery_mode]}</Cell>
+                  <Cell className="text-[13px]">{price(p)}</Cell>
+                  <Cell><Badge tone={p.status === 'ACTIVE' ? 'positif' : 'neutre'}>{PSTATUS[p.status]}</Badge></Cell>
+                  <Cell className="text-right">
+                    {p.status === 'DRAFT' && <Button size="sm" onClick={() => void setProgramStatus(p.id, 'ACTIVE').catch(() => {})}>Publier</Button>}
+                    {p.status === 'ACTIVE' && <Button size="sm" variant="discret" onClick={() => void setProgramStatus(p.id, 'ARCHIVED').catch(() => {})}>Archiver</Button>}
                   </Cell>
                 </Row>
               ))}
@@ -193,166 +93,103 @@ export function FormationProgrammes() {
           )}
         </Panel>
       </PageBody>
-
-      <Modal
-        open={open}
-        onClose={() => setOpen(false)}
-        title="Publier une formation"
-        footer={
-          <>
-            <Button variant="secondaire" onClick={() => create('DRAFT')} disabled={!title.trim()}>
-              Brouillon
-            </Button>
-            <Button onClick={() => create('PUBLISHED')} disabled={problems.length > 0}>
-              Publier
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <Field label="Titre" required>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-          </Field>
-          <Field label="Objectifs et contenu" required>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
-          </Field>
-          <Field label="Prérequis" hint="Ce que le candidat doit déjà savoir faire.">
-            <Textarea value={prerequisites} onChange={(e) => setPrerequisites(e.target.value)} rows={2} />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Durée (heures)" required>
-              <Input type="number" value={hours} onChange={(e) => setHours(e.target.value)} />
-            </Field>
-            <Field label="Coût (DT)" hint="Laisser vide affichera « non renseigné ».">
-              <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} />
-            </Field>
-            <Field label="Modalité">
-              <Select value={mode} onChange={(e) => setMode(e.target.value as DeliveryMode)}>
-                {(Object.keys(DELIVERY_LABEL) as DeliveryMode[]).map((m) => (
-                  <option key={m} value={m}>
-                    {DELIVERY_LABEL[m]}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Niveau">
-              <Select value={level} onChange={(e) => setLevel(e.target.value as SkillLevel)}>
-                {(Object.keys(SKILL_LEVEL_LABEL) as SkillLevel[]).map((l) => (
-                  <option key={l} value={l}>
-                    {SKILL_LEVEL_LABEL[l]}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-
-          <Field label="Compétences visées" required hint="Choisies dans le référentiel commun, pour éviter les doublons ambigus.">
-            <div className="max-h-44 space-y-1 overflow-y-auto rounded-[6px] border border-line p-2">
-              {skills.map((skill) => (
-                <label key={skill.id} className="flex items-center gap-2.5 rounded px-2 py-1 text-[13px] hover:bg-mist">
-                  <input
-                    type="checkbox"
-                    checked={chosen.includes(skill.id)}
-                    onChange={(e) =>
-                      setChosen((list) => (e.target.checked ? [...list, skill.id] : list.filter((id) => id !== skill.id)))
-                    }
-                    className="accent-teal"
-                  />
-                  {skill.canonicalName}
-                </label>
-              ))}
-            </div>
-          </Field>
-
-          {problems.length > 0 && (
-            <ul className="space-y-1">
-              {problems.map((p) => (
-                <li key={p} className="text-[12.5px] text-coral">
-                  {p}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </Modal>
     </>
   )
 }
 
-/* ------------------------------------------------------------------ */
-
 export function FormationSessions() {
-  const { session, programs, sessions, enrollments, profileOf, userOf } = useStore()
-  if (!session) return null
+  const { programs, sessions, enrollments, loading, error, createSession, setSessionStatus } = useTraining()
+  const [open, setOpen] = useState(false)
+    const [selected, setSelected] = useState<string | null>(null)
+  const [f, setF] = useState({ program_id: '', start_date: '', end_date: '', registration_deadline: '', capacity: '20', location_or_url: '' })
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
+  const title = (id: string) => programs.find((p) => p.id === id)?.title ?? 'Programme'
+  const ready = f.program_id && f.start_date && f.end_date && f.registration_deadline && f.location_or_url.trim()
 
-  const mine = programs.filter((p) => p.organizationId === session.user.organizationId)
-  const mySessions = sessions
-    .filter((s) => mine.some((p) => p.id === s.programId))
-    .sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate))
+  async function submit() {
+    try {
+      await createSession({
+        program_id: f.program_id, capacity: Number(f.capacity) || 1, location_or_url: f.location_or_url.trim(),
+        start_date: new Date(f.start_date).toISOString(), end_date: new Date(f.end_date).toISOString(),
+        registration_deadline: new Date(f.registration_deadline).toISOString(),
+      })
+      setOpen(false)
+    } catch { /* affiché en haut */ }
+  }
 
   return (
     <>
-      <PageHeader
-        title="Sessions et inscriptions"
-        action={<Button>Planifier une session</Button>}
-      />
-
-      <PageBody className="space-y-5">
-        {mySessions.map((trainingSession) => {
-          const program = mine.find((p) => p.id === trainingSession.programId)
-          const registered = enrollments.filter((e) => e.sessionId === trainingSession.id)
-          return (
-            <Panel
-              key={trainingSession.id}
-              title={program?.title}
-              description={`Du ${formatDate(trainingSession.startDate)} au ${formatDate(trainingSession.endDate)} · ${trainingSession.locationOrUrl}`}
-              action={<Badge tone={SESSION_TONE[trainingSession.status]}>{SESSION_TEXT[trainingSession.status]}</Badge>}
-            >
-              <div className="flex flex-wrap gap-6 border-b border-line px-5 py-3 text-[13px]">
-                <span className="text-slate">
-                  Inscrits <span className="tnum font-medium text-navy">{registered.length}</span> /{' '}
-                  <span className="tnum">{trainingSession.capacity}</span>
-                </span>
-                <span className="text-slate">
-                  Clôture des inscriptions{' '}
-                  <span className="font-medium text-navy">{formatDate(trainingSession.registrationDeadline)}</span>
-                </span>
+      <PageHeader title="Sessions" action={<Button onClick={() => setOpen(!open)}>{open ? 'Fermer' : 'Planifier une session'}</Button>} />
+      <PageBody className="space-y-6">
+        {error && <p role="alert" className="text-coral">{error}</p>}
+        {open && (
+          <Panel title="Nouvelle session">
+            <div className="grid gap-4 p-5 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Field label="Programme" required>
+                  <Select value={f.program_id} onChange={set('program_id')}>
+                    <option value="">Choisir…</option>
+                    {programs.filter((p) => p.status === 'ACTIVE').map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+                  </Select>
+                </Field>
               </div>
-
-              {registered.length === 0 ? (
-                <p className="px-5 py-4 text-[13px] text-slate">Aucune inscription enregistrée pour cette session.</p>
-              ) : (
-                <Table head={['Participant', 'Inscrit le', 'Progression', 'Statut']}>
-                  {registered.map((enrollment) => {
-                    const profile = profileOf(enrollment.candidateId)
-                    const user = profile ? userOf(profile.userId) : undefined
-                    return (
-                      <Row key={enrollment.id}>
-                        <Cell className="font-medium text-navy">
-                          {user?.firstName} {user?.lastName}
-                        </Cell>
-                        <Cell className="text-[13px] text-slate">{formatDate(enrollment.enrolledAt)}</Cell>
-                        <Cell className="tnum text-[13px] text-slate">{enrollment.completionRate} %</Cell>
-                        <Cell>
-                          <Badge tone={enrollment.status === 'TERMINE' ? 'positif' : 'encours'}>
-                            {enrollment.status === 'INSCRIT'
-                              ? 'Inscrit'
-                              : enrollment.status === 'EN_COURS'
-                                ? 'En cours'
-                                : enrollment.status === 'TERMINE'
-                                  ? 'Terminé'
-                                  : 'Abandonné'}
-                          </Badge>
-                        </Cell>
-                      </Row>
-                    )
-                  })}
-                </Table>
-              )}
-            </Panel>
-          )
-        })}
-
+              <Field label="Début" required><Input type="datetime-local" value={f.start_date} onChange={set('start_date')} /></Field>
+              <Field label="Fin" required><Input type="datetime-local" value={f.end_date} onChange={set('end_date')} /></Field>
+              <Field label="Clôture des inscriptions" required><Input type="datetime-local" value={f.registration_deadline} onChange={set('registration_deadline')} /></Field>
+              <Field label="Capacité"><Input type="number" value={f.capacity} onChange={set('capacity')} /></Field>
+              <div className="sm:col-span-2"><Field label="Lieu ou lien" required><Input value={f.location_or_url} onChange={set('location_or_url')} /></Field></div>
+              <div className="sm:col-span-2"><Button disabled={!ready} onClick={() => void submit()}>Planifier</Button></div>
+            </div>
+          </Panel>
+        )}
+        <Panel>
+          {loading ? <p className="p-5 text-slate">Chargement…</p> : sessions.length === 0 ? (
+            <EmptyState title="Aucune session">Planifiez une session pour un programme actif.</EmptyState>
+          ) : (
+            <Table head={['Programme', 'Dates', 'Inscrits', 'Statut', '']}>
+              {sessions.map((s) => (
+                <Row key={s.id}>
+                  <Cell><span className="font-medium text-navy">{title(s.program)}</span><p className="text-[12.5px] text-slate">{s.location_or_url}</p></Cell>
+                  <Cell className="text-[13px]">{formatDate(s.start_date)} → {formatDate(s.end_date)}</Cell>
+                  <Cell className="tnum text-[13px]">
+                    <button className="font-medium text-teal hover:underline" onClick={() => setSelected(selected === s.id ? null : s.id)}>
+                      {enrollments.filter((e) => e.session === s.id).length} / {s.capacity}
+                    </button>
+                  </Cell>                  <Cell><Badge tone={s.status === 'CANCELLED' ? 'negatif' : s.status === 'COMPLETED' ? 'neutre' : 'positif'}>{SSTATUS[s.status]}</Badge></Cell>
+                  <Cell className="text-right">
+                    {s.status === 'PLANNED' && (
+                      <>
+                        <Button size="sm" onClick={() => void setSessionStatus(s.id, 'ONGOING').catch(() => {})}>Démarrer</Button>{' '}
+                        <Button size="sm" variant="discret" onClick={() => void setSessionStatus(s.id, 'CANCELLED').catch(() => {})}>Annuler</Button>
+                      </>
+                    )}
+                    {s.status === 'ONGOING' && <Button size="sm" onClick={() => void setSessionStatus(s.id, 'COMPLETED').catch(() => {})}>Terminer</Button>}
+                  </Cell>
+                </Row>
+              ))}
+            </Table>
+          )}
+        </Panel>*        {selected && (
+          <Panel title={`Inscrits — ${title(sessions.find((s) => s.id === selected)?.program ?? '')}`}>
+            {enrollments.filter((e) => e.session === selected).length === 0 ? (
+              <p className="px-5 py-4 text-[13.5px] text-slate">Aucune inscription pour cette session.</p>
+            ) : (
+              <ul className="divide-y divide-line/70">
+                {enrollments.filter((e) => e.session === selected).map((e) => (
+                  <li key={e.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                    <span className="text-[13.5px] text-navy">
+                      Candidat {e.candidate_id.slice(0, 8)} · inscrit le {formatDate(e.enrolled_at)}
+                    </span>
+                    <span className="flex items-center gap-3">
+                      {e.completion_rate !== null && <span className="tnum text-[12.5px] text-slate">{e.completion_rate} %</span>}
+                      <Badge tone={e.status === 'COMPLETED' ? 'positif' : e.status === 'DROPPED' ? 'negatif' : 'neutre'}>{ENROLL[e.status]}</Badge>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+        )}
       </PageBody>
     </>
   )

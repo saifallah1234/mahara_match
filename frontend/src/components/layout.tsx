@@ -92,6 +92,7 @@ export const NAVIGATION: Record<RoleCode, NavItem[]> = {
     { to: '/candidat/offres', label: 'Offres', icon: 'search' },
     { to: '/candidat/candidatures', label: 'Mes candidatures', icon: 'applications' },
     { to: '/candidat/formations', label: 'Formations', icon: 'training' },
+        { to: '/candidat/assistant', label: 'Assistant', icon: 'assistant' },
   ],
   RECRUITER: [
     { to: '/recruteur', label: 'Tableau de bord', icon: 'dashboard', end: true },
