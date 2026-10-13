@@ -1,0 +1,27 @@
+[Unit]
+Description=Mahara private mock interview GPU worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mahara-interview
+Group=mahara-interview
+WorkingDirectory=/opt/mahara-match
+EnvironmentFile=/etc/mahara/interview-worker.env
+Environment=PYTHONPATH=/opt/mahara-match
+ExecStart=/opt/mahara-interview-venv/bin/python -m pipelines.interviews.worker_main
+Restart=on-failure
+RestartSec=10
+KillMode=control-group
+TimeoutStopSec=30
+StateDirectory=mahara-interview
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/mahara-interview
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

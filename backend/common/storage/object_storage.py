@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from io import BytesIO
 from typing import cast
 from urllib.parse import urlsplit
@@ -64,3 +65,32 @@ def download_object(object_key: str) -> bytes:
 def delete_object(object_key: str) -> None:
     client, bucket = _configuration()
     client.remove_object(bucket, object_key)
+
+
+def object_metadata(object_key: str) -> tuple[int, str]:
+    client, bucket = _configuration()
+    metadata = client.stat_object(bucket, object_key)
+    return int(metadata.size or 0), metadata.content_type or "application/octet-stream"
+
+
+def read_bounded(object_key: str, limit: int) -> bytes:
+    client, bucket = _configuration()
+    response = client.get_object(bucket, object_key)
+    try:
+        content = response.read(limit + 1)
+        if len(content) > limit:
+            raise ValueError("Media exceeds the configured read limit.")
+        return content
+    finally:
+        response.close()
+        response.release_conn()
+
+
+def stream_object(object_key: str) -> Iterator[bytes]:
+    client, bucket = _configuration()
+    response = client.get_object(bucket, object_key)
+    try:
+        yield from response.stream(64 * 1024)
+    finally:
+        response.close()
+        response.release_conn()

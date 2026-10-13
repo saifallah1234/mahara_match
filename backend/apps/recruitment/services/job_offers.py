@@ -128,6 +128,24 @@ def get_job_offer(actor: User, offer_id: UUID | str) -> JobOffer:
     return offer
 
 
+def interview_offer_evidence(actor: User, offer_id: UUID | str) -> dict[str, Any]:
+    offer = get_job_offer(actor, offer_id)
+    return {
+        "id": str(offer.pk),
+        "title": offer.title[:500],
+        "description": offer.description[:8000],
+        "skills": list(
+            offer.offer_skills.select_related("skill").values(
+                "id", "skill_id", "skill__canonical_name"
+            )[:20]
+        ),
+        "company": offer.company_name
+        or (offer.organization.legal_name if offer.source_id is None else ""),
+        "organization_id": str(offer.organization_id),
+        "imported": offer.source_id is not None,
+    }
+
+
 @transaction.atomic
 def create_job_offer(actor: User, data: Mapping[str, Any]) -> JobOffer:
     organization_id = data["organization_id"]

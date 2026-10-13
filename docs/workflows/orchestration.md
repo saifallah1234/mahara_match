@@ -44,6 +44,16 @@ propagation timing remain Q18 contract details.
 
 ## Scaffold limitations
 
+Mock interview API requests now persist assistant-owned database jobs in the
+request transaction. Session/turn version and idempotency checks are enforced
+before answer acceptance; follow-up reservation uses a session row lock. The
+application task runner executes graph, TTS/STT and feedback with leases and
+committed checkpoints. A separate coordinator publishes durable priority/background
+video intents and commits status before acknowledgement. The standalone worker
+uses private MinIO audio/results/manifests, a process lock and visibility leases;
+it has no Django/database dependency and resolves avatars locally. Local checks
+use fake queues and simulated inference; cloud deployment remains unapproved.
+
 Dagster assets/jobs/resources/schedules/sensors are empty directories. No workflow
-states, DAGs, retries, queues or schedules are implemented. LangGraph does not
+states, DAGs, retries, queues or schedules are implemented in Dagster. LangGraph does not
 replace background orchestration, and Dagster does not own interactive dialogue.

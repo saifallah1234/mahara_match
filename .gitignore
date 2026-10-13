@@ -4,6 +4,7 @@ venv/
 .env
 .env.*
 !.env.example
+infrastructure/latentsync-worker/worker.env
 *.pem
 *.key
 
