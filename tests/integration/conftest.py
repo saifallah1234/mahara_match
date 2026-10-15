@@ -1,87 +1,13 @@
-import os
-from collections.abc import Generator
 from datetime import timedelta
 from typing import Any
-from uuid import uuid4
 
 import pytest
 from django.core.management import call_command
-from django.db import connection
-from django.db.migrations.recorder import MigrationRecorder
 from django.utils import timezone
-from psycopg import sql
 
 from backend.apps.candidates.models import CandidateProfile
 from backend.apps.identity.models import Organization, OrganizationMember, Role, User, UserRole
 from backend.apps.training.models import TrainingProgram, TrainingSession
-
-DATABASE_URL_VARIABLES = ("TEST_DATABASE_URL", "DATABASE_URL", "POSTGRES_SESSION_POOLER")
-
-
-@pytest.fixture(scope="session")
-def django_db_setup(
-    django_db_blocker: Any,
-    django_db_modify_db_settings: None,
-) -> Generator[None]:
-    # Never fall back to Django's CREATE DATABASE test_<name>: on the shared server it
-    # leaves a stray database behind whenever a run is interrupted.
-    database_url = next(filter(None, map(os.getenv, DATABASE_URL_VARIABLES)), None)
-    if not database_url:
-        raise pytest.UsageError(
-            "Integration tests need a PostgreSQL URL in one of "
-            f"{', '.join(DATABASE_URL_VARIABLES)}; they run in an isolated schema "
-            "and never create a separate test database."
-        )
-
-    original_options = connection.settings_dict["OPTIONS"].copy()
-    schema_name = f"mahara_test_{uuid4().hex}"
-    schema_created = False
-    try:
-        with django_db_blocker.unblock():
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    "SELECT namespace.nspname "
-                    "FROM pg_extension AS extension "
-                    "JOIN pg_namespace AS namespace ON namespace.oid = extension.extnamespace "
-                    "WHERE extension.extname = %s",
-                    ["vector"],
-                )
-                extension_row = cursor.fetchone()
-                if extension_row is None:
-                    raise pytest.UsageError(
-                        "The PostgreSQL database configured by TEST_DATABASE_URL or "
-                        "DATABASE_URL must have the vector extension installed."
-                    )
-                vector_schema = extension_row[0]
-                cursor.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema_name)))
-                schema_created = True
-
-            connection.close()
-            connection.settings_dict["OPTIONS"] = {
-                **original_options,
-                "options": f"-c search_path={schema_name}",
-            }
-            MigrationRecorder(connection).ensure_schema()
-            connection.close()
-            connection.settings_dict["OPTIONS"] = {
-                **original_options,
-                "options": f"-c search_path={schema_name},{vector_schema}",
-            }
-            call_command("migrate", interactive=False, verbosity=0)
-
-        yield
-    finally:
-        connection.close()
-        connection.settings_dict["OPTIONS"] = original_options
-        if schema_created:
-            with django_db_blocker.unblock():
-                with connection.cursor() as cursor:
-                    cursor.execute(
-                        sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(
-                            sql.Identifier(schema_name)
-                        )
-                    )
-            connection.close()
 
 
 @pytest.fixture
