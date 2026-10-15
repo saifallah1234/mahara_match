@@ -8,7 +8,6 @@ import pytest
 from django.core.management import call_command
 from django.db import connection
 from django.db.migrations.recorder import MigrationRecorder
-from django.test.utils import setup_databases, teardown_databases
 from django.utils import timezone
 from psycopg import sql
 
@@ -16,28 +15,23 @@ from backend.apps.candidates.models import CandidateProfile
 from backend.apps.identity.models import Organization, OrganizationMember, Role, User, UserRole
 from backend.apps.training.models import TrainingProgram, TrainingSession
 
+DATABASE_URL_VARIABLES = ("TEST_DATABASE_URL", "DATABASE_URL", "POSTGRES_SESSION_POOLER")
+
 
 @pytest.fixture(scope="session")
 def django_db_setup(
-    request: pytest.FixtureRequest,
     django_db_blocker: Any,
-    django_db_keepdb: bool,
-    django_db_createdb: bool,
     django_db_modify_db_settings: None,
 ) -> Generator[None]:
-    database_url = os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL")
+    # Never fall back to Django's CREATE DATABASE test_<name>: on the shared server it
+    # leaves a stray database behind whenever a run is interrupted.
+    database_url = next(filter(None, map(os.getenv, DATABASE_URL_VARIABLES)), None)
     if not database_url:
-        with django_db_blocker.unblock():
-            database_config = setup_databases(
-                verbosity=request.config.option.verbose,
-                interactive=False,
-                keepdb=django_db_keepdb and not django_db_createdb,
-            )
-        yield
-        if not django_db_keepdb:
-            with django_db_blocker.unblock():
-                teardown_databases(database_config, verbosity=request.config.option.verbose)
-        return
+        raise pytest.UsageError(
+            "Integration tests need a PostgreSQL URL in one of "
+            f"{', '.join(DATABASE_URL_VARIABLES)}; they run in an isolated schema "
+            "and never create a separate test database."
+        )
 
     original_options = connection.settings_dict["OPTIONS"].copy()
     schema_name = f"mahara_test_{uuid4().hex}"
