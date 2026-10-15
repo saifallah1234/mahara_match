@@ -38,6 +38,47 @@ The development group is installed by default. `uv.lock` records exact resolved
 versions; `pyproject.toml` declares Django, DRF, PostgreSQL/JWT/OpenAPI runtime
 dependencies and the development tools.
 
+## Run the app locally
+
+1. Start PostgreSQL and configure the connection in `.env` (see `.env.example`).
+2. From the repository root, prepare the database and start Django:
+
+   ```bash
+   uv sync --locked
+   uv run --frozen python backend/manage.py migrate
+   uv run --frozen python backend/manage.py seed_rbac
+   uv run --frozen python backend/manage.py runserver
+   ```
+
+   The API runs at `http://localhost:8000`. For local development, the frontend
+   expects `DJANGO_SETTINGS_MODULE=backend.config.settings.development`.
+3. In another terminal, start the frontend:
+
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+   Open `http://localhost:5173`; Vite proxies API requests to Django.
+
+## Accounts and dashboards
+
+- **Sign up:** use `/inscription` (or the “Créer un compte” link). Candidate
+  accounts activate immediately. Recruiter and training manager signups include
+  organization details and require admin review before access is enabled.
+- **Admin dashboard:** sign in with an account assigned the `ADMIN` role, then
+  open `/admin` (or select the admin workspace). There is no public admin signup;
+  create an admin through Django's `createsuperuser` only if a Django admin-site
+  account is needed, then assign the application `ADMIN` role through the app's
+  role management.
+- **Candidate dashboard:** `/candidat` shows application and enrollment counts,
+  published offers, and recent applications/offers. The candidate space also
+  provides profile and CV management, offer search and applications, and
+  training sessions. Candidate profile and related records use the API; some
+  offer, training, and dashboard data are still demo-backed. See the
+  [frontend README](frontend/README.md) for the current scope and limitations.
+
 Django reads nonempty values from the local `.env` file, while process environment
 variables take precedence. If `POSTGRES_SESSION_POOLER` is set to a PostgreSQL URL,
 it takes precedence over the separate `POSTGRES_*` connection fields and uses TLS.

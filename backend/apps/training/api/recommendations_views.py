@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -12,22 +13,34 @@ from backend.apps.training.api.recommendations_serializers import (
 )
 from backend.apps.training.models import TrainingRecommendation
 from backend.apps.training.services import recommendations as recommendation_services
+from backend.common.api.query_params import uuid_query_param
 
 
 class TrainingRecommendationViewSet(GenericViewSet[TrainingRecommendation]):
     serializer_class = TrainingRecommendationReadSerializer
     queryset = TrainingRecommendation.objects.none()
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("candidate_id", UUID, required=False),
+            OpenApiParameter("organization_id", UUID, required=False),
+        ],
+        responses=TrainingRecommendationReadSerializer(many=True),
+    )
     def list(self, request: Request) -> Response:
         queryset = recommendation_services.list_recommendations(
             active_request_user(request),
-            candidate_id=request.query_params.get("candidate_id"),
-            organization_id=request.query_params.get("organization_id"),
+            candidate_id=uuid_query_param(request, "candidate_id"),
+            organization_id=uuid_query_param(request, "organization_id"),
         )
         page = self.paginate_queryset(queryset)
         serializer = TrainingRecommendationReadSerializer(page, many=True)
         return self.get_paginated_response(serializer.data)
 
+    @extend_schema(
+        request=TrainingRecommendationCreateSerializer,
+        responses={201: TrainingRecommendationReadSerializer},
+    )
     def create(self, request: Request) -> Response:
         serializer = TrainingRecommendationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

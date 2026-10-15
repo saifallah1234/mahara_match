@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -21,7 +21,10 @@ class ApplicationStatusHistoryViewSet(GenericViewSet[ApplicationStatusHistory]):
     queryset = ApplicationStatusHistory.objects.none()
     permission_classes = (IsActiveAuthenticated,)
 
-    @extend_schema(responses=ApplicationStatusHistoryReadSerializer(many=True))
+    @extend_schema(
+        parameters=[OpenApiParameter("application_id", UUID, required=False)],
+        responses=ApplicationStatusHistoryReadSerializer(many=True),
+    )
     def list(self, request: Request) -> Response:
         queryset = history_services.list_status_history(
             active_request_user(request),

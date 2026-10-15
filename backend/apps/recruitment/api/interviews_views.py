@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -27,7 +27,10 @@ class InterviewViewSet(GenericViewSet[Interview]):
     queryset = Interview.objects.none()
     permission_classes = (IsActiveAuthenticated,)
 
-    @extend_schema(responses=InterviewReadSerializer(many=True))
+    @extend_schema(
+        parameters=[OpenApiParameter("application_id", UUID, required=False)],
+        responses=InterviewReadSerializer(many=True),
+    )
     def list(self, request: Request) -> Response:
         queryset = interview_services.list_interviews(
             active_request_user(request),
@@ -52,6 +55,7 @@ class InterviewViewSet(GenericViewSet[Interview]):
             status=status.HTTP_201_CREATED,
         )
 
+    @extend_schema(request=InterviewTransitionSerializer, responses=InterviewReadSerializer)
     @action(detail=True, methods=["post"])
     def transition(self, request: Request, pk: UUID) -> Response:
         serializer = InterviewTransitionSerializer(data=request.data)

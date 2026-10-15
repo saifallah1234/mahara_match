@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -27,6 +28,10 @@ class RolePermissionViewSet(GenericViewSet[RolePermission]):
         grant = grant_services.get_role_permission(active_request_user(request), pk)
         return Response(RolePermissionReadSerializer(grant).data)
 
+    @extend_schema(
+        request=RolePermissionCreateSerializer,
+        responses={201: RolePermissionReadSerializer},
+    )
     def create(self, request: Request) -> Response:
         serializer = RolePermissionCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

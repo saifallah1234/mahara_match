@@ -14,7 +14,11 @@ def effective_permission_codes(user: User, organization_id: UUID | str | None = 
 
     assignments = UserRole.objects.filter(user=user).filter(
         Q(organization__isnull=True)
-        | Q(organization__members__user=user, organization__deleted_at__isnull=True)
+        | Q(
+            organization__members__user=user,
+            organization__deleted_at__isnull=True,
+            organization__verification_status="VERIFIED",
+        )
     )
     if organization_id is not None:
         assignments = assignments.filter(

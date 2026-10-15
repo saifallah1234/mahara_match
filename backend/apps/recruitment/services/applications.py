@@ -2,6 +2,8 @@ from uuid import UUID
 
 from django.db.models import Q, QuerySet
 
+from backend.apps.documents.models import Document
+from backend.apps.documents.services.documents import download_document
 from backend.apps.identity.models import RoleCode, User, UserRole
 from backend.apps.recruitment.models import Application
 from backend.apps.recruitment.services.contracts import RecruitmentPermissionCode
@@ -32,7 +34,24 @@ def list_applications(actor: User) -> QuerySet[Application]:
 
 def get_application(actor: User, application_id: UUID | str) -> Application:
     try:
-        application = list_applications(actor).select_related("offer").get(id=application_id)
+        application = (
+            list_applications(actor)
+            .select_related("candidate__user", "cv__document", "offer__organization")
+            .get(id=application_id)
+        )
     except Application.DoesNotExist as exc:
         raise DomainNotFoundError("Application not found.") from exc
     return application
+
+
+def download_application_cv(actor: User, application_id: UUID | str) -> tuple[Document, bytes]:
+    application = get_application(actor, application_id)
+    cv = application.cv
+    if (
+        (cv.deleted_at is not None and application.status in {"REJECTED", "WITHDRAWN", "HIRED"})
+        or cv.bytes_purged_at is not None
+        or cv.candidate_id != application.candidate_id
+        or cv.document.owner_user_id != application.candidate.user_id
+    ):
+        raise DomainNotFoundError("Application CV not found.")
+    return download_document(cv.document)

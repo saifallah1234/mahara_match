@@ -9,7 +9,11 @@ UUID_PATH = "00000000-0000-0000-0000-000000000001"
 
 
 def _actions(path: str) -> dict[str, str]:
-    return cast(Any, resolve(path).func).actions
+    return {
+        method: action
+        for method, action in cast(Any, resolve(path).func).actions.items()
+        if method != "head"
+    }
 
 
 # Route tests pass once P1 includes the recruitment urls under /api/v1/.
@@ -39,3 +43,7 @@ def test_lifecycle_resources_expose_controlled_actions(resource: str) -> None:
     assert _actions(f"/api/v1/{resource}/") == {"get": "list", "post": "create"}
     assert _actions(f"/api/v1/{resource}/{UUID_PATH}/") == {"get": "retrieve"}
     assert _actions(f"/api/v1/{resource}/{UUID_PATH}/transition/") == {"post": "transition"}
+
+
+def test_application_exposes_submitted_cv_download() -> None:
+    assert _actions(f"/api/v1/applications/{UUID_PATH}/cv/") == {"get": "cv"}
