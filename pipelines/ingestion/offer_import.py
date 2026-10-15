@@ -102,6 +102,9 @@ def run_import(
         raise
     finally:
         counts = imports.finish_import(run, failed=failed)
+        rejections = imports.rejection_summary(run)
+        if rejections:
+            logger.info("Rejected rows by reason: %s", rejections)
 
     if scrape_error is not None:
         raise scrape_error
@@ -128,6 +131,7 @@ def _process(imports: Any, run: Any, row_number: int, scraped: ScrapedOffer) -> 
         external_id=mapped.external_id,
         payload=payload,
         fields=mapped.to_model_fields(),
+        description_language_code=mapped.description_language_code,
     )
 
 
