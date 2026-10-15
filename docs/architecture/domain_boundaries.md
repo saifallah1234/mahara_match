@@ -53,6 +53,16 @@ be designed. Do not create a universal repository or a second ORM to bypass this
 
 ## Avoid duplicate concepts
 
+The approved mock-interview plan adds `MockInterviewSession`, `MockInterviewTurn`
+and `MockInterviewJob` to assistant ownership. They reference existing candidate,
+offer, CV, conversation/message and document records. Recruitment `Interview`
+continues to mean an employer appointment. AI processing uses injected services;
+durable business state and authorization remain in backend services.
+MinIO media metadata remains documents-owned. The separate GPU transport process
+imports no Django and receives only validated job/audio/avatar references, never
+candidate/CV evidence or database credentials. Queue status writes return through
+assistant services. Deployment and real GPU quality remain separate gates.
+
 - Identity owns organizations for employers, providers, ANETI and ministry alike.
 - Candidates owns profiles, CV versions and their analysis; documents owns generic
   file metadata; object storage contains bytes. Technical parsing is outside both.

@@ -141,3 +141,20 @@ def phase3(db: None) -> dict[str, Any]:
     )
     records.update(program=program, session=session)
     return records
+
+
+@pytest.fixture
+def interview(phase3, settings):
+    settings.MOCK_INTERVIEW_ENABLED = True
+    from backend.apps.recruitment.models import JobOffer
+
+    offer = JobOffer.objects.create(
+        organization=phase3["recruiter_org"],
+        created_by=phase3["recruiter"],
+        title="Python developer",
+        description="Build tested services",
+        easy_apply=True,
+        status="PUBLISHED",
+    )
+    phase3["offer"] = offer
+    return phase3

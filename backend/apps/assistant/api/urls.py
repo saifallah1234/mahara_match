@@ -2,6 +2,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from backend.apps.assistant.api.agent_run_views import AgentRunView
+from backend.apps.assistant.api.mock_interview_views import MockInterviewViewSet
 from backend.apps.assistant.api.views import (
     ActionViewSet,
     ConversationViewSet,
@@ -11,6 +12,7 @@ from backend.apps.assistant.api.views import (
 )
 
 router = DefaultRouter()
+router.register("mock-interviews", MockInterviewViewSet, basename="mock-interview")
 router.register("conversations", ConversationViewSet, basename="conversation")
 router.register("agent-executions", ExecutionViewSet, basename="agent-execution")
 

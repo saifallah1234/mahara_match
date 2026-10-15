@@ -55,6 +55,16 @@ storage placeholders, not a final state-machine agreement.
 
 ## Maintaining this register
 
+Mock interviews follow the approved
+[2026-10-10 implementation contract](../team/ai_mock_interview_implementation_plan.md).
+Local phases implement the scoped session state machine, French-only enablement,
+candidate ownership, durable graph/tasks and queue/worker contracts. One short
+ElevenLabs sample was approved on 2026-10-11; normal paid calls remain disabled.
+No Piper/Whisper model paths were supplied. This does not resolve general assistant action execution
+(Q15), platform GraphRAG requirements, or the retained-data release review (Q19).
+French speech quality, local models/voice and actual GPU runtime remain explicit
+validation gates; deployment and paid services require separate approval.
+
 The [roadmap decision register](../team/implementation_roadmap.md#decision-ownership-and-phase-gates)
 assigns owners, reviewers, task dependencies and decision deadlines by milestone.
 The [Phase 1 gates](../team/phase_01_data_backend.md#decision-gates-before-coding-the-affected-part)

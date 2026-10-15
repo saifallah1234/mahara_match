@@ -42,6 +42,26 @@ def own_profile(actor: User) -> CandidateProfile:
         raise DomainNotFoundError("Candidate profile not found.") from exc
 
 
+def interview_profile_evidence(actor: User, cv_id: UUID | str | None) -> dict[str, Any]:
+    profile = own_profile(actor)
+    skills = list(
+        profile.skills.select_related("skill").values(
+            "id", "skill_id", "skill__canonical_name", "level"
+        )[:20]
+    )
+    experiences = list(
+        profile.experiences.values("id", "job_title", "organization_name", "description")[:10]
+    )
+    cv = get_record(actor, CV, cv_id) if cv_id else None
+    return {
+        "profile_id": str(profile.pk),
+        "headline": profile.headline[:500],
+        "skills": skills,
+        "experiences": [{**row, "description": row["description"][:2000]} for row in experiences],
+        "cv": {"id": str(cv.pk), "parsed_data": cv.parsed_data_json} if cv else None,
+    }
+
+
 def _save_validated[RecordT: models.Model](instance: RecordT) -> RecordT:
     try:
         instance.full_clean()

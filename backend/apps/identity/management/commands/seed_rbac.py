@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 
+from backend.apps.assistant.services.bootstrap import seed_assistant_rbac
 from backend.apps.candidates.services.bootstrap import seed_candidates_rbac
 from backend.apps.identity.services.bootstrap import seed_identity_rbac
 from backend.apps.imports.services.bootstrap import seed_imports_rbac
@@ -14,6 +15,7 @@ class Command(BaseCommand):
 
     def handle(self, *args: object, **options: object) -> None:
         seed_identity_rbac()
+        seed_assistant_rbac()
         seed_candidates_rbac()
         seed_training_rbac()
         seed_recruitment_rbac()

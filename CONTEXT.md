@@ -133,6 +133,21 @@ processes without creating independent business services or schema ownership.
 
 ## AI and agentic workflows
 
+**Mock interview implementation (2026-10-11):** the approved
+[implementation plan](docs/team/ai_mock_interview_implementation_plan.md) adds
+assistant-owned rehearsal sessions, turns and durable jobs, separate from
+recruitment appointments. Phase 1 persistence/API checks pass on isolated local
+PostgreSQL. Local phases now include the checkpointed graph, authorized evidence,
+protected streaming, recording/cleanup, candidate playback and leased tasks.
+Queue coordination and the standalone local-avatar worker pass fake-queue tests;
+the complete mocked journey passes Chromium and real local MinIO checks. Optional
+Piper/faster-whisper need existing model files, which have not been supplied.
+One short ElevenLabs French test was separately approved and decoded successfully;
+The user subsequently approved ElevenLabs for interview speech; local configuration
+now enables that provider and paid TTS. Cloud access remains separately gated. No deployment or real GPU
+inference has occurred. See the [runbook](docs/deployment/mock_interviews.md) and
+[API contract](docs/api/mock_interviews_v1.md) for configuration and release gates.
+
 The ANETI employment advisor is the AI agent of the system. Its future reasoning
 and orchestration live in `ai/agents/` and `ai/workflows/`; CV capabilities live in
 `ai/document_intelligence/`. It uses tools and owning application services for

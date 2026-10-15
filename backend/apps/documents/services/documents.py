@@ -31,7 +31,11 @@ class DocumentStorageError(DomainError):
 
 
 def list_owned_documents(actor: User) -> QuerySet[Document]:
-    return Document.objects.filter(owner_user=actor).exclude(cv__deleted_at__isnull=False)
+    return (
+        Document.objects.filter(owner_user=actor)
+        .exclude(cv__deleted_at__isnull=False)
+        .exclude(type__startswith="INTERVIEW_")
+    )
 
 
 def get_owned_document(actor: User, document_id: UUID | str) -> Document:
@@ -84,6 +88,10 @@ def _read_upload(upload: UploadedFile) -> tuple[bytes, str, str]:
 
 
 def upload_document(owner: User, upload: UploadedFile, document_type: str) -> Document:
+    if document_type.startswith("INTERVIEW_"):
+        raise DomainValidationError(
+            details={"type": ["Interview media uses the protected interview API."]}
+        )
     if not DOCUMENT_TYPE_PATTERN.fullmatch(document_type):
         raise DomainValidationError(
             details={"type": ["Use an uppercase type containing letters, numbers or underscores."]}
