@@ -50,10 +50,10 @@ organization, and a verified, non-deleted `COMPANY` or `SUBSIDIARY` organization
 superuser status do not bypass these requirements; the permission is revocable.
 
 The candidate account must be ACTIVE and not soft-deleted, and its visibility
-must be exactly `RECRUITERS`. This is the explicit recruiter-discovery opt-in
-state for Phase 3A. `PRIVATE` and `PUBLIC` are excluded. PUBLIC semantics remain
-undefined and never grant anonymous access. Detail uses the same authorized
-visibility queryset as list; hidden and inactive candidates return 404.
+must be `RECRUITERS` or `PUBLIC`; `PRIVATE` is excluded. PUBLIC is a superset of
+RECRUITERS for verified recruiters (Q28, decided 2026-10-15); it never grants
+anonymous access. Detail uses the same authorized visibility queryset as list;
+private and inactive candidates return 404.
 
 List and detail return the same redacted fields:
 

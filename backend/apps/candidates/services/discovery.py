@@ -27,15 +27,22 @@ def list_candidates(actor: User) -> QuerySet[CandidateProfile]:
     ):
         raise DomainPermissionError()
     return (
-        CandidateProfile.objects.filter(
-            profile_visibility=ProfileVisibility.RECRUITERS,
-            user__status=UserStatus.ACTIVE,
-            user__deleted_at__isnull=True,
-        )
+        list_indexable_profiles()
         .prefetch_related("skills", "experiences", "educations")
         .select_related("preferences")
-        .order_by("id")
     )
+
+
+def list_indexable_profiles() -> QuerySet[CandidateProfile]:
+    """Profiles whose active owners opted in to recruiter discovery.
+
+    PUBLIC is a superset of RECRUITERS (Q28, 2026-10-15): both expose the limited view.
+    """
+    return CandidateProfile.objects.filter(
+        profile_visibility__in=(ProfileVisibility.RECRUITERS, ProfileVisibility.PUBLIC),
+        user__status=UserStatus.ACTIVE,
+        user__deleted_at__isnull=True,
+    ).order_by("id")
 
 
 def filter_candidates(

@@ -121,7 +121,9 @@ the agent runtime and actual import processing remain in later phases.
 
 PostgreSQL owns transactional data, initial text search and the derived pgvector
 embedding index in `matching.embeddings`. The index retains source entity types
-and relational UUIDs; embedding dimensions and model selection remain open.
+and relational UUIDs. bge-m3 (1024 dimensions) is configured; final model
+selection remains open. Vectors carry no scope: every read pre-filters by the IDs
+the owning domain says the caller may see.
 Object storage holds CVs and other original files; the database holds metadata
 and URIs. Use Neo4j only if GraphRAG traversal genuinely needs it. Validated
 changes are recorded in PostgreSQL before idempotent synchronization (DM §§1, 5;
@@ -182,6 +184,19 @@ retrieval and reranking support source-backed explanations of matched and missin
 skills. Neither retrieval nor model output can replace business authorization or
 make final hiring decisions (PDF pp. 2, 5, 7, 9). The baseline is a pilot; the MVP
 label requires demonstrated and evaluated hybrid plus graph/GraphRAG retrieval.
+
+**Scoped agent retrieval (2026-10-15):** the ANETI agent serves candidates and
+verified recruiters. Candidates get up to 5 visible offers ranked by lexical +
+vector + skill-graph retrieval, with matched/missing skills and up to 2 active
+training programs per offer as suggestions (not persisted as `OfferMatch`).
+Recruiters search `RECRUITERS`/`PUBLIC` limited profiles (Q28; only IDs and matched
+skills reach assistant history, details open in discovery, Q29) or their own
+offers, drafts included. Routing and replies
+cover EN/FR/AR; Tunisian dialect is not covered yet (Q31). An Ollama outage
+degrades to lexical + graph and is recorded in the tool trace. Training manager,
+ministry and admin retrieval are deferred (Q30). Details: the
+[AI architecture](docs/ai/architecture.md#scoped-retrieval-in-the-agent-2026-10-15)
+and the [matching README](backend/apps/matching/README.md#production-retrieval-2026-10-15).
 
 ## Background pipelines
 

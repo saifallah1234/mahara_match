@@ -50,10 +50,49 @@ evaluation harness compares a token-overlap baseline, pgvector cosine search ove
 the `matching.embeddings` projection and a minimal skill graph over existing
 relational links (see the matching README). PostgreSQL full-text search is not
 implemented or evaluated yet. Vectors retain source entity identifiers and do not
-replace authoritative records. Embedding dimensions and model selection remain
-open. Use
+replace authoritative records. bge-m3 (1024 dimensions) is configured through
+`EMBEDDING_MODEL`/`EMBEDDING_DIMENSIONS`; final model selection remains open. Use
 Neo4j only if the agreed graph traversal genuinely needs it; graph context may
 reuse authoritative relational relationships.
+
+### Scoped retrieval in the agent (2026-10-15)
+
+The agent uses the same hybrid retrieval as the evaluation, inside the caller's
+scope.
+
+- **Roles.** `AgentRunView` accepts an active candidate with a profile or a verified
+  recruiter (`assistant.services.agent_access.agent_role`); other roles get 403. A
+  user holding both roles is assumed impossible; the candidate role is checked first.
+  Routing (`ai/agents/intents.py`) is keyword-based in EN/FR/AR and rejects any
+  intent that does not belong to the caller's role.
+- **Placement.** Backend scope services in each owning domain return visible IDs
+  and document text; `matching.services.retrieval` runs the database legs with an
+  `entity_id IN (scope)` pre-filter; `ai/retrieval/` holds lexical scoring and
+  RRF fusion; `ai/tools/` adapts results for the agent. `ai/` imports no models.
+- **Candidate.** The question plus the candidate's own skills (graph seeds) select
+  up to 5 visible offers. Matched/missing skills are computed against the profile,
+  and missing skills hop to up to 2 active programs per offer
+  (`ai/graphrag/missing_skill_training.py`). These are suggestions; nothing is
+  enrolled or persisted as `OfferMatch`.
+- **Recruiter.** Search opted-in limited profiles (a free question, or "candidates
+  for offer X" where X's title and skills become the query and X must be in scope;
+  otherwise the reply is the same "not accessible" text whether X exists or not), or
+  search their own offers, drafts included. Applicants' CVs are not searched.
+- **Degrade.** If Ollama embeddings fail, the vector leg is skipped and
+  `vector_unavailable` is recorded in the tool trace; lexical and graph still answer.
+- **Trace privacy.** Recruiter candidate-search traces and replies hold profile IDs,
+  ranks, leg ranks and matched skill names only (an allow-list in
+  `ai/agents/anetai.py`). Limited-profile fields are read live in scope to compute
+  matched skills and are never stored in assistant history; recruiters open details
+  through candidate discovery (Q29, decided 2026-10-15). `RECRUITERS` and `PUBLIC`
+  profiles are both discoverable (Q28).
+- **Replies.** Deterministic templates in the request language. English
+  candidate replies may be reworded by the LLM and are kept only if they pass the
+  grounding check (no new words, links or percentages; every title, organization,
+  skill and training program present). French, Arabic and all recruiter replies
+  are templates only. LLM-written FR/AR replies need a grounding redesign (deferred).
+- **Rollback.** `ANETAI_CANDIDATE_TOOL=baseline` restores the Phase 7
+  `skill-coverage-v1` route until the retrieval route is verified live.
 
 ## Document intelligence
 
@@ -69,7 +108,7 @@ Retention of raw results remains part of Q19.
 llm/providers/ and llm/prompts/ reserve provider adapters and prompts. Qwen is a
 discussed candidate, not a selected dependency. Select LLM, embedding model and
 reranker after French/Arabic/Tunisian, latency and hardware evaluation. Neo4j is
-conditional on graph traversal need; LangGraph is planned but not installed.
+conditional on graph traversal need; LangGraph runs the agent and mock-interview workflows.
 
 evaluation/ reserves source-grounding, retrieval relevance, explanatory quality,
 FR/AR/Tunisian understanding, latency and correct tool/confirmation behavior.

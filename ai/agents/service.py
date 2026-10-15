@@ -4,13 +4,8 @@ from time import monotonic
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from ai.agents.anetai import (
-    AGENT_VERSION,
-    ROUTE,
-    UNSUPPORTED_ROUTE,
-    is_job_match_request,
-    run_job_matching_agent,
-)
+from ai.agents.anetai import AGENT_VERSION, resolve_route, run_agent
+from ai.agents.intents import Role
 from backend.apps.assistant.services.records import (
     create_conversation,
     get_conversation,
@@ -25,18 +20,22 @@ if TYPE_CHECKING:
 
 
 def start_agent_run(
-    actor: User, prompt: str, conversation_id: UUID | str | None = None
+    actor: User,
+    prompt: str,
+    conversation_id: UUID | str | None = None,
+    role: Role = "candidate",
 ) -> dict[str, Any]:
     conversation: Conversation
     if conversation_id is None:
-        conversation = create_conversation(actor, "Job matches")
+        title = "Job matches" if role == "candidate" else "Recruiter assistant"
+        conversation = create_conversation(actor, title)
     else:
         conversation = get_conversation(actor, conversation_id)
 
-    route = ROUTE if is_job_match_request(prompt) else UNSUPPORTED_ROUTE
+    route = resolve_route(role, prompt)
     request_message = record_message(conversation, sender_type="USER", content=prompt, intent=route)
     started = monotonic()
-    result = run_job_matching_agent(actor, prompt)
+    result = run_agent(actor, prompt, role)
     latency_ms = int((monotonic() - started) * 1000)
     success = not result.get("error_code")
 
@@ -46,7 +45,7 @@ def start_agent_run(
             conversation,
             sender_type="ASSISTANT",
             content=result["reply"],
-            intent=ROUTE,
+            intent=route,
         )
 
     execution = record_execution(

@@ -3,28 +3,36 @@ import json
 import time
 from pathlib import Path
 from typing import Any, cast
-from urllib.error import HTTPError, URLError
 from uuid import UUID
 
 from django.core.management import BaseCommand, CommandError, CommandParser
 from django.db import InterfaceError, OperationalError, connection
 
-from backend.apps.matching.management.commands.index_retrieval import Command as IndexCommand
-from backend.apps.matching.services.embedding_index import indexable_documents
+from ai.llm.providers.embeddings import (
+    EmbeddingConfig,
+    EmbeddingDimensionError,
+    EmbeddingUnavailable,
+    embed,
+    embedding_config,
+)
+from ai.retrieval.hybrid.retriever import ALL_LEGS, LEXICAL, VECTOR, retrieve
 from backend.apps.matching.services.evaluation_retrieval import (
     RetrievalCase,
     candidate_details,
-    graph_skill_ranking,
-    lexical_ranking,
-    reciprocal_rank_fusion,
     relevance_metrics,
-    semantic_ranking,
 )
 from backend.apps.matching.services.evaluation_schema import (
     EVALUATION_SCHEMA,
     use_schema,
     vector_extension_schema,
 )
+from backend.apps.matching.services.retrieval import catalogue_search
+
+MODE_LEGS = {
+    "baseline": frozenset({LEXICAL}),
+    "hybrid": frozenset({LEXICAL, VECTOR}),
+    "hybrid_graph": ALL_LEGS,
+}
 
 
 class Command(BaseCommand):
@@ -36,8 +44,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--mode", choices=("baseline", "hybrid", "hybrid_graph"), default="baseline"
         )
-        parser.add_argument("--model", default="bge-m3")
-        parser.add_argument("--base-url", default="http://localhost:11434")
+        parser.add_argument("--model", help="Defaults to EMBEDDING_MODEL (bge-m3).")
+        parser.add_argument("--base-url", help="Defaults to OLLAMA_BASE_URL.")
         parser.add_argument("--top-k", type=int, default=10)
         parser.add_argument("--batch-size", type=int, default=6)
         parser.add_argument("--retries", type=int, default=4)
@@ -63,10 +71,11 @@ class Command(BaseCommand):
         if len(cases) != 24:
             raise CommandError(f"Expected exactly 24 retrieval cases; found {len(cases)}.")
 
-        model_name = str(options["model"])
-        base_url = str(options["base_url"]).rstrip("/")
+        config = embedding_config(options.get("model"), options.get("base_url"))
+        model_name = config.model
+        legs = MODE_LEGS[mode]
         question_vectors: dict[str, list[float]] = {}
-        if mode != "baseline":
+        if VECTOR in legs:
             for start in range(0, len(cases), batch_size):
                 batch_number = start // batch_size + 1
                 batch = cases[start : start + batch_size]
@@ -74,18 +83,9 @@ class Command(BaseCommand):
                     f"Embedding questions {start + 1}-{start + len(batch)}/{len(cases)} "
                     f"(batch {batch_number})."
                 )
-                vectors = self._embed_with_retries(
-                    base_url,
-                    model_name,
-                    [str(case["question"]) for case in batch],
-                    batch_number,
-                    retries,
-                    float(retry_backoff),
+                vectors = self._embed_questions(
+                    config, [str(case["question"]) for case in batch], retries, float(retry_backoff)
                 )
-                if any(len(vector) != 1024 for vector in vectors):
-                    raise CommandError(
-                        f"Ollama model {model_name!r} returned a vector not sized to 1024."
-                    )
                 question_vectors.update(
                     (case["id"], vector) for case, vector in zip(batch, vectors, strict=True)
                 )
@@ -95,25 +95,24 @@ class Command(BaseCommand):
         )
         results = []
         with use_schema(EVALUATION_SCHEMA, extension_schema or EVALUATION_SCHEMA):
-            documents = self._database_with_retries(
-                indexable_documents, "loading evaluation documents", retries, retry_backoff
+            searchable = self._database_with_retries(
+                lambda: catalogue_search("", model_name).retrieval_documents,
+                "loading evaluation documents",
+                retries,
+                retry_backoff,
             )
-            searchable = documents["offer"] + documents["training"]
             for case_number, case in enumerate(cases, start=1):
                 self.stdout.write(f"Retrieving case {case_number}/{len(cases)} ({case['id']}).")
                 question = str(case["question"])
-                lexical = lexical_ranking(question, searchable)
-                if mode == "baseline":
-                    ranking = lexical
-                else:
-                    ranking = self._database_with_retries(
-                        lambda question=question, vector=question_vectors[case["id"]], lexical=lexical: (
-                            self._rank_hybrid(question, vector, model_name, mode, top_k, lexical)
-                        ),
-                        f"retrieving case {case['id']}",
-                        retries,
-                        retry_backoff,
-                    )
+                vector = question_vectors.get(case["id"])
+                ranking = self._database_with_retries(
+                    lambda question=question, vector=vector: self._rank(
+                        question, vector, model_name, legs, top_k, searchable
+                    ),
+                    f"retrieving case {case['id']}",
+                    retries,
+                    retry_backoff,
+                )
 
                 result: dict[str, object] = {
                     "case_id": case["id"],
@@ -136,48 +135,42 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Wrote {len(results)} cases to {output_path}."))
 
     @staticmethod
-    def _rank_hybrid(
+    def _rank(
         question: str,
-        question_vector: list[float],
+        question_vector: list[float] | None,
         model_name: str,
-        mode: str,
+        legs: frozenset[str],
         top_k: int,
-        lexical: list[tuple[str, str]],
+        documents: list[Any],
     ) -> list[tuple[str, str]]:
-        rankings = [lexical, semantic_ranking(question_vector, model_name, top_k)]
-        if mode == "hybrid_graph":
-            rankings.append(graph_skill_ranking(question))
-        return reciprocal_rank_fusion(*rankings)
+        def precomputed(_: str) -> list[float]:
+            if question_vector is None:
+                raise CommandError("Question vector missing for a vector-leg mode.")
+            return question_vector
 
-    def _embed_with_retries(
-        self,
-        base_url: str,
-        model_name: str,
-        questions: list[str],
-        batch_number: int,
-        retries: int,
-        retry_backoff: float,
-    ) -> list[list[float]]:
-        for attempt in range(1, retries + 1):
-            try:
-                return IndexCommand._embed(base_url, model_name, questions)
-            except CommandError as exc:
-                if not self._is_transient_ollama_error(exc) or attempt == retries:
-                    raise
-                delay = retry_backoff * (2 ** (attempt - 1))
-                self.stderr.write(
-                    f"Ollama batch {batch_number} failed transiently; "
-                    f"retry {attempt + 1}/{retries} in {delay:g}s."
-                )
-                time.sleep(delay)
-        raise CommandError("Ollama retries exhausted.")
+        result = retrieve(
+            question,
+            catalogue_search(question, model_name, documents),
+            legs=legs,
+            vector_limit=top_k,
+            embedder=precomputed,
+        )
+        return result.ranked
 
     @staticmethod
-    def _is_transient_ollama_error(error: CommandError) -> bool:
-        cause = error.__cause__
-        if isinstance(cause, HTTPError):
-            return cause.code == 429 or 500 <= cause.code < 600
-        return isinstance(cause, (URLError, TimeoutError, ConnectionError))
+    def _embed_questions(
+        config: EmbeddingConfig, questions: list[str], retries: int, retry_backoff: float
+    ) -> list[list[float]]:
+        try:
+            return embed(
+                questions,
+                config,
+                batch_size=len(questions),
+                attempts=retries,
+                backoff=retry_backoff,
+            )
+        except (EmbeddingUnavailable, EmbeddingDimensionError) as exc:
+            raise CommandError(str(exc)) from exc
 
     def _database_with_retries(self, operation, label: str, retries: int, backoff: float):
         for attempt in range(1, retries + 1):

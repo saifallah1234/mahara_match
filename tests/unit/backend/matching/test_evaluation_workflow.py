@@ -5,20 +5,18 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import patch
-from urllib.error import URLError
 from uuid import UUID
 
 import pytest
 from django.core.management.base import CommandError
 from django.db import OperationalError
 
+from ai.llm.providers.embeddings import EmbeddingConfig, EmbeddingUnavailable
 from backend.apps.matching.management.commands.cleanup_eval_schema import Command as CleanupCommand
 from backend.apps.matching.management.commands.evaluate_retrieval import Command as EvaluateCommand
-from backend.apps.matching.management.commands.index_retrieval import Command as IndexCommand
 from backend.apps.matching.management.commands.populate_eval_schema import (
     Command as PopulateCommand,
 )
-from backend.apps.matching.services.embedding_index import EmbeddingDocument
 from backend.apps.matching.services.evaluation_dataset import (
     _skill_mentions,
     build_program_skills,
@@ -33,6 +31,7 @@ from backend.apps.matching.services.labeling_sheet import (
     LabelingCase,
     render_labeling_sheet,
 )
+from backend.common.retrieval import RetrievalDocument
 
 pytestmark = pytest.mark.unit
 
@@ -264,27 +263,24 @@ def test_database_retry_does_not_hide_permanent_sql_errors() -> None:
     sleep.assert_not_called()
 
 
-def test_ollama_retry_recovers_from_a_transient_network_failure() -> None:
-    command = EvaluateCommand()
-    attempts = 0
-
-    def embed(*args: object) -> list[list[float]]:
-        nonlocal attempts
-        attempts += 1
-        if attempts == 1:
-            raise CommandError("temporary network error") from URLError("connection reset")
-        return [[0.0] * 1024]
+def test_question_embedding_uses_provider_retries_and_reports_outages() -> None:
+    config = EmbeddingConfig("bge-m3", 1024, "http://localhost:11434")
+    with patch(
+        "backend.apps.matching.management.commands.evaluate_retrieval.embed",
+        return_value=[[0.0] * 1024],
+    ) as embed:
+        vectors = EvaluateCommand._embed_questions(config, ["question"], 3, 0.5)
+    assert vectors == [[0.0] * 1024]
+    assert embed.call_args.kwargs == {"batch_size": 1, "attempts": 3, "backoff": 0.5}
 
     with (
-        patch.object(IndexCommand, "_embed", side_effect=embed),
-        patch("backend.apps.matching.management.commands.evaluate_retrieval.time.sleep"),
+        patch(
+            "backend.apps.matching.management.commands.evaluate_retrieval.embed",
+            side_effect=EmbeddingUnavailable("connection refused"),
+        ),
+        pytest.raises(CommandError, match="connection refused"),
     ):
-        vectors = command._embed_with_retries(
-            "http://localhost:11434", "bge-m3", ["question"], 1, 3, 0
-        )
-
-    assert attempts == 2
-    assert vectors == [[0.0] * 1024]
+        EvaluateCommand._embed_questions(config, ["question"], 3, 0.5)
 
 
 def test_hybrid_embeddings_are_computed_before_database_access() -> None:
@@ -320,7 +316,7 @@ def test_hybrid_embeddings_are_computed_before_database_access() -> None:
         with (
             patch.object(command, "stdout", StringIO()),
             patch.object(command, "stderr", StringIO()),
-            patch.object(command, "_embed_with_retries", side_effect=embed_batch),
+            patch.object(command, "_embed_questions", side_effect=embed_batch),
             patch.object(command, "_database_with_retries", side_effect=lambda fn, *args: fn()),
             patch(
                 "backend.apps.matching.management.commands.evaluate_retrieval.vector_extension_schema",
@@ -331,17 +327,15 @@ def test_hybrid_embeddings_are_computed_before_database_access() -> None:
                 return_value=nullcontext(),
             ),
             patch(
-                "backend.apps.matching.management.commands.evaluate_retrieval.indexable_documents",
-                return_value={
-                    "offer": [EmbeddingDocument("offer", UUID(int=1), "Python")],
-                    "skill": [],
-                    "training": [],
-                },
+                "backend.apps.matching.management.commands.evaluate_retrieval.catalogue_search",
+                return_value=SimpleNamespace(
+                    retrieval_documents=[RetrievalDocument("offer", UUID(int=1), "Python")]
+                ),
             ),
             patch(
-                "backend.apps.matching.management.commands.evaluate_retrieval.semantic_ranking",
-                return_value=[("offer", str(UUID(int=1)))],
-            ),
+                "backend.apps.matching.management.commands.evaluate_retrieval.retrieve",
+                return_value=SimpleNamespace(ranked=[("offer", str(UUID(int=1)))]),
+            ) as retrieve,
             patch("backend.apps.matching.management.commands.evaluate_retrieval.Path.write_text"),
         ):
             command.handle(
@@ -358,6 +352,8 @@ def test_hybrid_embeddings_are_computed_before_database_access() -> None:
             )
 
         assert database_started
+        assert retrieve.call_args.kwargs["legs"] == {"lexical", "vector"}
+        assert retrieve.call_args.kwargs["embedder"]("ignored") == [0.0] * 1024
 
 
 def test_labeling_sheet_deduplicates_sorts_and_hides_retrieval_provenance() -> None:

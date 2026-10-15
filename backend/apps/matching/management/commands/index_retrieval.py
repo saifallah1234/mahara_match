@@ -1,13 +1,20 @@
-import json
-from collections.abc import Sequence
+from argparse import BooleanOptionalAction
+from contextlib import AbstractContextManager, nullcontext
 from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 
+from ai.llm.providers.embeddings import (
+    EmbeddingConfig,
+    EmbeddingDimensionError,
+    EmbeddingUnavailable,
+    embed,
+    embedding_config,
+)
 from backend.apps.matching.services.embedding_index import (
+    delete_stale_embeddings,
     indexable_documents,
+    stale_embeddings,
     store_embeddings,
 )
 from backend.apps.matching.services.evaluation_schema import (
@@ -15,18 +22,40 @@ from backend.apps.matching.services.evaluation_schema import (
     use_schema,
     vector_extension_schema,
 )
+from backend.common.retrieval import RetrievalDocument
+
+PUBLIC_SCHEMA = "public"
 
 
 class Command(BaseCommand):
-    help = "Index published offers, canonical skills, and active training programs in pgvector."
+    help = (
+        "Index offers, canonical skills, active training programs and opted-in limited "
+        "candidate profiles in pgvector, and prune vectors that are no longer indexable."
+    )
 
     def add_arguments(self, parser: CommandParser) -> None:
-        parser.add_argument("--model", default="bge-m3")
-        parser.add_argument("--base-url", default="http://localhost:11434")
-        parser.add_argument("--schema", choices=(EVALUATION_SCHEMA,), default=EVALUATION_SCHEMA)
+        parser.add_argument("--model", help="Defaults to EMBEDDING_MODEL (bge-m3).")
+        parser.add_argument("--base-url", help="Defaults to OLLAMA_BASE_URL.")
+        parser.add_argument(
+            "--schema",
+            choices=(EVALUATION_SCHEMA, PUBLIC_SCHEMA),
+            default=EVALUATION_SCHEMA,
+            help="public is the application schema read at runtime; eval_graphrag is isolated.",
+        )
         parser.add_argument("--limit", type=int)
         parser.add_argument("--batch-size", type=int, default=16)
-        parser.add_argument("--dry-run", action="store_true")
+        parser.add_argument(
+            "--prune",
+            action=BooleanOptionalAction,
+            default=None,
+            help="Delete this model's vectors for entities no longer indexable. "
+            "Defaults to on for public, off for eval_graphrag.",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Compute vectors and list upserts and deletions without writing.",
+        )
 
     def handle(self, *args: object, **options: Any) -> None:
         limit = options["limit"]
@@ -36,47 +65,64 @@ class Command(BaseCommand):
         if not isinstance(batch_size, int) or batch_size < 1:
             raise CommandError("--batch-size must be a positive integer.")
 
-        model_name = str(options["model"])
-        base_url = str(options["base_url"]).rstrip("/")
+        config = embedding_config(options.get("model"), options.get("base_url"))
         schema_name = str(options["schema"])
         dry_run = bool(options["dry_run"])
-        with use_schema(schema_name, vector_extension_schema() or schema_name):
-            documents = indexable_documents(limit=limit if isinstance(limit, int) else None)
+        prune = options.get("prune")
+        if prune is None:
+            prune = schema_name == PUBLIC_SCHEMA
+        if prune and limit is not None:
+            raise CommandError(
+                "--prune needs the full document set; drop --limit or use --no-prune."
+            )
 
-            for entity_type, entity_documents in documents.items():
-                indexed = 0
-                for start in range(0, len(entity_documents), batch_size):
-                    batch = entity_documents[start : start + batch_size]
-                    vectors = self._embed(
-                        base_url, model_name, [document.text for document in batch]
-                    )
-                    if any(len(vector) != 1024 for vector in vectors):
-                        raise CommandError(
-                            f"Ollama model {model_name!r} returned a vector not sized to 1024."
-                        )
-                    if not dry_run:
-                        indexed += store_embeddings(batch, model_name, vectors)
-                    else:
-                        indexed += len(batch)
-                action = "Would index" if dry_run else "Indexed"
-                self.stdout.write(f"{action} {indexed} {entity_type} embeddings.")
-
-    @staticmethod
-    def _embed(base_url: str, model_name: str, inputs: Sequence[str]) -> list[list[float]]:
-        request = Request(
-            f"{base_url}/api/embed",
-            data=json.dumps({"model": model_name, "input": inputs}).encode(),
-            headers={"Content-Type": "application/json"},
-            method="POST",
+        context: AbstractContextManager[None] = (
+            nullcontext()
+            if schema_name == PUBLIC_SCHEMA
+            else use_schema(schema_name, vector_extension_schema() or schema_name)
         )
-        try:
-            with urlopen(request, timeout=120) as response:
-                payload = json.load(response)
-        except (HTTPError, URLError, TimeoutError) as exc:
-            raise CommandError(f"Could not get embeddings from Ollama: {exc}") from exc
-        vectors = payload.get("embeddings")
-        if not isinstance(vectors, list) or len(vectors) != len(inputs):
-            raise CommandError("Ollama returned an invalid embeddings response.")
-        if any(not isinstance(vector, list) for vector in vectors):
-            raise CommandError("Ollama returned a malformed vector.")
-        return vectors
+        with context:
+            documents = indexable_documents(limit=limit if isinstance(limit, int) else None)
+            self._index(documents, config, batch_size, dry_run)
+            if prune:
+                self._prune(documents, config.model, dry_run)
+
+    def _index(
+        self,
+        documents: dict[str, list[RetrievalDocument]],
+        config: EmbeddingConfig,
+        batch_size: int,
+        dry_run: bool,
+    ) -> None:
+        for entity_type, entity_documents in documents.items():
+            indexed = 0
+            for start in range(0, len(entity_documents), batch_size):
+                batch = entity_documents[start : start + batch_size]
+                try:
+                    vectors = embed(
+                        [document.text for document in batch], config, batch_size=batch_size
+                    )
+                except (EmbeddingUnavailable, EmbeddingDimensionError) as exc:
+                    raise CommandError(str(exc)) from exc
+                if not dry_run:
+                    indexed += store_embeddings(batch, config.model, vectors)
+                else:
+                    indexed += len(batch)
+            action = "Would index" if dry_run else "Indexed"
+            self.stdout.write(f"{action} {indexed} {entity_type} embeddings.")
+
+    def _prune(
+        self, documents: dict[str, list[RetrievalDocument]], model_name: str, dry_run: bool
+    ) -> None:
+        keep = {
+            entity_type: {document.entity_id for document in entity_documents}
+            for entity_type, entity_documents in documents.items()
+        }
+        if dry_run:
+            stale = list(stale_embeddings(model_name, keep).values_list("entity_type", "entity_id"))
+            self.stdout.write(f"Would delete {len(stale)} stale {model_name} embeddings.")
+            for entity_type, entity_id in stale:
+                self.stdout.write(f"  - {entity_type} {entity_id}")
+            return
+        deleted = delete_stale_embeddings(model_name, keep)
+        self.stdout.write(f"Deleted {deleted} stale {model_name} embeddings.")

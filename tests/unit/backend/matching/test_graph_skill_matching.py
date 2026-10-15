@@ -1,4 +1,4 @@
-from backend.apps.matching.services.evaluation_retrieval import skill_is_mentioned
+from backend.apps.matching.services.retrieval import skill_is_mentioned
 
 
 def test_skill_mention_is_case_insensitive() -> None:
