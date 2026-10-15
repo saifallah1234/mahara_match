@@ -18,7 +18,7 @@ The identity entities below do not imply an `ANETI_AGENT` human account role.
 | `documents` | `documents` | DM §§4.B, 4.F, 5; PDF p. 9 |
 | `taxonomy` | `skills`, `skill_aliases`, `languages`, `education_levels` | DM §§3.1, 4.B; PDF pp. 4, 9 |
 | `recruitment` | `job_offers`, `offer_skills`, `applications`, `application_status_history`, `interviews` | DM §4.C; PDF pp. 3, 5–6, 10 |
-| `matching` | `offer_matches` | DM §4.C; PDF pp. 5, 9 |
+| `matching` | `offer_matches`; derived `embeddings` index | DM §4.C; PDF pp. 5, 9 |
 | `training` | `training_programs`, `training_skills`, `training_sessions`, `training_enrollments`, `training_recommendations` | DM §4.D; PDF pp. 3, 5–6 |
 | `assistant` | `conversations`, `conversation_messages`, `agent_executions`, `agent_tool_calls`, `agent_actions` | DM §§3.2, 4.E; PDF pp. 7, 9 |
 | `imports` | `data_sources`, `import_batches`, `import_rows` | DM §§3.3, 4.F; PDF pp. 6, 10 |
@@ -68,8 +68,10 @@ assistant services. Deployment and real GPU quality remain separate gates.
   file metadata; object storage contains bytes. Technical parsing is outside both.
 - Taxonomy owns skill/language/education-level definitions; candidate, offer and
   training relationships belong to their respective business domains.
-- Matching owns offer_matches; training owns training_recommendations. Matching
-  services may coordinate a recommendation without owning a duplicate record.
+- Matching owns offer_matches and the derived embedding index; training owns
+  training_recommendations. Embeddings retain source entity identifiers and do
+  not duplicate canonical records. Matching services may coordinate a
+  recommendation without owning a duplicate record.
 - Assistant owns conversation/action/execution histories; ai/ owns execution.
   Platform owns cross-cutting audit/notification records, not product rules.
 - The ANETI AI advisor reuses candidate/CV, matching and training services and

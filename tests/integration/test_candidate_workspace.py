@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.http import StreamingHttpResponse
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -64,8 +65,8 @@ def test_candidate_workspace_api_flow(
             "status": "PUBLISHED",
             "search": "Developer",
             "governorate": "Tunis",
-            "page_size": 1,
-            "page": 1,
+            "page_size": "1",
+            "page": "1",
         },
     ).json()
     second = client.get(
@@ -74,8 +75,8 @@ def test_candidate_workspace_api_flow(
             "status": "PUBLISHED",
             "search": "Developer",
             "governorate": "Tunis",
-            "page_size": 1,
-            "page": 2,
+            "page_size": "1",
+            "page": "2",
         },
     ).json()
     assert first["count"] == 2
@@ -111,6 +112,7 @@ def test_candidate_workspace_api_flow(
     assert client.get(reverse("cv-list")).json()["count"] == 1
     download = client.get(reverse("document-download", args=(document_id,)))
     assert download.status_code == 200
+    assert isinstance(download, StreamingHttpResponse)
     assert b"".join(download.streaming_content) == PDF
     download_object.assert_called_once()
 

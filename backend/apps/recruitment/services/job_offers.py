@@ -120,6 +120,21 @@ def list_job_offers(actor: User) -> QuerySet[JobOffer]:
     return queryset.order_by("created_at", "id")
 
 
+def list_indexable_job_offers() -> QuerySet[JobOffer]:
+    """Return published offers visible to public retrieval without deleted owners."""
+    return (
+        JobOffer.objects.filter(
+            status=JobOfferStatus.PUBLISHED,
+            deleted_at__isnull=True,
+            organization__deleted_at__isnull=True,
+            organization__verification_status="VERIFIED",
+        )
+        .select_related("organization")
+        .prefetch_related("offer_skills__skill")
+        .order_by("id")
+    )
+
+
 def get_job_offer(actor: User, offer_id: UUID | str) -> JobOffer:
     try:
         offer = list_job_offers(actor).get(id=offer_id)

@@ -44,6 +44,20 @@ def list_programs(
     return queryset
 
 
+def list_indexable_programs() -> QuerySet[TrainingProgram]:
+    """Return active programs at verified, non-deleted training providers."""
+    return (
+        TrainingProgram.objects.filter(
+            status=ProgramStatus.ACTIVE,
+            organization__deleted_at__isnull=True,
+            organization__verification_status=VerificationStatus.VERIFIED,
+        )
+        .select_related("organization")
+        .prefetch_related("program_skills__skill")
+        .order_by("id")
+    )
+
+
 def get_program(actor: User, program_id: UUID | str) -> TrainingProgram:
     try:
         program = TrainingProgram.objects.select_related("organization").get(
