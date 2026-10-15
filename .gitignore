@@ -50,3 +50,9 @@ logs/
 *.pth
 video/
 # Do not ignore source PDFs, .env.example, Django migrations, or uv.lock.
+# Phase 7: local evaluation outputs (do not push)
+/candidates-*.json
+/labeling_sheet.md
+/retrieval_candidates.json
+/metrics-retrieval*.json
+/metrics-retrieval*.md

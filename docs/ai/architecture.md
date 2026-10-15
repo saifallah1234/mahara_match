@@ -45,8 +45,13 @@ belong to matching; training recommendations belong to training. Business servic
 validate and persist returned results without giving models write access.
 
 The PostgreSQL-first baseline is a pilot. Q02 requires demonstrated and evaluated
-Phase 7 hybrid plus graph/GraphRAG before a release is called MVP. Start search
-with PostgreSQL text search and evaluate pgvector for semantic retrieval. Use
+Phase 7 hybrid plus graph/GraphRAG before a release is called MVP. The Phase 7
+evaluation harness compares a token-overlap baseline, pgvector cosine search over
+the `matching.embeddings` projection and a minimal skill graph over existing
+relational links (see the matching README). PostgreSQL full-text search is not
+implemented or evaluated yet. Vectors retain source entity identifiers and do not
+replace authoritative records. Embedding dimensions and model selection remain
+open. Use
 Neo4j only if the agreed graph traversal genuinely needs it; graph context may
 reuse authoritative relational relationships.
 

@@ -119,12 +119,13 @@ configured Supabase PostgreSQL database on 2026-09-26. RBAC roles and permission
 were seeded. Assistant, imports and platform have protected persistence interfaces;
 the agent runtime and actual import processing remain in later phases.
 
-PostgreSQL owns transactional data and initial text search. Object storage holds
-CVs and other original files; the database holds metadata and URIs. Evaluate
-pgvector for semantic retrieval; use Neo4j only if GraphRAG traversal genuinely
-needs it. Any vector/graph index is a derived projection retaining relational IDs.
-Validated changes are recorded in PostgreSQL before idempotent synchronization
-(DM §§1, 5; PDF p. 9).
+PostgreSQL owns transactional data, initial text search and the derived pgvector
+embedding index in `matching.embeddings`. The index retains source entity types
+and relational UUIDs; embedding dimensions and model selection remain open.
+Object storage holds CVs and other original files; the database holds metadata
+and URIs. Use Neo4j only if GraphRAG traversal genuinely needs it. Validated
+changes are recorded in PostgreSQL before idempotent synchronization (DM §§1, 5;
+PDF p. 9).
 
 The PDF's microservice deployment wording (p. 10) is overridden by this task's
 modular-monolith requirement. Future heavy processing can have separate execution

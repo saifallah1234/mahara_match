@@ -2,7 +2,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 from typing import Literal
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qsl, unquote, urlsplit
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 
@@ -79,25 +79,39 @@ TEMPLATES = [
     },
 ]
 
-pooler_url = os.getenv("POSTGRES_SESSION_POOLER")
-pooler = urlsplit(pooler_url) if pooler_url else None
-if pooler and (pooler.scheme not in {"postgres", "postgresql"} or not pooler.hostname):
-    raise ValueError("POSTGRES_SESSION_POOLER must be a PostgreSQL connection URL.")
+database_url = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_SESSION_POOLER")
+try:
+    database_uri = urlsplit(database_url) if database_url else None
+    database_port = database_uri.port if database_uri else None
+except ValueError as exc:
+    raise ValueError("DATABASE_URL must be a valid PostgreSQL connection URL.") from exc
+if database_uri and (
+    database_uri.scheme not in {"postgres", "postgresql"}
+    or not database_uri.hostname
+    or not database_uri.path.lstrip("/")
+):
+    raise ValueError("DATABASE_URL must be a valid PostgreSQL connection URL.")
+
+database_options = dict(parse_qsl(database_uri.query)) if database_uri else {}
+if database_uri:
+    database_options.setdefault("sslmode", "require")
 
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": pooler.path.lstrip("/") if pooler else os.getenv("POSTGRES_DB", "mahara_match"),
-        "USER": unquote(pooler.username or "")
-        if pooler
+        "NAME": database_uri.path.lstrip("/")
+        if database_uri
+        else os.getenv("POSTGRES_DB", "mahara_match"),
+        "USER": unquote(database_uri.username or "")
+        if database_uri
         else os.getenv("POSTGRES_USER", "postgres"),
-        "PASSWORD": unquote(pooler.password or "")
-        if pooler
+        "PASSWORD": unquote(database_uri.password or "")
+        if database_uri
         else os.getenv("POSTGRES_PASSWORD", ""),
-        "HOST": pooler.hostname if pooler else os.getenv("POSTGRES_HOST", "localhost"),
-        "PORT": str(pooler.port or 5432) if pooler else os.getenv("POSTGRES_PORT", "5432"),
+        "HOST": database_uri.hostname if database_uri else os.getenv("POSTGRES_HOST", "localhost"),
+        "PORT": str(database_port or 5432) if database_uri else os.getenv("POSTGRES_PORT", "5432"),
         "CONN_MAX_AGE": 0,
-        "OPTIONS": {"sslmode": "require"} if pooler else {},
+        "OPTIONS": database_options,
     }
 }
 
