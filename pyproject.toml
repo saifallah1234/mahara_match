@@ -12,6 +12,7 @@ dependencies = [
     "drf-spectacular>=0.28,<0.29",
     "langchain-ollama>=0.3,<2",
     "langgraph>=0.2,<2",
+    "lingua-language-detector>=2.2.0",
     "minio>=7.2,<8",
     "pgvector>=0.5.1",
     "playwright>=1.63.0",

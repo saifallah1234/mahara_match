@@ -1,3 +1,4 @@
+# Placement: pipelines/ingestion/scraped_offer.py
 """ScrapedOffer: what a scraper reports about one job posting.
 
 This is a plain data container (a "data transfer object"). It is NOT a Django
@@ -38,6 +39,11 @@ class ScrapedOffer:
 
     # --- Observed state; None means "unknown", not "open" ---
     accepting_applications: bool | None = None
+
+    # --- Labeled values from the offer page's info box, exactly as displayed ---
+    # e.g. {"Experience": "3 à 5 ans", "Niveau d'étude": "Licence, Bac + 3"}.
+    # Only labels the page actually showed; the adapter decides what they mean.
+    details: dict[str, str] = field(default_factory=dict)
 
     # --- Bookkeeping ---
     scraped_at: datetime = field(default_factory=_utc_now)

@@ -124,6 +124,7 @@ def accept_row(
     external_id: str,
     payload: dict[str, Any],
     fields: dict[str, Any],
+    description_language_code: str | None = None,
 ) -> ImportRow:
     """Add/update/skip the offer and record the outcome, atomically."""
     with transaction.atomic():
@@ -134,6 +135,7 @@ def accept_row(
                 created_by=run.created_by,
                 external_id=external_id,
                 fields=fields,
+                description_language_code=description_language_code,
             )
         except ValidationError as exc:
             return _record_row(
@@ -191,6 +193,14 @@ def finish_import(run: ImportRun, *, failed: bool = False) -> dict[str, int]:
     batch.completed_at = timezone.now()
     batch.save()
     return counts
+
+
+def rejection_summary(run: ImportRun) -> dict[str, int]:
+    """Rejected rows of this run grouped by error code (e.g. OFFER_CLOSED: 5)."""
+    rows = run.batch.rows.order_by().filter(status=REJECTED)
+    return {
+        row["error_code"]: row["n"] for row in rows.values("error_code").annotate(n=Count("id"))
+    }
 
 
 def _record_row(

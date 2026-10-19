@@ -1,3 +1,4 @@
+# Placement: pipelines/ingestion/tanitjobs.py
 """Tanitjobs connector: reads public listings and yields ScrapedOffer objects.
 
 What this module does NOT do (compared with the old scraper):
@@ -7,11 +8,18 @@ What this module does NOT do (compared with the old scraper):
 - no translation or inference: labels stay raw, unknown values stay None.
 
 It never imports Django. Browser lifecycle comes from the existing BaseScraper.
+
+Sources of information, kept separate and raw:
+- the search-result CARD (title, company, location, contract tag, work-mode tag,
+  posting date, "closed" tag),
+- the detail page: description, expiration date and the INFO BOX (label/value
+  pairs such as "Experience", "Niveau d'étude", "Rémunération proposée").
+Which source wins when both have a value is decided by the adapter, not here.
 """
 
 import logging
 from collections.abc import Collection, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from urllib.parse import urljoin
 
@@ -48,6 +56,21 @@ def none_if_blank(text: str | None) -> str | None:
     return text or None
 
 
+def collapse_spaces(text: str | None) -> str | None:
+    """Runs of spaces/tabs/newlines become one space ('CDI, \\t\\tSIVP' -> 'CDI, SIVP')."""
+    if text is None:
+        return None
+    return " ".join(text.split()) or None
+
+
+def clean_label(text: str | None) -> str | None:
+    """Info-box label without its trailing colon: "Type d'emploi désiré :" -> "Type d'emploi désiré"."""
+    collapsed = collapse_spaces(text)
+    if collapsed is None:
+        return None
+    return collapsed.rstrip(" :") or None
+
+
 def clean_url(href: str | None, base: str = BASE_URL) -> str | None:
     """Absolute URL without tracking parameters (?backPage=..., ?searchID=...)."""
     if href is None or not href.strip():
@@ -81,7 +104,9 @@ class _Card:
     company_name: str | None
     location_raw: str | None
     employment_type_raw: str | None
+    work_arrangement_raw: str | None  # the card only shows it for hybrid / remote offers
     date_posted_raw: str | None
+    is_closed: bool  # the card carries the "Offre clôturée" tag
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +114,7 @@ class _Details:
     description: str | None
     expiration_date_raw: str | None
     accepting_applications: bool | None
+    info_box: dict[str, str] = field(default_factory=dict)
 
 
 class TanitJobsScraper(BaseScraper):
@@ -121,27 +147,44 @@ class TanitJobsScraper(BaseScraper):
         max_pages / cards_per_page_limit: explicit caps for testing (None = no cap).
         skip_external_ids: ids the caller already has; their detail pages are not
         visited and nothing is yielded for them.
+
+        Closed offers ("Offre clôturée" on the card) are yielded WITHOUT visiting
+        their page: accepting_applications=False and no description. The adapter
+        turns them into OFFER_CLOSED rejections, so the batch counts them.
         """
         self._open_search(keyword)
         cards = self._collect_cards(max_pages, cards_per_page_limit)
         logger.info("Collected %d cards for %r", len(cards), keyword)
 
         consecutive_failures = 0
-        for card in cards:
+        for index, card in enumerate(cards, start=1):
             if card.external_id is not None and card.external_id in skip_external_ids:
                 continue
 
+            if card.is_closed:
+                logger.info(
+                    "Offer %d/%d is closed, page not visited: %s", index, len(cards), card.offer_url
+                )
+                yield self._to_offer(
+                    card,
+                    _Details(
+                        description=None, expiration_date_raw=None, accepting_applications=False
+                    ),
+                )
+                continue
+
+            logger.info("Offer %d/%d: %s", index, len(cards), card.offer_url)
             self.sb.sleep(POLITE_DELAY_SECONDS)
             try:
                 details = self._extract_details(card.offer_url)
-            except Exception as err:
+            except Exception as error:
                 consecutive_failures += 1
                 logger.exception("Detail page failed, skipping: %s", card.offer_url)
                 if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
                     raise RuntimeError(
                         f"{consecutive_failures} detail pages failed in a row; "
                         "the site or the browser session is likely broken."
-                    ) from err
+                    ) from error
                 continue
 
             consecutive_failures = 0
@@ -150,12 +193,12 @@ class TanitJobsScraper(BaseScraper):
     # -- step 1: run the search ---------------------------------------------
 
     def _open_search(self, keyword: str) -> None:
+        # BaseScraper.start_browser already loaded BASE_URL. Navigating to it again
+        # while that page is still settling raises "interrupted by another navigation".
         if not self.page.url.startswith(BASE_URL):
             self.page.goto(BASE_URL, wait_until="domcontentloaded", timeout=30000)
         search_input = self.page.get_by_placeholder("Mots Clés")
         search_input.wait_for(state="visible", timeout=30000)
-        search_input = self.page.get_by_placeholder("Mots Clés")
-        search_input.wait_for(state="visible")
         search_input.fill(keyword)
         search_input.press("Enter")
         self.sb.sleep(SEARCH_SETTLE_SECONDS)
@@ -208,7 +251,11 @@ class TanitJobsScraper(BaseScraper):
                 continue
 
             def text(selector: str, card=card) -> str | None:
-                return none_if_blank(self._safe_text(lambda: card.locator(selector).first))
+                # Optional elements (e.g. the work-mode tag) are often absent. Checking
+                # count() first returns at once; waiting for visibility would cost
+                # several seconds per missing element.
+                found = card.locator(selector)
+                return none_if_blank(found.first.inner_text()) if found.count() else None
 
             cards.append(
                 _Card(
@@ -218,8 +265,10 @@ class TanitJobsScraper(BaseScraper):
                     title=text("div.sj-card-title a"),
                     company_name=text("div.sj-card-company a"),
                     location_raw=text("span.sj-loc"),
-                    employment_type_raw=text("span.sj-type"),
+                    employment_type_raw=text("span.sj-card-tag.sj-type"),
+                    work_arrangement_raw=text("span.sj-card-tag.sj-worktype"),
                     date_posted_raw=text("span.sj-card-date"),
+                    is_closed=card.locator("span.sj-card-tag.sj-cloturee").count() > 0,
                 )
             )
         return cards
@@ -251,7 +300,34 @@ class TanitJobsScraper(BaseScraper):
             description=none_if_blank("\n\n".join(part for part in parts if part)),
             expiration_date_raw=expiration_raw,
             accepting_applications=still_open(expiration_raw),
+            info_box=self._read_info_box(offer_url),
         )
+
+    def _read_info_box(self, offer_url: str) -> dict[str, str]:
+        """Every label/value pair of the info box, whitespace collapsed.
+
+        Generic on purpose: new labels are captured without code changes. The box
+        is optional enrichment, so any failure here is logged and returns {} rather
+        than losing the whole offer.
+        """
+        info: dict[str, str] = {}
+        try:
+            entries = self.page.locator("div.infos_job_details dl")
+            for i in range(entries.count()):
+                entry = entries.nth(i)
+                labels, values = entry.locator("dt"), entry.locator("dd")
+                if labels.count() == 0 or values.count() == 0:
+                    continue
+                label = clean_label(labels.first.inner_text())
+                value = collapse_spaces(values.first.inner_text())
+                if label and value:
+                    info[label] = value
+        except Exception:
+            logger.warning(
+                "Info box could not be read, continuing without it: %s", offer_url, exc_info=True
+            )
+            return {}
+        return info
 
     # -- step 4: merge card + details into the final object -----------------
 
@@ -265,8 +341,9 @@ class TanitJobsScraper(BaseScraper):
             location_raw=card.location_raw,
             description=details.description,
             employment_type_raw=card.employment_type_raw,
-            work_arrangement_raw=None,  # Tanitjobs shows no such field; never guessed here
+            work_arrangement_raw=card.work_arrangement_raw,  # card only; the info box is in `details`
             date_posted_raw=card.date_posted_raw,
             expiration_date_raw=details.expiration_date_raw,
-            accepting_applications=details.accepting_applications,
+            accepting_applications=False if card.is_closed else details.accepting_applications,
+            details=details.info_box,
         )
