@@ -4,6 +4,7 @@ import { Badge, Button, EmptyState, Field, Input, Panel } from '../../components
 import { download } from '../../api/candidate'
 import { useCandidate } from '../../state/candidate'
 import { formatDate } from '../../lib/format'
+import { AtsPanel } from '../../components/insights'
 
 export default function CandidatCV() {
   const { cvs, documents, uploadCV, setPrimary, deleteCV } = useCandidate()
@@ -44,6 +45,7 @@ export default function CandidatCV() {
           </div></li>
         })}</ul>}
       </Panel>
+            <AtsPanel />
     </PageBody>
   </>
 }

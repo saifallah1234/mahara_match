@@ -4,6 +4,16 @@ import { ProtectedRoute, RoleRoute } from './components/authRoutes'
 import { AuthProvider } from './state/auth'
 import { StoreProvider } from './state/store'
 import { CandidateProvider, useCandidate } from './state/candidate'
+import { RecruiterProvider } from './state/recruiter'
+import { TrainingProvider } from './state/training'
+
+import { AdminProvider } from './state/admin'
+import AdminComptes from './pages/admin/Comptes'
+import AdminOrganisations from './pages/admin/Organisations'
+import AdminDashboard from './pages/admin/Dashboard'
+import AdminAudit from './pages/admin/Audit'
+import AdminImports from './pages/admin/Imports'
+import AdminReferentiels from './pages/admin/Referentiels'
 
 import Landing from './pages/Landing'
 import SignIn from './pages/SignIn'
@@ -18,6 +28,7 @@ import CandidatOffres from './pages/candidat/Offres'
 import CandidatOffreDetail from './pages/candidat/OffreDetail'
 import CandidatCandidatures from './pages/candidat/Candidatures'
 import CandidatFormations from './pages/candidat/Formations'
+import CandidatAssistant from './pages/candidat/Assistant' 
 import MockInterview from './pages/candidat/MockInterview'
 
 import RecruteurDashboard from './pages/recruteur/Dashboard'
@@ -29,15 +40,8 @@ import RecruteurCandidatures from './pages/recruteur/Candidatures'
 import RecruteurEntretiens from './pages/recruteur/Entretiens'
 
 import { FormationDashboard, FormationProgrammes, FormationSessions } from './pages/Formation'
-import { MinistereCompetences, MinistereIndicateurs } from './pages/Ministere'
-import {
-  AdminAudit,
-  AdminComptes,
-  AdminDashboard,
-  AdminImports,
-  AdminOrganisations,
-  AdminReferentiels,
-} from './pages/Admin'
+import MinistereIndicateurs from './pages/ministere/Indicateurs'
+import MinistereCompetences from './pages/ministere/Competences'
 
 export default function App() {
   return (
@@ -51,61 +55,68 @@ export default function App() {
           <Route path="/espaces" element={<Workspaces />} />
           <Route path="/aucun-acces" element={<NoAccess />} />
           <Route element={<AppShell />}>
-          <Route element={<RoleRoute role="CANDIDATE" />}>
-          <Route element={<CandidateWorkspace />}>
-          {/* Espace candidat */}
-          <Route path="/candidat" element={<CandidatDashboard />} />
-          <Route path="/candidat/profil" element={<CandidatProfil />} />
-          <Route path="/candidat/cv" element={<CandidatCV />} />
-          <Route path="/candidat/offres" element={<CandidatOffres />} />
-          <Route path="/candidat/offres/:offerId" element={<CandidatOffreDetail />} />
-          <Route path="/candidat/candidatures" element={<CandidatCandidatures />} />
-          <Route path="/candidat/formations" element={<CandidatFormations />} />
-          <Route path="/candidat/entretiens-blancs" element={<MockInterview />} />
-          <Route path="/candidat/entretiens-blancs/:sessionId" element={<MockInterview />} />
-          </Route>
-          </Route>
+            <Route element={<RoleRoute role="CANDIDATE" />}>
+              <Route element={<CandidateWorkspace />}>
+                {/* Espace candidat */}
+                <Route path="/candidat" element={<CandidatDashboard />} />
+                <Route path="/candidat/profil" element={<CandidatProfil />} />
+                <Route path="/candidat/cv" element={<CandidatCV />} />
+                <Route path="/candidat/offres" element={<CandidatOffres />} />
+                <Route path="/candidat/offres/:offerId" element={<CandidatOffreDetail />} />
+                <Route path="/candidat/candidatures" element={<CandidatCandidatures />} />
+                <Route path="/candidat/formations" element={<CandidatFormations />} />
+                <Route path="/candidat/assistant" element={<CandidatAssistant />} />
+                <Route path="/candidat/entretiens-blancs" element={<MockInterview />} />
+                <Route path="/candidat/entretiens-blancs/:sessionId" element={<MockInterview />} />
+              </Route>
+            </Route>
 
-          {/* Espace employeur */}
-          <Route element={<RoleRoute role="RECRUITER" />}>
-          <Route path="/recruteur" element={<RecruteurDashboard />} />
-          <Route path="/recruteur/entreprise" element={<RecruteurEntreprise />} />
-          <Route path="/recruteur/offres" element={<RecruteurOffres />} />
-          <Route path="/recruteur/offres/nouvelle" element={<RecruteurNouvelleOffre />} />
-          <Route path="/recruteur/offres/:offerId" element={<RecruteurOffreDetail />} />
-          <Route path="/recruteur/candidatures" element={<RecruteurCandidatures />} />
-          <Route path="/recruteur/entretiens" element={<RecruteurEntretiens />} />
-          </Route>
+            {/* Espace employeur */}
+            <Route element={<RoleRoute role="RECRUITER" />}>
+              <Route element={<RecruiterWorkspace />}>
+                <Route path="/recruteur" element={<RecruteurDashboard />} />
+                <Route path="/recruteur/entreprise" element={<RecruteurEntreprise />} />
+                <Route path="/recruteur/offres" element={<RecruteurOffres />} />
+                <Route path="/recruteur/offres/nouvelle" element={<RecruteurNouvelleOffre />} />
+                <Route path="/recruteur/offres/:offerId" element={<RecruteurOffreDetail />} />
+                <Route path="/recruteur/candidatures" element={<RecruteurCandidatures />} />
+                <Route path="/recruteur/entretiens" element={<RecruteurEntretiens />} />
+              </Route>
+            </Route>
+            {/* Espace organisme de formation */}
+            <Route element={<RoleRoute role="TRAINING_MANAGER" />}>
+              <Route element={<TrainingWorkspace />}>
+                <Route path="/formation" element={<FormationDashboard />} />
+                <Route path="/formation/programmes" element={<FormationProgrammes />} />
+                <Route path="/formation/sessions" element={<FormationSessions />} />
+              </Route>
+            </Route>
 
-          {/* Espace organisme de formation */}
-          <Route element={<RoleRoute role="TRAINING_MANAGER" />}>
-          <Route path="/formation" element={<FormationDashboard />} />
-          <Route path="/formation/programmes" element={<FormationProgrammes />} />
-          <Route path="/formation/sessions" element={<FormationSessions />} />
-          </Route>
+            {/* Espace ministère */}
+            <Route element={<RoleRoute role="MINISTRY_MANAGER" />}>
+              <Route path="/ministere" element={<MinistereIndicateurs />} />
+              <Route path="/ministere/competences" element={<MinistereCompetences />} />
+            </Route>
 
-          {/* Espace ministère */}
-          <Route element={<RoleRoute role="MINISTRY_MANAGER" />}>
-          <Route path="/ministere" element={<MinistereIndicateurs />} />
-          <Route path="/ministere/competences" element={<MinistereCompetences />} />
-          </Route>
+            {/* Espace administration */}
+            <Route element={<AdminWorkspace />}>
 
-          {/* Espace administration */}
-          <Route element={<RoleRoute role="ADMIN" />}>
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/comptes" element={<AdminComptes />} />
-          <Route path="/admin/demandes" element={<AdminOnboarding />} />
-          <Route path="/admin/organisations" element={<AdminOrganisations />} />
-          <Route path="/admin/referentiels" element={<AdminReferentiels />} />
-          <Route path="/admin/imports" element={<AdminImports />} />
-          <Route path="/admin/audit" element={<AdminAudit />} />
-          </Route>
+              <Route element={<RoleRoute role="ADMIN" />}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/comptes" element={<AdminComptes />} />
+                <Route path="/admin/demandes" element={<AdminOnboarding />} />
+                <Route path="/admin/organisations" element={<AdminOrganisations />} />
+                <Route path="/admin/referentiels" element={<AdminReferentiels />} />
+                <Route path="/admin/imports" element={<AdminImports />} />
+                <Route path="/admin/audit" element={<AdminAudit />} />
+              </Route>
+            </Route>
           </Route>
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </StoreProvider></AuthProvider>
+    </StoreProvider></AuthProvider >
   )
 }
 
@@ -121,4 +132,14 @@ function CandidateWorkspaceContent() {
     {message && <div role="status" className="mx-auto max-w-5xl p-5 text-teal">{message} <button className="underline" onClick={clearMessage}>Fermer</button></div>}
     {(profile || (!loading && !error)) && <Outlet />}
   </>
+}
+function RecruiterWorkspace() {
+  return <RecruiterProvider><Outlet /></RecruiterProvider>
+}
+function TrainingWorkspace() {
+  return <TrainingProvider><Outlet /></TrainingProvider>
+}
+
+function AdminWorkspace() {
+  return <AdminProvider><Outlet /></AdminProvider>
 }
