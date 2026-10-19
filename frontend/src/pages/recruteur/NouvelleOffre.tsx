@@ -1,303 +1,149 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, Field, Input, Panel, Select, Textarea } from '../../components/ui'
-import { useStore } from '../../state/store'
-import { EDUCATION_LEVELS } from '../../data/referentials'
-import { CONTRACT_LABEL, EXPERIENCE_LABEL, GOUVERNORATS, WORK_MODE_LABEL } from '../../lib/format'
-import type {
-  ContractType,
-  ExperienceLevel,
-  JobOffer,
-  OfferSkill,
-  SkillImportance,
-  SkillLevel,
-  WorkMode,
-} from '../../lib/types'
+import { Button, Field, Input, Panel, Select, Textarea } from '../../components/ui'
+import { useAuth } from '../../state/auth'
+import { useRecruiter } from '../../state/recruiter'
+import { GOUVERNORATS } from '../../lib/format'
+
+const CONTRACTS = ['CDI', 'CDD', 'STAGE', 'FREELANCE', 'ALTERNANCE']
+const MODES = [['ONSITE', 'Sur site'], ['HYBRID', 'Hybride'], ['REMOTE', 'À distance']]
+const LEVELS = ['JUNIOR', 'MID', 'SENIOR']
 
 export default function RecruteurNouvelleOffre() {
-  const { session, organizations, skills, publishOffer, offers } = useStore()
+  const { workspace } = useAuth()
+  const { skills, createOffer } = useRecruiter()
   const navigate = useNavigate()
 
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [organizationId, setOrganizationId] = useState(session?.user.organizationId ?? '')
-  const [contractType, setContractType] = useState<ContractType>('CDI')
-  const [workMode, setWorkMode] = useState<WorkMode>('ONSITE')
-  const [governorate, setGovernorate] = useState('Ariana')
-  const [city, setCity] = useState('')
-  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('JUNIOR')
-  const [educationLevelId, setEducationLevelId] = useState('')
-  const [minSalary, setMinSalary] = useState('')
-  const [maxSalary, setMaxSalary] = useState('')
-  const [deadline, setDeadline] = useState('')
-  const [easyApply, setEasyApply] = useState(true)
-  const [chosen, setChosen] = useState<OfferSkill[]>([])
-  const [skillToAdd, setSkillToAdd] = useState('')
+  const [f, setF] = useState({
+    title: '', description: '', contract_type: 'CDI', work_mode: 'ONSITE', experience_level: 'JUNIOR',
+    governorate: 'Ariana', city: '', min: '', max: '', deadline: '',
+  })
+  const [easy, setEasy] = useState(true)
+  const [chosen, setChosen] = useState<{ id: string; mandatory: boolean }[]>([])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  if (!session) return null
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
+  const orgId = workspace?.organization?.id
+  const skillName = (id: string) => skills.find((s) => s.id === id)?.canonical_name ?? id
 
-  const employers = organizations.filter((o) => o.type === 'COMPANY' || o.type === 'SUBSIDIARY')
-
-  /* Contrôles exigés avant publication. */
   const problems: string[] = []
-  if (!title.trim()) problems.push('Le titre du poste est obligatoire.')
-  if (!description.trim()) problems.push('La description du poste est obligatoire.')
-  if (!organizationId) problems.push('L’entité qui publie doit être sélectionnée.')
-  if (chosen.length === 0) problems.push('Au moins une compétence doit être renseignée.')
-  if (minSalary && maxSalary && Number(maxSalary) < Number(minSalary))
-    problems.push('Le salaire maximum doit être supérieur ou égal au minimum.')
+  if (!f.title.trim()) problems.push('Le titre est obligatoire.')
+  if (!f.description.trim()) problems.push('La description est obligatoire.')
+  if (chosen.length === 0) problems.push('Au moins une compétence est requise pour publier.')
+  if (f.min && f.max && Number(f.max) < Number(f.min)) problems.push('Le salaire maximum doit être supérieur ou égal au minimum.')
 
-  function addSkill() {
-    if (!skillToAdd || chosen.some((c) => c.skillId === skillToAdd)) return
-    setChosen((list) => [...list, { skillId: skillToAdd, importance: 'OBLIGATOIRE', requiredLevel: 'INTERMEDIAIRE' }])
-    setSkillToAdd('')
-  }
-
-  function build(status: 'DRAFT' | 'PUBLISHED'): JobOffer {
-    const nextNumber = 300 + offers.length
-    return {
-      id: `of-${nextNumber}`,
-      reference: `OF-${nextNumber}`,
-      organizationId,
-      createdBy: session!.user.id,
-      title: title.trim(),
-      description: description.trim(),
-      contractType,
-      workMode,
-      governorate,
-      city: city.trim() || governorate,
-      experienceLevel,
-      educationLevelId: educationLevelId || undefined,
-      minSalary: minSalary ? Number(minSalary) : undefined,
-      maxSalary: maxSalary ? Number(maxSalary) : undefined,
-      applicationDeadline: deadline || undefined,
-      status,
-      publishedAt: status === 'PUBLISHED' ? new Date().toISOString() : undefined,
-      easyApply,
-      skills: chosen,
+  async function submit(publish: boolean) {
+    if (!orgId) return
+    setBusy(true); setError(null)
+    try {
+      await createOffer({
+        organization_id: orgId, title: f.title.trim(), description: f.description.trim(),
+        contract_type: f.contract_type, work_mode: f.work_mode, experience_level: f.experience_level,
+        governorate: f.governorate, city: f.city.trim(),
+        min_salary: f.min ? Number(f.min) : null, max_salary: f.max ? Number(f.max) : null,
+        application_deadline: f.deadline || null, easy_apply: easy,
+      }, chosen, publish)
+      navigate('/recruteur/offres')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Échec de la création.')
+    } finally {
+      setBusy(false)
     }
   }
 
-  function submit(status: 'DRAFT' | 'PUBLISHED') {
-    publishOffer(build(status))
-    navigate('/recruteur/offres')
-  }
-
-  const totalWeight = chosen.reduce((sum, c) => sum + (c.importance === 'OBLIGATOIRE' ? 2 : 1), 0)
-
   return (
     <>
-      <PageHeader
-        back={{ to: '/recruteur/offres', label: 'Mes offres' }}
-        title="Publier une offre"
-      />
-
+      <PageHeader back={{ to: '/recruteur/offres', label: 'Mes offres' }} title="Publier une offre" />
       <PageBody className="space-y-6">
-        <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
-          <div className="space-y-6">
-            <Panel title="Le poste">
-              <div className="grid gap-4 p-5 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <Field label="Intitulé du poste" required>
-                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Développeur junior" />
-                  </Field>
-                </div>
-                <div className="sm:col-span-2">
-                  <Field label="Description" required hint="Missions, environnement de travail et attentes.">
-                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} />
-                  </Field>
-                </div>
-                <Field label="Entité qui publie" required>
-                  <Select value={organizationId} onChange={(e) => setOrganizationId(e.target.value)}>
-                    <option value="">Choisir</option>
-                    {employers.map((org) => (
-                      <option key={org.id} value={org.id}>
-                        {org.legalName}
-                        {org.type === 'SUBSIDIARY' ? ' (filiale)' : ''}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Type de contrat" required>
-                  <Select value={contractType} onChange={(e) => setContractType(e.target.value as ContractType)}>
-                    {(Object.keys(CONTRACT_LABEL) as ContractType[]).map((type) => (
-                      <option key={type} value={type}>
-                        {CONTRACT_LABEL[type]}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Gouvernorat" required>
-                  <Select value={governorate} onChange={(e) => setGovernorate(e.target.value)}>
-                    {GOUVERNORATS.map((g) => (
-                      <option key={g}>{g}</option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Ville">
-                  <Input value={city} onChange={(e) => setCity(e.target.value)} />
-                </Field>
-                <Field label="Mode de travail">
-                  <Select value={workMode} onChange={(e) => setWorkMode(e.target.value as WorkMode)}>
-                    {(Object.keys(WORK_MODE_LABEL) as WorkMode[]).map((mode) => (
-                      <option key={mode} value={mode}>
-                        {WORK_MODE_LABEL[mode]}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Expérience attendue">
-                  <Select value={experienceLevel} onChange={(e) => setExperienceLevel(e.target.value as ExperienceLevel)}>
-                    {(Object.keys(EXPERIENCE_LABEL) as ExperienceLevel[]).map((level) => (
-                      <option key={level} value={level}>
-                        {EXPERIENCE_LABEL[level]}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Niveau d’études">
-                  <Select value={educationLevelId} onChange={(e) => setEducationLevelId(e.target.value)}>
-                    <option value="">Sans exigence</option>
-                    {EDUCATION_LEVELS.map((level) => (
-                      <option key={level.id} value={level.id}>
-                        {level.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Salaire minimum (DT)" hint="Laisser vide si non communiqué.">
-                  <Input type="number" value={minSalary} onChange={(e) => setMinSalary(e.target.value)} />
-                </Field>
-                <Field label="Salaire maximum (DT)">
-                  <Input type="number" value={maxSalary} onChange={(e) => setMaxSalary(e.target.value)} />
-                </Field>
-                <Field label="Date limite de candidature">
-                  <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
-                </Field>
-                <Field label="Mode de candidature" hint="Hors plateforme, le suivi des candidatures et des entretiens n’est pas disponible.">
-                  <Select value={easyApply ? 'oui' : 'non'} onChange={(e) => setEasyApply(e.target.value === 'oui')}>
-                    <option value="oui">Sur la plateforme</option>
-                    <option value="non">Sur le site de l’entreprise</option>
-                  </Select>
-                </Field>
-              </div>
-            </Panel>
+        <Panel title="Le poste">
+          <div className="grid gap-4 p-5 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Field label="Intitulé" required><Input value={f.title} onChange={set('title')} /></Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Description" required><Textarea rows={6} value={f.description} onChange={set('description')} /></Field>
+            </div>
+            <Field label="Contrat">
+              <Select value={f.contract_type} onChange={set('contract_type')}>
+                {CONTRACTS.map((c) => <option key={c}>{c}</option>)}
+              </Select>
+            </Field>
+            <Field label="Mode de travail">
+              <Select value={f.work_mode} onChange={set('work_mode')}>
+                {MODES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </Select>
+            </Field>
+            <Field label="Expérience">
+              <Select value={f.experience_level} onChange={set('experience_level')}>
+                {LEVELS.map((c) => <option key={c}>{c}</option>)}
+              </Select>
+            </Field>
+            <Field label="Gouvernorat">
+              <Select value={f.governorate} onChange={set('governorate')}>
+                {GOUVERNORATS.map((g) => <option key={g}>{g}</option>)}
+              </Select>
+            </Field>
+            <Field label="Ville"><Input value={f.city} onChange={set('city')} /></Field>
+            <Field label="Date limite"><Input type="date" value={f.deadline} onChange={set('deadline')} /></Field>
+            <Field label="Salaire min (TND)"><Input type="number" value={f.min} onChange={set('min')} /></Field>
+            <Field label="Salaire max (TND)"><Input type="number" value={f.max} onChange={set('max')} /></Field>
+            <label className="flex items-center gap-2 text-[13.5px] sm:col-span-2">
+              <input type="checkbox" checked={easy} onChange={(e) => setEasy(e.target.checked)} />
+              Candidature simple sur la plateforme (Easy Apply)
+            </label>
+          </div>
+        </Panel>
 
-            <Panel
-              title="Compétences demandées"
-              description="Une compétence obligatoire pèse 2 points, une compétence souhaitée 1 point."
+        <Panel title="Compétences">
+          <div className="space-y-3 p-5">
+            <Select
+              value=""
+              onChange={(e) => {
+                const id = e.target.value
+                if (id && !chosen.some((c) => c.id === id)) setChosen([...chosen, { id, mandatory: true }])
+              }}
             >
-              <div className="flex gap-2 border-b border-line px-5 py-4">
-                <Select value={skillToAdd} onChange={(e) => setSkillToAdd(e.target.value)}>
-                  <option value="">Choisir une compétence du référentiel</option>
-                  {skills
-                    .filter((s) => !chosen.some((c) => c.skillId === s.id))
-                    .map((skill) => (
-                      <option key={skill.id} value={skill.id}>
-                        {skill.canonicalName}
-                      </option>
-                    ))}
-                </Select>
-                <Button variant="secondaire" onClick={addSkill} disabled={!skillToAdd}>
-                  Ajouter
-                </Button>
+              <option value="">Ajouter une compétence…</option>
+              {skills.map((s) => <option key={s.id} value={s.id}>{s.canonical_name}</option>)}
+            </Select>
+            {chosen.map((c) => (
+              <div key={c.id} className="flex items-center justify-between gap-3 text-[13.5px]">
+                <span>{skillName(c.id)}</span>
+                <span className="flex items-center gap-3">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={c.mandatory}
+                      onChange={() => setChosen(chosen.map((x) => (x.id === c.id ? { ...x, mandatory: !x.mandatory } : x)))}
+                    /> obligatoire
+                  </label>
+                  <button className="text-coral" onClick={() => setChosen(chosen.filter((x) => x.id !== c.id))}>Retirer</button>
+                </span>
               </div>
-
-              {chosen.length === 0 ? (
-                <p className="px-5 py-6 text-center text-[13px] text-slate">
-                  Sans compétence renseignée, les candidats verront « score indisponible » et l’offre ne pourra pas être
-                  publiée.
-                </p>
-              ) : (
-                <ul className="divide-y divide-line/70">
-                  {chosen.map((entry) => (
-                    <li key={entry.skillId} className="flex flex-wrap items-center gap-3 px-5 py-3">
-                      <span className="min-w-32 flex-1 text-[14px] font-medium text-navy">
-                        {skills.find((s) => s.id === entry.skillId)?.canonicalName}
-                      </span>
-                      <Select
-                        value={entry.importance}
-                        onChange={(e) =>
-                          setChosen((list) =>
-                            list.map((c) =>
-                              c.skillId === entry.skillId ? { ...c, importance: e.target.value as SkillImportance } : c,
-                            ),
-                          )
-                        }
-                        className="w-40"
-                      >
-                        <option value="OBLIGATOIRE">Obligatoire · 2</option>
-                        <option value="SOUHAITEE">Souhaitée · 1</option>
-                      </Select>
-                      <Select
-                        value={entry.requiredLevel}
-                        onChange={(e) =>
-                          setChosen((list) =>
-                            list.map((c) =>
-                              c.skillId === entry.skillId ? { ...c, requiredLevel: e.target.value as SkillLevel } : c,
-                            ),
-                          )
-                        }
-                        className="w-40"
-                      >
-                        <option value="DEBUTANT">Débutant</option>
-                        <option value="INTERMEDIAIRE">Intermédiaire</option>
-                        <option value="AVANCE">Avancé</option>
-                        <option value="EXPERT">Expert</option>
-                      </Select>
-                      <Button
-                        size="sm"
-                        variant="discret"
-                        onClick={() => setChosen((list) => list.filter((c) => c.skillId !== entry.skillId))}
-                      >
-                        Retirer
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {chosen.length > 0 && (
-                <p className="border-t border-line px-5 py-3 text-[13px] text-slate">
-                  Total des points demandés : <span className="tnum font-medium text-navy">{totalWeight}</span>. Un
-                  candidat qui couvre toutes les obligatoires sans les souhaitées obtiendra{' '}
-                  <span className="tnum font-medium text-navy">
-                    {Math.round((chosen.filter((c) => c.importance === 'OBLIGATOIRE').length * 2 * 100) / totalWeight)} %
-                  </span>
-                  .
-                </p>
-              )}
-            </Panel>
+            ))}
           </div>
+        </Panel>
 
-          <div className="space-y-4 lg:sticky lg:top-6">
-            <Panel title="Avant publication">
-              {problems.length === 0 ? (
-                <div className="px-5 py-4">
-                  <Badge tone="positif">Tous les champs obligatoires sont renseignés</Badge>
-                </div>
-              ) : (
-                <ul className="space-y-2 px-5 py-4">
-                  {problems.map((problem) => (
-                    <li key={problem} className="flex gap-2.5 text-[13px] text-navy">
-                      <span aria-hidden className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-coral" />
-                      {problem}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="flex flex-col gap-2 border-t border-line px-5 py-3.5">
-                <Button disabled={problems.length > 0} onClick={() => submit('PUBLISHED')}>
-                  Publier l’offre
-                </Button>
-                <Button variant="secondaire" onClick={() => submit('DRAFT')} disabled={!title.trim()}>
-                  Enregistrer en brouillon
-                </Button>
-              </div>
-            </Panel>
+        {(error || problems.length > 0) && (
+          <ul role="alert" className="text-[13px] text-coral">
+            {error && <li>{error}</li>}
+            {problems.map((p) => <li key={p}>{p}</li>)}
+          </ul>
+        )}
 
-          </div>
+        <div className="flex gap-2">
+          <Button
+            variant="discret"
+            disabled={busy || !f.title.trim() || !f.description.trim() || !orgId}
+            onClick={() => void submit(false)}
+          >
+            Enregistrer en brouillon
+          </Button>
+          <Button disabled={busy || problems.length > 0 || !orgId} onClick={() => void submit(true)}>
+            Publier
+          </Button>
         </div>
       </PageBody>
     </>

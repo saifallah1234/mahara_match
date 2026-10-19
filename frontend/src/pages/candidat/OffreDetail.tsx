@@ -5,6 +5,7 @@ import { Button, Field, Panel, Select, Textarea } from '../../components/ui'
 import { useCandidate } from '../../state/candidate'
 import { CONTRACT_LABEL, EXPERIENCE_LABEL, WORK_MODE_LABEL, formatDate } from '../../lib/format'
 import type { ContractType, ExperienceLevel, WorkMode } from '../../lib/types'
+import { MatchPanel } from '../../components/insights'
 
 export default function CandidatOffreDetail() {
   const { offerId } = useParams()
@@ -28,6 +29,7 @@ export default function CandidatOffreDetail() {
     <PageBody className="space-y-5">
       <Link className="text-teal underline" to={`/candidat/entretiens-blancs?offer=${offer.id}`}>Préparer un entretien blanc</Link>
       <Panel title="Description"><p className="whitespace-pre-wrap p-5 text-sm text-navy">{offer.description}</p></Panel>
+      <MatchPanel offerId={offer.id} />
       <Panel title="Informations"><dl className="grid gap-2 p-5 text-sm"><div>Contrat : {CONTRACT_LABEL[offer.contract_type as ContractType] || offer.contract_type || 'Non renseigné'}</div><div>Mode : {WORK_MODE_LABEL[offer.work_mode as WorkMode] || offer.work_mode || 'Non renseigné'}</div><div>Expérience : {EXPERIENCE_LABEL[offer.experience_level as ExperienceLevel] || offer.experience_level || 'Non renseignée'}</div><div>Clôture : {formatDate(offer.application_deadline ?? undefined)}</div></dl></Panel>
       {applied ? <Panel className="p-5">Vous avez déjà postulé à cette offre. <Link className="text-teal underline" to="/candidat/candidatures">Voir la candidature</Link></Panel>
         : offer.easy_apply ? <Panel title="Postuler"><form onSubmit={(event) => void submit(event)} className="space-y-4 p-5">

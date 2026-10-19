@@ -1,97 +1,102 @@
+import { useState } from 'react'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, EmptyState, Panel } from '../../components/ui'
-import { StatusPill } from '../../components/domain'
-import { useStore } from '../../state/store'
+import { Badge, Button, EmptyState, Field, Input, Panel, Select } from '../../components/ui'
+import { useRecruiter } from '../../state/recruiter'
+import { candidateLabel, type RecruiterInterview } from '../../api/recruiter'
 import { formatDateTime } from '../../lib/format'
-import type { InterviewStatus, InterviewType } from '../../lib/types'
 
-const TYPE_LABEL: Record<InterviewType, string> = {
-  TELEPHONE: 'Téléphonique',
-  VISIO: 'Visioconférence',
-  PRESENTIEL: 'Présentiel',
-}
-
-const STATUS_TONE: Record<InterviewStatus, 'encours' | 'positif' | 'negatif'> = {
-  PLANIFIE: 'encours',
-  REALISE: 'positif',
-  ANNULE: 'negatif',
-}
-
-const STATUS_TEXT: Record<InterviewStatus, string> = {
-  PLANIFIE: 'Planifié',
-  REALISE: 'Réalisé',
-  ANNULE: 'Annulé',
-}
+const TYPE_LABEL = { PHONE: 'Téléphonique', VIDEO: 'Visioconférence', IN_PERSON: 'Présentiel' } as const
+const STATUS_LABEL = { SCHEDULED: 'Planifié', COMPLETED: 'Réalisé', CANCELLED: 'Annulé' } as const
+const STATUS_TONE = { SCHEDULED: 'encours', COMPLETED: 'positif', CANCELLED: 'negatif' } as const
+const ACTIVE = ['SUBMITTED', 'UNDER_REVIEW', 'PRESELECTED', 'INTERVIEW']
 
 export default function RecruteurEntretiens() {
-  const { session, interviews, applications, offers, profileOf, userOf } = useStore()
-  if (!session) return null
+  const { interviews, applications, error, scheduleInterview, setInterviewStatus } = useRecruiter()
+  const [form, setForm] = useState({ application_id: '', type: 'VIDEO', scheduled_at: '', duration_minutes: '45', location_or_url: '' })
+  const [busy, setBusy] = useState(false)
+  const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
 
-  const myOffers = offers.filter((o) => o.createdBy === session.user.id)
-  const mine = interviews
-    .filter((interview) => {
-      const application = applications.find((a) => a.id === interview.applicationId)
-      return application && myOffers.some((o) => o.id === application.offerId)
-    })
-    .sort((a, b) => +new Date(a.scheduledAt) - +new Date(b.scheduledAt))
-
-  const upcoming = mine.filter((i) => i.status === 'PLANIFIE')
-  const past = mine.filter((i) => i.status !== 'PLANIFIE')
-
-  function renderList(list: typeof mine) {
-    return (
-      <ul className="divide-y divide-line/70">
-        {list.map((interview) => {
-          const application = applications.find((a) => a.id === interview.applicationId)
-          const offer = offers.find((o) => o.id === application?.offerId)
-          const profile = application ? profileOf(application.candidateId) : undefined
-          const user = profile ? userOf(profile.userId) : undefined
-          return (
-            <li key={interview.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
-              <div className="min-w-0">
-                <p className="text-[14px] font-medium text-navy">
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <p className="text-[12.5px] text-slate">{offer?.title}</p>
-                <p className="mt-1 text-[13px] text-navy">
-                  {formatDateTime(interview.scheduledAt)} · {interview.durationMinutes} min
-                </p>
-                <p className="text-[12.5px] text-slate">{interview.locationOrUrl}</p>
-                {interview.feedback && (
-                  <p className="mt-1.5 text-[13px] leading-relaxed text-slate">{interview.feedback}</p>
-                )}
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1.5">
-                <Badge tone={STATUS_TONE[interview.status]}>{STATUS_TEXT[interview.status]}</Badge>
-                <Badge tone="neutre">{TYPE_LABEL[interview.type]}</Badge>
-                {application && <StatusPill status={application.status} />}
-              </div>
-            </li>
-          )
-        })}
-      </ul>
-    )
+  const candidates = applications.filter((a) => ACTIVE.includes(a.status))
+  const sorted = [...interviews].sort((a, b) => +new Date(a.scheduled_at) - +new Date(b.scheduled_at))
+  const upcoming = sorted.filter((i) => i.status === 'SCHEDULED')
+  const past = sorted.filter((i) => i.status !== 'SCHEDULED')
+  const who = (i: RecruiterInterview) => {
+    const a = applications.find((x) => x.id === i.application_id)
+    return a ? `${candidateLabel(a)} — ${a.offer_title}` : 'Candidature'
   }
+
+  async function submit() {
+    setBusy(true)
+    try {
+      await scheduleInterview({
+        application_id: form.application_id, type: form.type as RecruiterInterview['type'],
+        scheduled_at: new Date(form.scheduled_at).toISOString(),
+        duration_minutes: Number(form.duration_minutes) || 45, location_or_url: form.location_or_url.trim(),
+      })
+      setForm({ ...form, application_id: '', scheduled_at: '', location_or_url: '' })
+    } catch { /* l'erreur s'affiche en haut de la page */ }
+    finally { setBusy(false) }
+  }
+
+  const list = (items: RecruiterInterview[], actions: boolean) => (
+    <ul className="divide-y divide-line/70">
+      {items.map((i) => (
+        <li key={i.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
+          <div>
+            <p className="text-[14px] font-medium text-navy">{who(i)}</p>
+            <p className="text-[12.5px] text-slate">
+              {formatDateTime(i.scheduled_at)} · {i.duration_minutes} min · {TYPE_LABEL[i.type]}
+              {i.location_or_url && ` · ${i.location_or_url}`}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge tone={STATUS_TONE[i.status]}>{STATUS_LABEL[i.status]}</Badge>
+            {actions && (
+              <>
+                <Button size="sm" onClick={() => void setInterviewStatus(i.id, 'COMPLETED').catch(() => {})}>Réalisé</Button>
+                <Button size="sm" variant="discret" onClick={() => void setInterviewStatus(i.id, 'CANCELLED').catch(() => {})}>Annuler</Button>
+              </>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
 
   return (
     <>
-      <PageHeader
-        title="Entretiens"
-      />
-
+      <PageHeader title="Entretiens" />
       <PageBody className="space-y-6">
-        <Panel title="À venir" description={`${upcoming.length} entretien${upcoming.length > 1 ? 's' : ''} planifié${upcoming.length > 1 ? 's' : ''}`}>
-          {upcoming.length === 0 ? (
-            <EmptyState title="Aucun entretien planifié">
-              Un entretien se propose depuis un dossier présélectionné, dans le pipeline des candidatures.
-            </EmptyState>
-          ) : (
-            renderList(upcoming)
-          )}
+        {error && <p role="alert" className="text-coral">{error}</p>}
+
+        <Panel title="Planifier un entretien">
+          <div className="grid gap-4 p-5 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Field label="Candidature" required>
+                <Select value={form.application_id} onChange={set('application_id')}>
+                  <option value="">Choisir…</option>
+                  {candidates.map((a) => <option key={a.id} value={a.id}>{candidateLabel(a)} — {a.offer_title}</option>)}
+                </Select>
+              </Field>
+            </div>
+            <Field label="Type">
+              <Select value={form.type} onChange={set('type')}>
+                {Object.entries(TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </Select>
+            </Field>
+            <Field label="Date et heure" required><Input type="datetime-local" value={form.scheduled_at} onChange={set('scheduled_at')} /></Field>
+            <Field label="Durée (minutes)"><Input type="number" value={form.duration_minutes} onChange={set('duration_minutes')} /></Field>
+            <Field label="Lieu ou lien"><Input value={form.location_or_url} onChange={set('location_or_url')} /></Field>
+            <div className="sm:col-span-2">
+              <Button disabled={busy || !form.application_id || !form.scheduled_at} onClick={() => void submit()}>Planifier</Button>
+            </div>
+          </div>
         </Panel>
 
-        {past.length > 0 && <Panel title="Historique">{renderList(past)}</Panel>}
-
+        <Panel title={`À venir (${upcoming.length})`}>
+          {upcoming.length === 0 ? <EmptyState title="Aucun entretien planifié" /> : list(upcoming, true)}
+        </Panel>
+        {past.length > 0 && <Panel title="Historique">{list(past, false)}</Panel>}
       </PageBody>
     </>
   )

@@ -7,6 +7,7 @@ import { filterCandidateOffers } from '../../lib/candidateOffers'
 import { useCandidate } from '../../state/candidate'
 import { CONTRACT_LABEL, GOUVERNORATS, WORK_MODE_LABEL, formatDate } from '../../lib/format'
 import type { ContractType, WorkMode } from '../../lib/types'
+import { MatchBadge } from '../../components/insights'
 
 export default function CandidatOffres() {
   const { offers: initial } = useCandidate()
@@ -41,7 +42,7 @@ export default function CandidatOffres() {
       {loading && <p role="status">Recherche en cours…</p>}
       {error && <p role="alert" className="text-coral">{error}</p>}
       <p className="text-sm text-slate">{results.length} offre{results.length > 1 ? 's' : ''}</p>
-      {results.length ? <div className="grid gap-3 lg:grid-cols-2">{results.map((offer) => <article key={offer.id} className="rounded-[10px] border border-line bg-white p-5 shadow-panel"><Link to={`/candidat/offres/${offer.id}`} className="font-semibold text-navy hover:text-teal">{offer.title}</Link><p className="text-sm text-slate">{offer.organization_name} · {offer.city || offer.governorate}</p><p className="mt-2 text-sm">{CONTRACT_LABEL[offer.contract_type as ContractType] || offer.contract_type || 'Contrat non renseigné'} · {WORK_MODE_LABEL[offer.work_mode as WorkMode] || offer.work_mode || 'Mode non renseigné'}</p><p className="text-sm text-slate">{offer.easy_apply ? 'Candidature sur la plateforme' : 'Dépôt externe'}{offer.application_deadline && ` · clôture le ${formatDate(offer.application_deadline)}`}</p></article>)}</div> : <Panel><EmptyState title="Aucune offre ne correspond à ces filtres" /></Panel>}
+      {results.length ? <div className="grid gap-3 lg:grid-cols-2">{results.map((offer) => <article key={offer.id} className="rounded-[10px] border border-line bg-white p-5 shadow-panel"><Link to={`/candidat/offres/${offer.id}`} className="font-semibold text-navy hover:text-teal">{offer.title}</Link><p className="text-sm text-slate">{offer.organization_name} · {offer.city || offer.governorate}</p><p className="mt-2 text-sm">{CONTRACT_LABEL[offer.contract_type as ContractType] || offer.contract_type || 'Contrat non renseigné'} · {WORK_MODE_LABEL[offer.work_mode as WorkMode] || offer.work_mode || 'Mode non renseigné'}</p><p className="text-sm text-slate">{offer.easy_apply ? 'Candidature sur la plateforme' : 'Dépôt externe'}{offer.application_deadline && ` · clôture le ${formatDate(offer.application_deadline)}`}</p><MatchBadge offerId={offer.id} /></article>)}</div> : <Panel><EmptyState title="Aucune offre ne correspond à ces filtres" /></Panel>}
     </PageBody>
   </>
 }
