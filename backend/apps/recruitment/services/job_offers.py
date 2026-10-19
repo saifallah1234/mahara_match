@@ -120,12 +120,45 @@ def list_job_offers(actor: User) -> QuerySet[JobOffer]:
     return queryset.order_by("created_at", "id")
 
 
+def list_indexable_job_offers() -> QuerySet[JobOffer]:
+    """Return published offers visible to public retrieval without deleted owners."""
+    return (
+        JobOffer.objects.filter(
+            status=JobOfferStatus.PUBLISHED,
+            deleted_at__isnull=True,
+            organization__deleted_at__isnull=True,
+            organization__verification_status="VERIFIED",
+        )
+        .select_related("organization")
+        .prefetch_related("offer_skills__skill")
+        .order_by("id")
+    )
+
+
 def get_job_offer(actor: User, offer_id: UUID | str) -> JobOffer:
     try:
         offer = list_job_offers(actor).get(id=offer_id)
     except JobOffer.DoesNotExist as exc:
         raise DomainNotFoundError("Job offer not found.") from exc
     return offer
+
+
+def interview_offer_evidence(actor: User, offer_id: UUID | str) -> dict[str, Any]:
+    offer = get_job_offer(actor, offer_id)
+    return {
+        "id": str(offer.pk),
+        "title": offer.title[:500],
+        "description": offer.description[:8000],
+        "skills": list(
+            offer.offer_skills.select_related("skill").values(
+                "id", "skill_id", "skill__canonical_name"
+            )[:20]
+        ),
+        "company": offer.company_name
+        or (offer.organization.legal_name if offer.source_id is None else ""),
+        "organization_id": str(offer.organization_id),
+        "imported": offer.source_id is not None,
+    }
 
 
 @transaction.atomic

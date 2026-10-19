@@ -1,6 +1,6 @@
 # AI capability boundaries
 
-The ANETI candidate agent has a V1 job-matching workflow; other AI capabilities remain reserved.
+The ANETI agent serves candidates (job search with training suggestions) and verified recruiters (opted-in profile search, own-offer search) through scoped hybrid retrieval; other AI capabilities remain reserved.
 
 The ANETI employment advisor is the system's AI agent for recommendations and CV
 corrections/improvements (user clarification, 2026-09-20; Q22). Its future execution
@@ -8,23 +8,26 @@ lives here; it is not a human advisor account or staffing workflow.
 
 | Directory | Future responsibility |
 | --- | --- |
-| `agents/` | System AI agents, including the ANETI employment advisor |
-| `workflows/` | LangGraph orchestration; V1 retrieves candidate job matches and explains them |
-| `tools/` | Agent-facing adapters to authorized application services; no direct database access |
+| `agents/` | ANETI agent: `intents.py` (EN/FR/AR role-aware routing), `templates.py` (deterministic replies), `anetai.py` (routes, grounding check, trace allow-list), `service.py` (run + history) |
+| `workflows/` | LangGraph orchestration: `job_matching.py` runs any route's tool then its explainer |
+| `tools/` | Agent-facing adapters to authorized application services: `job_search.py` (candidate), `candidate_search.py` (recruiter), `job_matches.py` (Phase 7 baseline, rollback only) |
 | `document_intelligence/` | Parsing, ATS analysis and CV generation capabilities |
 | `rag/` | Answers grounded in retrieved internal sources |
-| `graphrag/` | Graph-enriched context and explanations |
-| `retrieval/` | Lexical, vector, graph and hybrid retrieval adapters |
+| `graphrag/` | `missing_skill_training.py`: missing skills → active training programs |
+| `retrieval/` | `lexical/scoring.py` (FR/AR/EN token overlap, zero-overlap excluded), `hybrid/retriever.py` (legs + RRF, degrades without vectors); scoped database legs live in `backend/apps/matching/services/retrieval.py` |
 | `embeddings/` | Reusable embedding capability, not recurring job definitions |
 | `reranking/` | Reordering retrieved results |
-| `llm/` | Provider adapters and prompts |
+| `llm/` | Provider adapters and prompts; `providers/embeddings.py` is the Ollama embedding client (`EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`, `OLLAMA_BASE_URL`) |
 | `evaluation/` | Future quality, grounding, language and action evaluations |
 
 Agent → tool → application service → ORM. Agents and tools must not import models
 or connect directly to relational storage. Retrieval adapters may access derived
 indexes within authorization constraints; relational reads go through services.
-The V1 matching tool calls the matching application service, which persists versioned
-skill-coverage scores. The LLM explains only that persisted score and its evidence.
+Retrieval tools get documents, vector neighbours and graph links only through
+actor-scoped backend services; vectors are pre-filtered by visible IDs. Results are
+explained from evidence (matched/missing skills, training suggestions) and are not
+persisted as offer matches. The Phase 7 skill-coverage tool remains selectable with
+`ANETAI_CANDIDATE_TOOL=baseline` until the retrieval route is verified live.
 Other capabilities return results for owning services to validate/persist.
 
 See [AI architecture](../docs/ai/architecture.md).

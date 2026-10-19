@@ -41,6 +41,10 @@ the affected implementation. No directory or implementation is created here.
 | Q25 | Frontend / team | PDF pp. 3–7 describes actor interfaces; p. 10 names a frontend but gives no framework. The current scaffold has no frontend area. The roadmap task explicitly includes a gated UI workstream. | **Resolved for F01:** React + TypeScript + Vite under `frontend/`, feature code in `frontend/src/features/`, shared API client in `frontend/src/api/`. Support French, Arabic, RTL and accessibility. P4 still records exact feature/test paths and acceptance checks before UI implementation; no frontend files are created by this decision. |
 | Q26 | Candidates / matching / training / AI evaluation | DM §4.B stores completion_score and ATS overall_score; §§4.C–D stores match/recommendation scores and explanations. PDF pp. 5–9 requests compatibility, missing skills, ranking and quality/latency but gives no formulas, eligibility thresholds or evaluation budgets. | **Partially resolved:** separate eligibility from ranking. Rank with skill, experience and location evidence; missing data is unknown, not rejection. ATS score is improvement feedback, not a hiring decision. Owners still agree completeness/ATS formulas, weights, training criteria, evaluation sets and release thresholds before computation or acceptance. |
 | Q27 | Identity / onboarding | Public signup, organization review and staff provisioning were previously undefined. User choices on 2026-10-08. | **Resolved:** candidates activate immediately with a private profile and global role, without claiming email verification. Recruiter/provider applicants remain pending until administrator review; they may request an existing or proposed organization, but the administrator must verify it and grant membership and scoped role. Ministry/admin accounts are provisioned only by privileged administrators. |
+| Q28 | Candidates / matching / AI | DM §4.B defines `PRIVATE`, `RECRUITERS` and `PUBLIC` profile visibility; Q19 lets verified recruiters see the limited view on candidate opt-in. Discovery returned `RECRUITERS` profiles only, and agent retrieval reused it (2026-10-15). | **Resolved — user decision, 2026-10-15:** `PUBLIC` is a superset of `RECRUITERS`. Verified recruiters see `RECRUITERS` and `PUBLIC` profiles through the same limited view in discovery, agent retrieval and the vector index. `PUBLIC` never grants anonymous access; a public profile page would need its own decision. |
+| Q29 | Assistant / AI / candidates | Q19 allows verified recruiters to see the limited profile view. The 2026-10-15 retrieval decision forbids copying limited-profile text into assistant history, and every agent reply is stored as an assistant message. | **Resolved — user decision, 2026-10-15:** recruiter agent replies and tool traces hold profile IDs, ranks and matched skill names only; recruiters open details through the candidate-discovery detail page, which re-checks scope live. No limited-profile field is added to the agent-run response. Linking IDs to that page in the chat UI is a frontend follow-up. |
+| Q30 | AI / training / reporting / identity | PDF pp. 3–4 and Q03 include training managers, ministry and administrators; Q19 limits ministry to aggregates. The 2026-10-15 retrieval iteration covers candidates and recruiters only. | **Deferred — confirmed by the user, 2026-10-15:** these roles are refused by agent retrieval. Each needs an agreed scope (which programs or candidates a training manager may retrieve; ministry aggregate KPIs, Q20) before a scope service, retrieval builder and route are added. |
+| Q31 | AI / assistant | PDF p. 7 requires French, Arabic and Tunisian dialect support. The 2026-10-15 agent routes and replies with EN/FR/AR keywords and templates; Tunisian dialect, including Latin-script Arabizi, is not recognised and is answered as unsupported. | **Open:** a Tunisian intent and reply evaluation set, and the approach (keywords, classifier, or LLM routing under a grounding check), before claiming dialect support. |
 
 ## Phase 1 implementation note (2026-09-26)
 
@@ -54,6 +58,16 @@ sources from starting batches. The provisional status strings in these models ar
 storage placeholders, not a final state-machine agreement.
 
 ## Maintaining this register
+
+Mock interviews follow the approved
+[2026-10-10 implementation contract](../team/ai_mock_interview_implementation_plan.md).
+Local phases implement the scoped session state machine, French-only enablement,
+candidate ownership, durable graph/tasks and queue/worker contracts. One short
+ElevenLabs sample was approved on 2026-10-11; normal paid calls remain disabled.
+No Piper/Whisper model paths were supplied. This does not resolve general assistant action execution
+(Q15), platform GraphRAG requirements, or the retained-data release review (Q19).
+French speech quality, local models/voice and actual GPU runtime remain explicit
+validation gates; deployment and paid services require separate approval.
 
 The [roadmap decision register](../team/implementation_roadmap.md#decision-ownership-and-phase-gates)
 assigns owners, reviewers, task dependencies and decision deadlines by milestone.

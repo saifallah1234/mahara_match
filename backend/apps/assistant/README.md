@@ -15,6 +15,19 @@ execution history belongs here; CV and recommendation records retain their ownin
 
 ## Current backend
 
+Mock interview rehearsals have separate session/turn/job persistence and
+candidate-only `/api/v1/mock-interviews/` routes. Permission seeding adds
+`assistant.mock_interview.use`. Creation persists preparation intent, and accepted
+answer metadata persists work with version/idempotency checks. Only French is
+enabled; feature and integrations default to disabled. The mocked local journey
+includes checkpointed graph processing, leased tasks, private media, microphone
+recording and deletion retries. Separate queue coordination and standalone worker
+code use durable publication/manifests; local tests use fake queues. Optional local
+speech requires existing models. One approved ElevenLabs sample passed; ordinary
+paid processing remains disabled. No AWS deployment or GPU inference was performed.
+See the [API contract](../../../docs/api/mock_interviews_v1.md) and
+[runbook](../../../docs/deployment/mock_interviews.md).
+
 The five ORM records and owner-scoped `/api/v1` read routes are initialized.
 Users may create, rename and soft-delete their conversations; messages, execution
 traces and actions are written only by trusted services. Tool inputs and action

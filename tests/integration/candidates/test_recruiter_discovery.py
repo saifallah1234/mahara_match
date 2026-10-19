@@ -165,13 +165,11 @@ def test_inactive_recruiter_is_denied(
         list_candidates(recruiter)
 
 
-@pytest.mark.parametrize("visibility", [ProfileVisibility.PRIVATE, ProfileVisibility.PUBLIC])
 def test_visibility_cannot_be_bypassed_by_uuid_or_filters(
     recruiter: User,
     profile: CandidateProfile,
-    visibility: str,
 ) -> None:
-    profile.profile_visibility = visibility
+    profile.profile_visibility = ProfileVisibility.PRIVATE
     profile.save()
     skill = Skill.objects.create(canonical_name="Python")
     CandidateSkill.objects.create(candidate=profile, skill=skill, level="EXPERT")
@@ -383,7 +381,7 @@ def test_self_opt_in_and_revocation_take_effect_immediately(
         )
         assert response.status_code == 200
         assert response.json()["profile_visibility"] == visibility
-        expected = visibility == "RECRUITERS"
+        expected = visibility in ("RECRUITERS", "PUBLIC")  # PUBLIC includes recruiters (Q28).
         assert reviewer.get(reverse("candidate-profile-list")).json()["count"] == int(expected)
         assert reviewer.get(detail(profile)).status_code == (200 if expected else 404)
 

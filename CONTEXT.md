@@ -119,18 +119,36 @@ configured Supabase PostgreSQL database on 2026-09-26. RBAC roles and permission
 were seeded. Assistant, imports and platform have protected persistence interfaces;
 the agent runtime and actual import processing remain in later phases.
 
-PostgreSQL owns transactional data and initial text search. Object storage holds
-CVs and other original files; the database holds metadata and URIs. Evaluate
-pgvector for semantic retrieval; use Neo4j only if GraphRAG traversal genuinely
-needs it. Any vector/graph index is a derived projection retaining relational IDs.
-Validated changes are recorded in PostgreSQL before idempotent synchronization
-(DM §§1, 5; PDF p. 9).
+PostgreSQL owns transactional data, initial text search and the derived pgvector
+embedding index in `matching.embeddings`. The index retains source entity types
+and relational UUIDs. bge-m3 (1024 dimensions) is configured; final model
+selection remains open. Vectors carry no scope: every read pre-filters by the IDs
+the owning domain says the caller may see.
+Object storage holds CVs and other original files; the database holds metadata
+and URIs. Use Neo4j only if GraphRAG traversal genuinely needs it. Validated
+changes are recorded in PostgreSQL before idempotent synchronization (DM §§1, 5;
+PDF p. 9).
 
 The PDF's microservice deployment wording (p. 10) is overridden by this task's
 modular-monolith requirement. Future heavy processing can have separate execution
 processes without creating independent business services or schema ownership.
 
 ## AI and agentic workflows
+
+**Mock interview implementation (2026-10-11):** the approved
+[implementation plan](docs/team/ai_mock_interview_implementation_plan.md) adds
+assistant-owned rehearsal sessions, turns and durable jobs, separate from
+recruitment appointments. Phase 1 persistence/API checks pass on isolated local
+PostgreSQL. Local phases now include the checkpointed graph, authorized evidence,
+protected streaming, recording/cleanup, candidate playback and leased tasks.
+Queue coordination and the standalone local-avatar worker pass fake-queue tests;
+the complete mocked journey passes Chromium and real local MinIO checks. Optional
+Piper/faster-whisper need existing model files, which have not been supplied.
+One short ElevenLabs French test was separately approved and decoded successfully;
+The user subsequently approved ElevenLabs for interview speech; local configuration
+now enables that provider and paid TTS. Cloud access remains separately gated. No deployment or real GPU
+inference has occurred. See the [runbook](docs/deployment/mock_interviews.md) and
+[API contract](docs/api/mock_interviews_v1.md) for configuration and release gates.
 
 The ANETI employment advisor is the AI agent of the system. Its future reasoning
 and orchestration live in `ai/agents/` and `ai/workflows/`; CV capabilities live in
@@ -166,6 +184,19 @@ retrieval and reranking support source-backed explanations of matched and missin
 skills. Neither retrieval nor model output can replace business authorization or
 make final hiring decisions (PDF pp. 2, 5, 7, 9). The baseline is a pilot; the MVP
 label requires demonstrated and evaluated hybrid plus graph/GraphRAG retrieval.
+
+**Scoped agent retrieval (2026-10-15):** the ANETI agent serves candidates and
+verified recruiters. Candidates get up to 5 visible offers ranked by lexical +
+vector + skill-graph retrieval, with matched/missing skills and up to 2 active
+training programs per offer as suggestions (not persisted as `OfferMatch`).
+Recruiters search `RECRUITERS`/`PUBLIC` limited profiles (Q28; only IDs and matched
+skills reach assistant history, details open in discovery, Q29) or their own
+offers, drafts included. Routing and replies
+cover EN/FR/AR; Tunisian dialect is not covered yet (Q31). An Ollama outage
+degrades to lexical + graph and is recorded in the tool trace. Training manager,
+ministry and admin retrieval are deferred (Q30). Details: the
+[AI architecture](docs/ai/architecture.md#scoped-retrieval-in-the-agent-2026-10-15)
+and the [matching README](backend/apps/matching/README.md#production-retrieval-2026-10-15).
 
 ## Background pipelines
 

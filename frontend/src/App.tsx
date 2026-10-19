@@ -18,6 +18,7 @@ import CandidatOffres from './pages/candidat/Offres'
 import CandidatOffreDetail from './pages/candidat/OffreDetail'
 import CandidatCandidatures from './pages/candidat/Candidatures'
 import CandidatFormations from './pages/candidat/Formations'
+import MockInterview from './pages/candidat/MockInterview'
 
 import RecruteurDashboard from './pages/recruteur/Dashboard'
 import RecruteurEntreprise from './pages/recruteur/Entreprise'
@@ -60,6 +61,8 @@ export default function App() {
           <Route path="/candidat/offres/:offerId" element={<CandidatOffreDetail />} />
           <Route path="/candidat/candidatures" element={<CandidatCandidatures />} />
           <Route path="/candidat/formations" element={<CandidatFormations />} />
+          <Route path="/candidat/entretiens-blancs" element={<MockInterview />} />
+          <Route path="/candidat/entretiens-blancs/:sessionId" element={<MockInterview />} />
           </Route>
           </Route>
 

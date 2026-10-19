@@ -1,0 +1,20 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublishInterviewVideoRequests",
+      "Effect": "Allow",
+      "Action": "sqs:SendMessage",
+      "Resource": [
+        "arn:aws:sqs:eu-central-1:361769579092:mahara-interview-priority",
+        "arn:aws:sqs:eu-central-1:361769579092:mahara-interview-background"
+      ]
+    },
+    {
+      "Sid": "ConsumeInterviewWorkerStatus",
+      "Effect": "Allow",
+      "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility"],
+      "Resource": "arn:aws:sqs:eu-central-1:361769579092:mahara-interview-status"
+    }
+  ]
+}

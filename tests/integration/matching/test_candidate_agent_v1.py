@@ -4,6 +4,7 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from ai.llm.providers.embeddings import EmbeddingUnavailable
 from backend.apps.assistant.models import AgentExecution, Conversation, ConversationMessage
 from backend.apps.candidates.models import CandidateProfile, CandidateSkill, SkillLevel
 from backend.apps.identity.models import Organization, Role, RoleCode, User, UserRole, UserStatus
@@ -13,6 +14,10 @@ from backend.apps.recruitment.models import JobOffer, JobOfferStatus, OfferSkill
 from backend.apps.taxonomy.models import Skill
 
 pytestmark = pytest.mark.django_db
+
+
+def _ollama_down(_: str) -> list[float]:
+    raise EmbeddingUnavailable("Ollama is not used by integration tests.")
 
 
 def candidate(email: str = "candidate@example.com") -> User:
@@ -101,8 +106,10 @@ def test_agent_run_persists_messages_execution_and_tool_evidence(
     CandidateSkill.objects.create(
         candidate=user.candidate_profile, skill=django, level=SkillLevel.INTERMEDIATE
     )
+    monkeypatch.setattr("ai.tools.job_search.embed_query", _ollama_down)
     monkeypatch.setattr(
-        "ai.agents.anetai.explain_matches", lambda prompt, evidence: "Top job: Backend Engineer."
+        "ai.agents.anetai.explain_job_search",
+        lambda prompt, evidence, language: "Top job: Backend Engineer.",
     )
     client = APIClient()
     client.force_authenticate(user)
@@ -116,12 +123,72 @@ def test_agent_run_persists_messages_execution_and_tool_evidence(
     conversation = Conversation.objects.get(id=body["conversation_id"], user=user)
     execution = AgentExecution.objects.get(id=body["execution_id"])
     assert execution.status == "SUCCEEDED"
-    assert execution.route == "job_match_search"
+    assert execution.route == "candidate_job_search"
     assert execution.response_message.content == "Top job: Backend Engineer."
     assert ConversationMessage.objects.filter(conversation=conversation).count() == 2
     tool_call = execution.tool_calls.get()
-    assert tool_call.tool_name == "get_candidate_job_matches"
+    assert tool_call.tool_name == "search_jobs_for_candidate"
     assert tool_call.status == "SUCCEEDED"
+    assert tool_call.input_json == {"question": "What jobs match my profile?"}
+    output = tool_call.output_summary_json
+    assert output["vector_unavailable"] is True
+    match = output["matches"][0]
+    assert match["offer_id"] == str(offer.id)
+    assert match["matched_skills"] == ["Django"]
+    assert match["missing_skills"] == ["Python"]
+    assert not OfferMatch.objects.exists()
+
+
+def test_french_request_gets_a_french_template_without_the_llm(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user = candidate()
+    offer, django, _ = published_offer(user)
+    CandidateSkill.objects.create(
+        candidate=user.candidate_profile, skill=django, level=SkillLevel.INTERMEDIATE
+    )
+    monkeypatch.setattr("ai.tools.job_search.embed_query", _ollama_down)
+    monkeypatch.setattr(
+        "ai.agents.anetai.get_chat_model", lambda: pytest.fail("French replies are templates.")
+    )
+    client = APIClient()
+    client.force_authenticate(user)
+
+    response = client.post(
+        reverse("agent-run"),
+        {"message": "Quels emplois correspondent à mon profil ?"},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["reply"] == (
+        "1. Backend Engineer chez Backend Engineer Ltd. Compétences correspondantes : Django. "
+        "Compétences manquantes : Python."
+    )
+
+
+def test_baseline_route_remains_selectable(monkeypatch: pytest.MonkeyPatch) -> None:
+    user = candidate()
+    offer, django, _ = published_offer(user)
+    CandidateSkill.objects.create(
+        candidate=user.candidate_profile, skill=django, level=SkillLevel.INTERMEDIATE
+    )
+    monkeypatch.setenv("ANETAI_CANDIDATE_TOOL", "baseline")
+    monkeypatch.setattr(
+        "ai.agents.anetai.explain_matches", lambda prompt, evidence: "Top job: Backend Engineer."
+    )
+    client = APIClient()
+    client.force_authenticate(user)
+
+    response = client.post(
+        reverse("agent-run"), {"message": "What jobs match my profile?"}, format="json"
+    )
+
+    assert response.status_code == 200
+    execution = AgentExecution.objects.get(id=response.json()["execution_id"])
+    assert execution.route == "job_match_search"
+    tool_call = execution.tool_calls.get()
+    assert tool_call.tool_name == "get_candidate_job_matches"
     assert tool_call.output_summary_json["matches"][0]["offer_id"] == str(offer.id)
 
 
@@ -131,9 +198,10 @@ def test_agent_run_records_llm_failure_and_rejects_foreign_conversation(
     user = candidate()
     other = candidate("other@example.com")
     foreign_conversation = Conversation.objects.create(user=other)
+    monkeypatch.setattr("ai.tools.job_search.embed_query", _ollama_down)
     monkeypatch.setattr(
-        "ai.agents.anetai.explain_matches",
-        lambda prompt, evidence: (_ for _ in ()).throw(RuntimeError()),
+        "ai.agents.anetai.explain_job_search",
+        lambda prompt, evidence, language: (_ for _ in ()).throw(RuntimeError()),
     )
     client = APIClient()
     client.force_authenticate(user)
@@ -184,8 +252,8 @@ def test_unsupported_request_is_persisted_without_calling_matching(
 ) -> None:
     user = candidate()
     monkeypatch.setattr(
-        "ai.agents.anetai.get_candidate_job_matches",
-        lambda _: pytest.fail("Unsupported requests must not call matching."),
+        "ai.agents.anetai.search_jobs_for_candidate",
+        lambda *_: pytest.fail("Unsupported requests must not call matching."),
     )
     client = APIClient()
     client.force_authenticate(user)

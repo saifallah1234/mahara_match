@@ -44,7 +44,7 @@ class CandidateProfileViewSet(GenericViewSet[CandidateProfile]):
     @extend_schema(
         parameters=[CandidateDiscoveryQuerySerializer],
         responses=RecruiterCandidateSerializer(many=True),
-        description="Redacted discovery for authorized recruiters. Only RECRUITERS opt-in profiles.",
+        description="Redacted discovery for authorized recruiters. RECRUITERS and PUBLIC profiles.",
     )
     def list(self, request: Request) -> Response:
         queryset = discovery.list_candidates(active_request_user(request))
@@ -56,7 +56,7 @@ class CandidateProfileViewSet(GenericViewSet[CandidateProfile]):
 
     @extend_schema(
         responses=RecruiterCandidateSerializer,
-        description="Redacted recruiter detail. Hidden, PUBLIC and inactive candidates return 404.",
+        description="Redacted recruiter detail. PRIVATE and inactive candidates return 404.",
     )
     def retrieve(self, request: Request, pk: str | None = None) -> Response:
         profile = discovery.get_candidate(active_request_user(request), str(pk))
