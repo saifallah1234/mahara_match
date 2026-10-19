@@ -3,8 +3,9 @@ from typing import Any
 
 import pytest
 
-from ai.agents.anetai import explain_matches, is_job_match_request
-from ai.workflows.job_matching import build_job_matching_graph
+from ai.agents.anetai import explain_matches
+from ai.agents.templates import unsupported_reply
+from ai.workflows.job_matching import RouteSpec, build_agent_graph
 
 pytestmark = pytest.mark.unit
 
@@ -84,41 +85,21 @@ def test_empty_results_use_evidence_summary_without_calling_model(
     assert "Add skills to your profile" in reply
 
 
-@pytest.mark.parametrize(
-    "prompt",
-    [
-        "What jobs match my profile?",
-        "Find jobs for me",
-        "Recommend job opportunities",
-        "Show matching jobs",
-    ],
-)
-def test_router_recognizes_english_job_matching_requests(prompt: str) -> None:
-    assert is_job_match_request(prompt)
-
-
-@pytest.mark.parametrize(
-    "prompt",
-    [
-        "Can you improve my CV?",
-        "Help me apply for a job",
-        "Recommend training for me",
-        "Quels emplois correspondent à mon profil ?",
-        "Hello",
-    ],
-)
-def test_router_rejects_unsupported_requests(prompt: str) -> None:
-    assert not is_job_match_request(prompt)
-
-
 def test_unsupported_graph_path_does_not_call_matching_or_model() -> None:
-    graph = build_job_matching_graph(
-        lambda _: pytest.fail("Unsupported requests must not call matching."),
-        lambda *_: pytest.fail("Unsupported requests do not need model wording."),
+    route = RouteSpec(
+        tool_name="never",
+        tool=lambda *_: pytest.fail("Unsupported requests must not call matching."),
+        explain=lambda *_: pytest.fail("Unsupported requests do not need model wording."),
     )
+    graph = build_agent_graph({"candidate_job_search": route}, unsupported_reply)
 
     result = graph.invoke(
-        {"actor": object(), "prompt": "Can you improve my CV?", "supported": False}
+        {
+            "actor": object(),
+            "prompt": "Can you improve my CV?",
+            "route": "unsupported",
+            "language": "en",
+        }
     )
 
     assert "not supported yet" in result["reply"]

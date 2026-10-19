@@ -10,7 +10,7 @@ from backend.apps.assistant.api.agent_run_serializers import (
     AgentRunReadSerializer,
     AgentRunWriteSerializer,
 )
-from backend.apps.candidates.services.records import own_profile
+from backend.apps.assistant.services.agent_access import agent_role
 from backend.apps.identity.api.common_permissions import IsActiveAuthenticated, active_request_user
 
 
@@ -25,11 +25,12 @@ class AgentRunView(APIView):
         serializer = AgentRunWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         actor = active_request_user(request)
-        own_profile(actor)
+        role = agent_role(actor)
         result = start_agent_run(
             actor,
             serializer.validated_data["message"],
             serializer.validated_data.get("conversation_id"),
+            role=role,
         )
         if result["error_code"]:
             return Response(

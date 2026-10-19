@@ -10,6 +10,8 @@ from collections.abc import Mapping
 from enum import StrEnum
 from typing import Any
 
+from django.apps import apps
+
 from backend.apps.identity.models import User
 from backend.apps.identity.models.organizations import Organization
 from backend.apps.imports.models.records import DataSource
@@ -29,6 +31,7 @@ def reconcile_offer(
     created_by: User,
     external_id: str,
     fields: Mapping[str, Any],
+    description_language_code: str | None = None,
 ) -> tuple[JobOffer, ReconcileOutcome]:
     """Create or update the offer identified by (source, external_id).
 
@@ -38,8 +41,12 @@ def reconcile_offer(
     On update only the scraped content columns are touched. status, organization,
     created_by and source are never overwritten, so a manual decision (for example
     publishing an offer) survives later imports.
+
+    description_language_code ("fr", "en", "ar") is resolved to a taxonomy.Language
+    row; a code with no matching row leaves the column empty.
     """
     values = {name: value for name, value in fields.items() if name != "external_id"}
+    values["description_language"] = _find_language(description_language_code)
     existing = JobOffer.objects.filter(source=source, external_id=external_id).first()
 
     if existing is None:
@@ -69,12 +76,18 @@ def reconcile_offer(
     return existing, ReconcileOutcome.UPDATED
 
 
+def _find_language(code: str | None) -> Any:
+    """The Language row for an ISO code, or None. Resolved through the app registry
+    so this file does not depend on where the taxonomy model file lives."""
+    if not code:
+        return None
+    language_model = apps.get_model("taxonomy", "Language")
+    return language_model.objects.filter(code=code).first()
+
+
 def known_external_ids(source: DataSource) -> set[str]:
     """External ids already stored for this source (lets a run skip known pages)."""
-    return {
-        external_id
-        for external_id in JobOffer.objects.filter(
-            source=source, external_id__isnull=False
-        ).values_list("external_id", flat=True)
-        if external_id is not None
-    }
+    external_ids = JobOffer.objects.filter(source=source, external_id__isnull=False).values_list(
+        "external_id", flat=True
+    )
+    return {external_id for external_id in external_ids if external_id}

@@ -29,6 +29,7 @@ import CandidatOffreDetail from './pages/candidat/OffreDetail'
 import CandidatCandidatures from './pages/candidat/Candidatures'
 import CandidatFormations from './pages/candidat/Formations'
 import CandidatAssistant from './pages/candidat/Assistant' 
+import MockInterview from './pages/candidat/MockInterview'
 
 import RecruteurDashboard from './pages/recruteur/Dashboard'
 import RecruteurEntreprise from './pages/recruteur/Entreprise'
@@ -65,6 +66,8 @@ export default function App() {
                 <Route path="/candidat/candidatures" element={<CandidatCandidatures />} />
                 <Route path="/candidat/formations" element={<CandidatFormations />} />
                 <Route path="/candidat/assistant" element={<CandidatAssistant />} />
+                <Route path="/candidat/entretiens-blancs" element={<MockInterview />} />
+                <Route path="/candidat/entretiens-blancs/:sessionId" element={<MockInterview />} />
               </Route>
             </Route>
 
@@ -81,10 +84,12 @@ export default function App() {
               </Route>
             </Route>
             {/* Espace organisme de formation */}
-            <Route element={<TrainingWorkspace />}>
-              <Route path="/formation" element={<FormationDashboard />} />
-              <Route path="/formation/programmes" element={<FormationProgrammes />} />
-              <Route path="/formation/sessions" element={<FormationSessions />} />
+            <Route element={<RoleRoute role="TRAINING_MANAGER" />}>
+              <Route element={<TrainingWorkspace />}>
+                <Route path="/formation" element={<FormationDashboard />} />
+                <Route path="/formation/programmes" element={<FormationProgrammes />} />
+                <Route path="/formation/sessions" element={<FormationSessions />} />
+              </Route>
             </Route>
 
             {/* Espace ministère */}

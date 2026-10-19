@@ -27,6 +27,7 @@ export default function CandidatOffreDetail() {
   return <>
     <PageHeader back={{ to: '/candidat/offres', label: 'Toutes les offres' }} title={offer.title} description={`${offer.organization_name} · ${offer.city || offer.governorate}`} />
     <PageBody className="space-y-5">
+      <Link className="text-teal underline" to={`/candidat/entretiens-blancs?offer=${offer.id}`}>Préparer un entretien blanc</Link>
       <Panel title="Description"><p className="whitespace-pre-wrap p-5 text-sm text-navy">{offer.description}</p></Panel>
       <MatchPanel offerId={offer.id} />
       <Panel title="Informations"><dl className="grid gap-2 p-5 text-sm"><div>Contrat : {CONTRACT_LABEL[offer.contract_type as ContractType] || offer.contract_type || 'Non renseigné'}</div><div>Mode : {WORK_MODE_LABEL[offer.work_mode as WorkMode] || offer.work_mode || 'Non renseigné'}</div><div>Expérience : {EXPERIENCE_LABEL[offer.experience_level as ExperienceLevel] || offer.experience_level || 'Non renseignée'}</div><div>Clôture : {formatDate(offer.application_deadline ?? undefined)}</div></dl></Panel>

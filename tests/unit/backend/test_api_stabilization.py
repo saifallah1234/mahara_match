@@ -65,11 +65,11 @@ def test_agent_failure_uses_the_shared_error_shape(monkeypatch: pytest.MonkeyPat
         "error_code": "llm_unavailable",
     }
     monkeypatch.setattr(
-        "backend.apps.assistant.api.agent_run_views.own_profile", lambda actor: object()
+        "backend.apps.assistant.api.agent_run_views.agent_role", lambda actor: "candidate"
     )
     monkeypatch.setattr(
         "backend.apps.assistant.api.agent_run_views.start_agent_run",
-        lambda actor, message, conversation_id: result,
+        lambda actor, message, conversation_id, role: result,
     )
     request = APIRequestFactory().post(
         "/api/v1/agent-runs/", {"message": "Find matching jobs."}, format="json"

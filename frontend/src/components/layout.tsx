@@ -93,6 +93,7 @@ export const NAVIGATION: Record<RoleCode, NavItem[]> = {
     { to: '/candidat/candidatures', label: 'Mes candidatures', icon: 'applications' },
     { to: '/candidat/formations', label: 'Formations', icon: 'training' },
         { to: '/candidat/assistant', label: 'Assistant', icon: 'assistant' },
+    { to: '/candidat/entretiens-blancs', label: 'Entretiens blancs', icon: 'interview' },
   ],
   RECRUITER: [
     { to: '/recruteur', label: 'Tableau de bord', icon: 'dashboard', end: true },
@@ -219,7 +220,7 @@ export function AppShell() {
           <Wordmark tone="sombre" />
         </header>
 
-        <div className="border-b border-amber/30 bg-amber/10 px-5 py-2 text-xs text-navy">Les données métier de cet espace restent des données de démonstration. Les actions métier locales ne sont pas enregistrées sur le serveur.</div>
+        {!location.pathname.startsWith('/candidat/entretiens-blancs') && <div className="border-b border-amber/30 bg-amber/10 px-5 py-2 text-xs text-navy">Les données métier de cet espace restent des données de démonstration. Les actions métier locales ne sont pas enregistrées sur le serveur.</div>}
         {dataError && <div role="alert" className="border-b border-coral/30 bg-coral/10 px-5 py-2 text-sm text-coral">{dataError}</div>}
         <main className="flex-1">
           <Outlet />
