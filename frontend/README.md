@@ -35,7 +35,7 @@ Cinq espaces, un par acteur retenu.
 | Espace | Pages |
 |---|---|
 | Chercheur d'emploi | tableau de bord, profil, CV, offres, candidatures, formations, assistant |
-| Employeur / Recruteur | tableau de bord, entreprise et filiales, offres, pipeline, entretiens |
+| Employeur / Recruteur | tableau de bord, entreprise et filiales, offres, suivi des candidatures, entretiens, candidats, assistant |
 | Organisme de formation | tableau de bord, programmes, sessions et inscriptions |
 | Responsable du ministère | indicateurs régionaux, compétences du marché |
 | Administrateur | comptes et rôles, organisations, référentiels, imports, journal d'audit |

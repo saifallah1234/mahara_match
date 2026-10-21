@@ -52,7 +52,7 @@ export default function RecruteurDashboard() {
                       <p className="text-[14px] font-medium text-navy">{a.offer_title}</p>
                       <p className="text-[12.5px] text-slate">{candidateLabel(a)} · déposée le {formatDate(a.applied_at)}</p>
                     </div>
-                    <Link to="/recruteur/candidatures"><Button size="sm" variant="secondaire">Examiner</Button></Link>
+                    <Link to={`/recruteur/candidatures?offer=${a.offer_id}`}><Button size="sm" variant="secondaire">Examiner</Button></Link>
                   </li>
                 ))}
               </ul>

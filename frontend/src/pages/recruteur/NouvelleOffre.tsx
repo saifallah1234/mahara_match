@@ -36,7 +36,7 @@ function OfferEditor({ offer }: { offer: RecruiterOffer }) {
 
 function OfferForm({ offer, current = [] }: { offer?: RecruiterOffer; current?: OfferSkill[] }) {
   const { workspace } = useAuth()
-  const { skills, createOffer, updateOffer, syncOfferSkills, setOfferStatus } = useRecruiter()
+  const { skills, createOffer, updateOffer, syncOfferSkills, publishOffer } = useRecruiter()
   const navigate = useNavigate()
 
   const [f, setF] = useState({
@@ -81,7 +81,7 @@ function OfferForm({ offer, current = [] }: { offer?: RecruiterOffer; current?: 
       // The draft exists once createOffer returns. A failing skill or publish step is shown on the draft.
       const id = await createOffer(data)
       const skillsSaved = await syncOfferSkills(id, chosen, []).then(() => true, () => false)
-      if (skillsSaved && publish) await setOfferStatus(id, 'PUBLISHED').catch(() => {})
+      if (skillsSaved && publish) await publishOffer(id).catch(() => {})
       navigate(`/recruteur/offres/${id}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Échec de l’enregistrement.')

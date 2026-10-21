@@ -43,5 +43,5 @@ test('field names without a French label fall back to a generic French label', (
 })
 
 test('interview times show the Tunis wall clock with its zone label', () => {
-  assert.equal(formatTunisDateTime('2026-10-24T09:00:00Z'), '24 oct. 2026, 10:00 AM UTC+1')
+  assert.equal(formatTunisDateTime('2026-10-24T09:00:00Z'), '24 oct. 2026, 10:00 UTC+1')
 })

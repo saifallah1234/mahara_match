@@ -100,7 +100,7 @@ export interface Language {
 /* ------------------------------------------------------------------ */
 
 export type ProfileVisibility = 'PRIVATE' | 'RECRUITERS' | 'PUBLIC'
-export type SkillLevel = 'DEBUTANT' | 'INTERMEDIAIRE' | 'AVANCE' | 'EXPERT'
+export type SkillLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT'
 export type LanguageLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2' | 'NATIF'
 export type WorkMode = 'ONSITE' | 'HYBRID' | 'REMOTE'
 export type Relocation = 'OPEN_TO_RELOCATE' | 'CANNOT_RELOCATE'

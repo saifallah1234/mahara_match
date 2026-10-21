@@ -16,6 +16,7 @@ type State = {
   updateOffer: (id: string, data: Partial<api.OfferInput>) => Promise<void>
   syncOfferSkills: (offerId: string, chosen: SkillChoice[], current: api.OfferSkill[]) => Promise<void>
   setOfferStatus: (id: string, status: api.RecruiterOffer['status']) => Promise<void>
+  publishOffer: (id: string) => Promise<void>
   moveApplication: (id: string, status: string, reason?: string) => Promise<void>
   scheduleInterview: (data: api.InterviewInput) => Promise<void>
   setInterviewStatus: (id: string, status: 'COMPLETED' | 'CANCELLED', feedback?: string) => Promise<void>
@@ -89,6 +90,13 @@ export function RecruiterProvider({ children }: { children: ReactNode }) {
       }
     }),
     setOfferStatus: (id, status) => mutate(() => api.transitionOffer(id, status)),
+    publishOffer: (id) => mutate(async () => {
+      try {
+        await api.transitionOffer(id, 'PUBLISHED')
+      } catch (e) {
+        throw new Error(`Publication impossible : ${e instanceof Error ? e.message : 'erreur'}`)
+      }
+    }),
     moveApplication: (id, status, reason) => mutate(() => api.transitionApplication(id, status, reason)),
     scheduleInterview: (data) => mutate(() => api.scheduleInterview(data)),
     setInterviewStatus: (id, status, feedback) => mutate(() => api.transitionInterview(id, status, feedback)),

@@ -1,3 +1,4 @@
+// Placement: frontend/tests/applicationBoard.test.mjs
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { laterStages } from '../src/lib/statusMachine.ts'

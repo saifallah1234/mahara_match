@@ -1,3 +1,4 @@
+// Placement: frontend/tests/citations.test.mjs
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { citationPath } from '../src/lib/citations.ts'

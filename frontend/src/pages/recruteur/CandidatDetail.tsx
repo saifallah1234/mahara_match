@@ -1,3 +1,4 @@
+// Placement: frontend/src/pages/recruteur/CandidatDetail.tsx
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
@@ -7,9 +8,7 @@ import { useRecruiter } from '../../state/recruiter'
 import { getCandidate, listEducationLevels, type CandidateCard, type EducationLevel } from '../../api/recruiter'
 import { ApiError } from '../../api/client'
 import { SKILL_LEVEL_LABEL, WORK_MODE_LABEL, formatMonthYear, labelFor } from '../../lib/format'
-import { UNVERIFIED_MESSAGE } from '../../lib/recruiterCandidates'
-
-const RELOCATION: Record<string, string> = { OPEN: 'Mobile', CANNOT: 'Non mobile' }
+import { RELOCATION_LABEL, UNVERIFIED_MESSAGE } from '../../lib/recruiterCandidates'
 
 /** Read-only limited profile. No contact action: contact is not part of the MVP (D14). */
 export default function RecruteurCandidatDetail() {
@@ -101,7 +100,7 @@ export default function RecruteurCandidatDetail() {
             <Panel title="Préférences">
               <dl className="space-y-3 px-5 py-4 text-[13.5px]">
                 <div><dt className="text-slate">Mode de travail</dt><dd className="text-navy">{labelFor(WORK_MODE_LABEL, card.preferences?.work_mode)}</dd></div>
-                <div><dt className="text-slate">Mobilité</dt><dd className="text-navy">{labelFor(RELOCATION, card.preferences?.relocation)}</dd></div>
+                <div><dt className="text-slate">Mobilité</dt><dd className="text-navy">{labelFor(RELOCATION_LABEL, card.preferences?.relocation)}</dd></div>
                 <div><dt className="text-slate">Distance maximale</dt><dd className="text-navy">{card.preferences?.distance ? `${card.preferences.distance} km` : '—'}</dd></div>
               </dl>
             </Panel>

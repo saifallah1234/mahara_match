@@ -1,3 +1,4 @@
+// Placement: frontend/tests/offerLifecycle.test.mjs
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { offerActions } from '../src/lib/offerLifecycle.ts'

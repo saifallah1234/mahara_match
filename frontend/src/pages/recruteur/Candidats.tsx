@@ -1,3 +1,4 @@
+// Placement: frontend/src/pages/recruteur/Candidats.tsx
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
@@ -6,9 +7,8 @@ import { useAuth } from '../../state/auth'
 import { useRecruiter } from '../../state/recruiter'
 import { listCandidates, listEducationLevels, type CandidateCard, type EducationLevel } from '../../api/recruiter'
 import { GOUVERNORATS, WORK_MODE_LABEL } from '../../lib/format'
-import { UNVERIFIED_MESSAGE } from '../../lib/recruiterCandidates'
+import { RELOCATION_LABEL, UNVERIFIED_MESSAGE } from '../../lib/recruiterCandidates'
 
-const RELOCATION = [['OPEN', 'Mobile'], ['CANNOT', 'Non mobile']]
 const EMPTY = { skill: '', education_level: '', governorate: '', work_mode: '', relocation: '', search: '' }
 
 export default function RecruteurCandidats() {
@@ -78,7 +78,7 @@ export default function RecruteurCandidats() {
                 <Field label="Mobilité">
                   <Select value={filters.relocation} onChange={set('relocation')}>
                     <option value="">Toutes</option>
-                    {RELOCATION.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    {Object.entries(RELOCATION_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </Select>
                 </Field>
               </div>
