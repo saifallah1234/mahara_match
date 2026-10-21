@@ -10,6 +10,7 @@ from django.utils import timezone
 from backend.apps.candidates.services.records import own_profile
 from backend.apps.identity.models import User
 from backend.apps.identity.services.access import require_permission
+from backend.apps.platform.services.records import append_audit
 from backend.apps.training.models import (
     EnrollmentStatus,
     SessionStatus,
@@ -124,7 +125,7 @@ def enroll_candidate(actor: User, data: Mapping[str, Any]) -> TrainingEnrollment
 
     try:
         with transaction.atomic():
-            return TrainingEnrollment.objects.create(
+            enrollment = TrainingEnrollment.objects.create(
                 session=session,
                 candidate_id=candidate_id,
                 status=EnrollmentStatus.REGISTERED,
@@ -135,6 +136,15 @@ def enroll_candidate(actor: User, data: Mapping[str, Any]) -> TrainingEnrollment
         ).exists():
             raise DuplicateEnrollmentError() from exc
         raise DomainNotFoundError("Candidate profile not found.") from exc
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="training.enrollment.enroll",
+        entity_type="training_enrollment",
+        entity_id=enrollment.id,
+        after={"status": enrollment.status, "session_id": str(session.id)},
+    )
+    return enrollment
 
 
 def _lock_enrollment(enrollment: TrainingEnrollment) -> TrainingEnrollment:
@@ -167,6 +177,7 @@ def update_progress(
         raise DomainValidationError("A completed or dropped enrollment cannot be changed.")
     if enrollment.status == EnrollmentStatus.REGISTERED and completion_rate >= 100.0:
         raise DomainValidationError("Move the enrollment to in progress before completing it.")
+    previous_status = enrollment.status
     enrollment.completion_rate = completion_rate
     if completion_rate >= 100.0:
         enrollment.status = EnrollmentStatus.COMPLETED
@@ -174,6 +185,15 @@ def update_progress(
     elif completion_rate > 0.0 and enrollment.status == EnrollmentStatus.REGISTERED:
         enrollment.status = EnrollmentStatus.IN_PROGRESS
     enrollment.save(update_fields=["completion_rate", "status", "completed_at", "updated_at"])
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="training.enrollment.progress",
+        entity_type="training_enrollment",
+        entity_id=enrollment.id,
+        before={"status": previous_status},
+        after={"status": enrollment.status, "completion_rate": completion_rate},
+    )
     return enrollment
 
 
@@ -194,6 +214,16 @@ def cancel_enrollment(actor: User, enrollment: TrainingEnrollment) -> TrainingEn
         raise DomainValidationError("A completed enrollment cannot be dropped.")
     if enrollment.status == EnrollmentStatus.DROPPED:
         return enrollment
+    previous_status = enrollment.status
     enrollment.status = EnrollmentStatus.DROPPED
     enrollment.save(update_fields=["status", "updated_at"])
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="training.enrollment.cancel",
+        entity_type="training_enrollment",
+        entity_id=enrollment.id,
+        before={"status": previous_status},
+        after={"status": EnrollmentStatus.DROPPED},
+    )
     return enrollment

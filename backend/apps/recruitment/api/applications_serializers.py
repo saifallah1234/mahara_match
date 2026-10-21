@@ -1,6 +1,24 @@
 from rest_framework import serializers
 
+from backend.apps.candidates.api.serializers import RecruiterCandidateSerializer
+from backend.apps.identity.api.applicant_serializers import ApplicantReadSerializer
 from backend.apps.recruitment.models import Application, ApplicationStatus
+
+APPLICATION_READ_FIELDS: tuple[str, ...] = (
+    "id",
+    "candidate_id",
+    "candidate_first_name",
+    "candidate_last_name",
+    "offer_id",
+    "offer_title",
+    "cv_id",
+    "status",
+    "cover_letter",
+    "applied_at",
+    "withdrawn_at",
+    "created_at",
+    "updated_at",
+)
 
 
 class ApplicationReadSerializer(serializers.ModelSerializer[Application]):
@@ -14,21 +32,17 @@ class ApplicationReadSerializer(serializers.ModelSerializer[Application]):
 
     class Meta:
         model = Application
-        fields = (
-            "id",
-            "candidate_id",
-            "candidate_first_name",
-            "candidate_last_name",
-            "offer_id",
-            "offer_title",
-            "cv_id",
-            "status",
-            "cover_letter",
-            "applied_at",
-            "withdrawn_at",
-            "created_at",
-            "updated_at",
-        )
+        fields = APPLICATION_READ_FIELDS
+        read_only_fields = fields
+
+
+class ApplicationReceiverReadSerializer(ApplicationReadSerializer):
+    # Only for members of the receiving organization; candidates never see these (ADR 0001).
+    applicant = ApplicantReadSerializer(source="candidate.user", read_only=True)
+    candidate_profile = RecruiterCandidateSerializer(source="candidate", read_only=True)
+
+    class Meta(ApplicationReadSerializer.Meta):
+        fields = (*APPLICATION_READ_FIELDS, "applicant", "candidate_profile")
         read_only_fields = fields
 
 

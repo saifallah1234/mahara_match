@@ -2,6 +2,7 @@ import { PageBody, PageHeader } from '../../components/layout'
 import { Badge, Panel } from '../../components/ui'
 import { useAuth } from '../../state/auth'
 import { useRecruiter } from '../../state/recruiter'
+import { MembersPanel } from '../../components/members'
 
 const TYPE_LABEL: Record<string, string> = { COMPANY: 'Entreprise', SUBSIDIARY: 'Filiale' }
 
@@ -37,6 +38,7 @@ export default function RecruteurEntreprise() {
             <div><dt className="text-slate">Offres</dt><dd className="text-navy">{published} publiée{published > 1 ? 's' : ''} sur {offers.length}</dd></div>
           </dl>
         </Panel>
+        <MembersPanel organizationId={org.id} />
         <Panel title="Mon compte">
           <dl className="grid gap-4 px-5 py-4 text-[13.5px] sm:grid-cols-2">
             <div><dt className="text-slate">Nom</dt><dd className="text-navy">{user?.first_name} {user?.last_name}</dd></div>

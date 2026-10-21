@@ -10,6 +10,7 @@ from backend.apps.candidates.services.records import get_record, own_profile, pu
 from backend.apps.documents.services.documents import DocumentStorageError
 from backend.apps.identity.models import User
 from backend.apps.identity.services.access import require_permission
+from backend.apps.platform.services.records import append_audit
 from backend.apps.recruitment.models import (
     Application,
     ApplicationStatus,
@@ -79,6 +80,14 @@ def submit_application(actor: User, data: Mapping[str, Any]) -> Application:
             details={"offer_id": ["You have already applied to this offer."]}
         ) from exc
     ApplicationStatusHistory.objects.create(application=application, status=application.status)
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="recruitment.application.submit",
+        entity_type="application",
+        entity_id=application.id,
+        after={"status": application.status, "offer_id": str(offer.id)},
+    )
     return application
 
 
@@ -116,9 +125,19 @@ def transition_application(
     else:
         if not _valid_recruiter_transition(application.status, target):
             raise DomainValidationError(details={"status": ["Invalid application transition."]})
+    previous_status = application.status
     application.status = target
     application.save(update_fields=["status", "withdrawn_at", "updated_at"])
     ApplicationStatusHistory.objects.create(application=application, status=target, reason=reason)
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="recruitment.application.transition",
+        entity_type="application",
+        entity_id=application.id,
+        before={"status": previous_status},
+        after={"status": target},
+    )
     if target == ApplicationStatus.REJECTED:
         try:
             purge_cv_bytes(application.cv_id)

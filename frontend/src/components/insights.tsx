@@ -1,25 +1,36 @@
-import { Panel } from './ui'
+import { Link } from 'react-router-dom'
+import { Button, Panel } from './ui'
 import { ScoreDial } from './domain'
-import { useOfferMatches } from '../state/insights'
+import { useCandidate } from '../state/candidate'
 import { formatDate } from '../lib/format'
 
 /** Petit badge pour une carte d'offre ; rien n'est affiché si aucun score n'existe. */
 export function MatchBadge({ offerId }: { offerId: string }) {
-  const { byOffer } = useOfferMatches()
-  const match = byOffer.get(offerId)
+  const { matches } = useCandidate()
+  const match = matches.find((item) => item.offer_id === offerId)
   if (!match || match.overall_score === null) return null
   return <p className="mt-2 text-[12.5px] font-medium text-teal">Compatibilité {Math.round(Number(match.overall_score))} %</p>
 }
 
 /** Détail du score de matching sur la page d'une offre. */
 export function MatchPanel({ offerId }: { offerId: string }) {
-  const { byOffer, loading } = useOfferMatches()
-  const match = byOffer.get(offerId)
+  const { matches, records, loading, calculating, scoresStale, calculateMatches } = useCandidate()
+  const match = matches.find((item) => item.offer_id === offerId)
   if (loading) return null
+  const hasSkills = records.skills.length > 0
   if (!match || match.overall_score === null) {
     return (
       <Panel title="Compatibilité avec votre profil">
-        <p className="p-5 text-[13.5px] text-slate">Le score n’est pas encore calculé pour cette offre. Renseignez vos compétences dans votre profil.</p>
+        <div className="space-y-3 p-5 text-[13.5px] text-slate">
+          {hasSkills ? (
+            <>
+              <p>Le score n’est pas encore calculé pour cette offre.</p>
+              <Button size="sm" disabled={calculating} onClick={() => void calculateMatches().catch(() => {})}>Calculer ma compatibilité</Button>
+            </>
+          ) : (
+            <p>Renseignez vos compétences pour obtenir un score. <Link to="/candidat/profil" className="font-medium text-teal">Ouvrir mon profil</Link></p>
+          )}
+        </div>
       </Panel>
     )
   }
@@ -33,6 +44,7 @@ export function MatchPanel({ offerId }: { offerId: string }) {
           {matched.length > 0 && <p><span className="font-medium text-navy">Compétences en commun : </span>{matched.join(', ')}</p>}
           {missing.length > 0 && <p><span className="font-medium text-navy">Compétences à acquérir : </span>{missing.join(', ')}</p>}
           <p className="text-[12px] text-slate">Calculé le {formatDate(match.calculated_at)}</p>
+          {scoresStale && hasSkills && <Button size="sm" variant="secondaire" disabled={calculating} onClick={() => void calculateMatches().catch(() => {})}>Recalculer</Button>}
         </div>
       </div>
     </Panel>

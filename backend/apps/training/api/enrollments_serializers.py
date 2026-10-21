@@ -2,7 +2,24 @@ from typing import Any
 
 from rest_framework import serializers
 
+from backend.apps.identity.api.applicant_serializers import ApplicantReadSerializer
 from backend.apps.training.models import TrainingEnrollment
+
+ENROLLMENT_READ_FIELDS: tuple[str, ...] = (
+    "id",
+    "session",
+    "candidate_id",
+    "candidate_first_name",
+    "candidate_last_name",
+    "program_title",
+    "session_start_date",
+    "status",
+    "enrolled_at",
+    "completion_rate",
+    "completed_at",
+    "created_at",
+    "updated_at",
+)
 
 
 class TrainingEnrollmentReadSerializer(serializers.ModelSerializer[TrainingEnrollment]):
@@ -15,21 +32,16 @@ class TrainingEnrollmentReadSerializer(serializers.ModelSerializer[TrainingEnrol
 
     class Meta:
         model = TrainingEnrollment
-        fields = (
-            "id",
-            "session",
-            "candidate_id",
-            "candidate_first_name",
-            "candidate_last_name",
-            "program_title",
-            "session_start_date",
-            "status",
-            "enrolled_at",
-            "completion_rate",
-            "completed_at",
-            "created_at",
-            "updated_at",
-        )
+        fields = ENROLLMENT_READ_FIELDS
+        read_only_fields = fields
+
+
+class TrainingEnrollmentReceiverReadSerializer(TrainingEnrollmentReadSerializer):
+    # Only for members of the session's organization; the enrollee never gets this object (ADR 0001).
+    applicant = ApplicantReadSerializer(source="candidate.user", read_only=True)
+
+    class Meta(TrainingEnrollmentReadSerializer.Meta):
+        fields = (*ENROLLMENT_READ_FIELDS, "applicant")
         read_only_fields = fields
 
 

@@ -39,7 +39,7 @@ import RecruteurOffreDetail from './pages/recruteur/OffreDetail'
 import RecruteurCandidatures from './pages/recruteur/Candidatures'
 import RecruteurEntretiens from './pages/recruteur/Entretiens'
 
-import { FormationDashboard, FormationProgrammes, FormationSessions } from './pages/Formation'
+import { FormationDashboard, FormationOrganisme, FormationProgrammes, FormationSessions } from './pages/Formation'
 import MinistereIndicateurs from './pages/ministere/Indicateurs'
 import MinistereCompetences from './pages/ministere/Competences'
 
@@ -89,6 +89,7 @@ export default function App() {
                 <Route path="/formation" element={<FormationDashboard />} />
                 <Route path="/formation/programmes" element={<FormationProgrammes />} />
                 <Route path="/formation/sessions" element={<FormationSessions />} />
+                <Route path="/formation/organisme" element={<FormationOrganisme />} />
               </Route>
             </Route>
 

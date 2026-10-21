@@ -6,7 +6,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import QuerySet
 
 from backend.apps.identity.models import OrganizationMember
-from backend.apps.identity.services.access import require_permission
+from backend.apps.identity.services.access import has_permission, require_permission
 from backend.apps.identity.services.contracts import IdentityPermissionCode
 from backend.common.exceptions import DomainNotFoundError, DomainValidationError
 
@@ -15,11 +15,13 @@ def list_members(
     actor: Any,
     organization_id: UUID,
 ) -> QuerySet[OrganizationMember]:
-    require_permission(
-        actor,
-        IdentityPermissionCode.MANAGE_ORGANIZATIONS,
-        organization_id,
-    )
+    # Members may read their own organization's roster; only admins change it.
+    if not has_permission(actor, IdentityPermissionCode.READ_ORGANIZATION_MEMBERS, organization_id):
+        require_permission(
+            actor,
+            IdentityPermissionCode.MANAGE_ORGANIZATIONS,
+            organization_id,
+        )
 
     return (
         OrganizationMember.objects.filter(organization_id=organization_id)
@@ -107,3 +109,10 @@ def remove_member(
     )
 
     member.delete()
+
+
+def member_organization_ids(user: Any) -> set[UUID]:
+    """Organizations the user belongs to; their members may see disclosed applicant identity."""
+    return set(
+        OrganizationMember.objects.filter(user=user).values_list("organization_id", flat=True)
+    )

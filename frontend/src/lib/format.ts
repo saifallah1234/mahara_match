@@ -108,9 +108,38 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   'imports.source.update': 'Source modifiée',
   'imports.source.authorize': 'Source autorisée',
   'imports.source.revoke': 'Autorisation révoquée',
+  'identity.user.create': 'Compte créé',
+  'identity.user.status_change': 'Statut du compte modifié',
+  'identity.user.delete': 'Compte supprimé',
+  'identity.user_role.assign': 'Rôle attribué',
+  'identity.user_role.remove': 'Rôle retiré',
+  'identity.organization.verify': 'Organisation vérifiée',
+  'identity.organization.reject': 'Organisation rejetée',
+  'identity.onboarding.approve': 'Demande d’accès approuvée',
+  'identity.onboarding.reject': 'Demande d’accès rejetée',
+  'recruitment.application.submit': 'Candidature déposée',
+  'recruitment.application.transition': 'Candidature changée d’étape',
+  'recruitment.interview.finish': 'Entretien terminé',
+  'training.enrollment.enroll': 'Inscription créée',
+  'training.enrollment.progress': 'Progression mise à jour',
+  'training.enrollment.cancel': 'Inscription annulée',
+  'training.program.update': 'Programme modifié',
+  'training.program.archive': 'Programme archivé',
+  'training.session.update': 'Session modifiée',
 }
 
-export const AUDIT_ENTITY_LABEL: Record<string, string> = { data_sources: 'Source de données' }
+export const AUDIT_ENTITY_LABEL: Record<string, string> = {
+  data_sources: 'Source de données',
+  user: 'Compte',
+  user_role: 'Rôle',
+  organization: 'Organisation',
+  onboarding_request: 'Demande d’accès',
+  application: 'Candidature',
+  interview: 'Entretien',
+  training_enrollment: 'Inscription',
+  training_program: 'Programme',
+  training_session: 'Session',
+}
 
 /** Statuts de session et étapes d'affichage de l'entretien blanc. */
 export const MOCK_INTERVIEW_LABEL: Record<string, string> = {

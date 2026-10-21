@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { EmptyState, Field, Input, Panel, Select } from '../../components/ui'
+import { Button, EmptyState, Field, Input, Panel, Select } from '../../components/ui'
 import { publishedOffers, type Offer } from '../../api/candidate'
 import { filterCandidateOffers } from '../../lib/candidateOffers'
 import { useCandidate } from '../../state/candidate'
@@ -9,7 +9,7 @@ import { CONTRACT_OPTIONS, GOUVERNORATS, WORK_MODE_LABEL, contractLabel, formatD
 import { MatchBadge } from '../../components/insights'
 
 export default function CandidatOffres() {
-  const { offers: initial } = useCandidate()
+  const { offers: initial, records, calculating, scoresStale, calculateMatches } = useCandidate()
   const [search, setSearch] = useState('')
   const [governorate, setGovernorate] = useState('')
   const [contract, setContract] = useState('')
@@ -29,7 +29,11 @@ export default function CandidatOffres() {
   }, [search, governorate])
   const results = filterCandidateOffers(offers, contract, mode)
   return <>
-    <PageHeader title="Offres d’emploi" />
+    <PageHeader title="Offres d’emploi" action={records.skills.length > 0 && (
+      <Button variant="secondaire" disabled={calculating} onClick={() => void calculateMatches().catch(() => {})}>
+        {scoresStale ? 'Recalculer ma compatibilité' : 'Calculer ma compatibilité'}
+      </Button>
+    )} />
     <PageBody className="space-y-5">
       <Panel><div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Mots-clés"><Input type="search" value={search} onChange={(event) => setSearch(event.target.value)} /></Field>

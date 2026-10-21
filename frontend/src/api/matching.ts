@@ -1,4 +1,4 @@
-import { allPages } from './auth.ts'
+import { request } from './client.ts'
 
 export type OfferMatch = {
   id: string; offer_id: string; model_version: string
@@ -8,4 +8,4 @@ export type OfferMatch = {
   calculated_at: string
 }
 
-export const listOfferMatches = () => allPages<OfferMatch>('/offer-matches/')
+export const calculateOfferMatches = () => request<OfferMatch[]>('/offer-matches/calculate/', { method: 'POST' })

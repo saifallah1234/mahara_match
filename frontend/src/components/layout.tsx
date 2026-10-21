@@ -105,6 +105,7 @@ export const NAVIGATION: Record<RoleCode, NavItem[]> = {
     { to: '/formation', label: 'Tableau de bord', icon: 'dashboard', end: true },
     { to: '/formation/programmes', label: 'Programmes', icon: 'training' },
     { to: '/formation/sessions', label: 'Sessions', icon: 'interview' },
+    { to: '/formation/organisme', label: 'Mon organisme', icon: 'company' },
   ],
   MINISTRY_MANAGER: [
     { to: '/ministere', label: 'Indicateurs', icon: 'stats', end: true },

@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { PageBody, PageHeader } from '../../components/layout'
 import { Badge, Button, ConfirmDialog, EmptyState, Field, Panel, Select, Tabs } from '../../components/ui'
-import { useCandidate } from '../../state/candidate'
+import { useCandidateTraining } from '../../state/candidateTraining'
 import { ENROLLMENT_STATUS_LABEL, formatDate, formatPrice, labelFor } from '../../lib/format'
 
 type Tab = 'catalogue' | 'mine'
 const delivery: Record<string, string> = { ONLINE: 'À distance', PRESENTIAL: 'Présentiel', HYBRID: 'Hybride' }
 const level: Record<string, string> = { BEGINNER: 'Débutant', INTERMEDIATE: 'Intermédiaire', ADVANCED: 'Avancé' }
 export default function CandidatFormations() {
-  const { programs, sessions, enrollments, enroll, cancelEnrollment } = useCandidate()
+  const { programs, sessions, enrollments, loading, error, enroll, cancelEnrollment } = useCandidateTraining()
   const [tab, setTab] = useState<Tab>('catalogue')
   const [mode, setMode] = useState('')
   const [busy, setBusy] = useState('')
@@ -18,7 +18,9 @@ export default function CandidatFormations() {
   return <>
     <PageHeader title="Formations" />
     <PageBody className="space-y-5">
-      <Tabs<Tab> active={tab} onChange={setTab} tabs={[{ id: 'catalogue', label: 'Catalogue', count: programs.length }, { id: 'mine', label: 'Mes inscriptions', count: enrollments.length }]} />
+      {error && <p role="alert" className="text-coral">{error}</p>}
+      {loading && <p className="text-slate">Chargement…</p>}
+      <Tabs<Tab> active={tab} onChange={setTab} tabs={[{ id: 'catalogue', label: 'Catalogue', count: catalogue.length }, { id: 'mine', label: 'Mes inscriptions', count: enrollments.length }]} />
       {tab === 'catalogue' && <><Panel><div className="max-w-xs p-5"><Field label="Modalité"><Select value={mode} onChange={(event) => setMode(event.target.value)}><option value="">Toutes</option>{Object.entries(delivery).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></Field></div></Panel>
         {!catalogue.length && <Panel><EmptyState title="Aucune formation publiée" /></Panel>}
         {catalogue.map((program) => <Panel key={program.id} title={program.title} description={`${program.organization_name} · ${delivery[program.delivery_mode] ?? program.delivery_mode} · ${level[program.level] ?? program.level}`}>

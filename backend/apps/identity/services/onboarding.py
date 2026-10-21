@@ -22,6 +22,7 @@ from backend.apps.identity.services.contracts import IdentityPermissionCode
 from backend.apps.identity.services.organization_members import create_member
 from backend.apps.identity.services.user_roles import assign_role
 from backend.apps.identity.services.users import create_account, update_status
+from backend.apps.platform.services.records import append_audit
 from backend.common.exceptions import DomainNotFoundError, DomainValidationError
 
 
@@ -111,6 +112,18 @@ def approve(actor: User, request_id: UUID, organization_id: UUID) -> OnboardingR
     request.organization = organization
     request.status = OnboardingRequest.Status.APPROVED
     request.save(update_fields=["organization", "status", "updated_at"])
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="identity.onboarding.approve",
+        entity_type="onboarding_request",
+        entity_id=request.id,
+        before={"status": OnboardingRequest.Status.PENDING},
+        after={
+            "status": OnboardingRequest.Status.APPROVED,
+            "organization_id": str(organization.id),
+        },
+    )
     update_status(actor, request.user, UserStatus.ACTIVE)
     return request
 
@@ -126,4 +139,13 @@ def reject(actor: User, request_id: UUID) -> OnboardingRequest:
         raise DomainValidationError("Only pending requests can be rejected.")
     request.status = OnboardingRequest.Status.REJECTED
     request.save(update_fields=["status", "updated_at"])
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="identity.onboarding.reject",
+        entity_type="onboarding_request",
+        entity_id=request.id,
+        before={"status": OnboardingRequest.Status.PENDING},
+        after={"status": OnboardingRequest.Status.REJECTED},
+    )
     return request

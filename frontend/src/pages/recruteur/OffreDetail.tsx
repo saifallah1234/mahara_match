@@ -73,7 +73,7 @@ export default function RecruteurOffreDetail() {
             <ul className="divide-y divide-line/70">
               {received.map((a) => (
                 <li key={a.id} className="flex items-center justify-between gap-3 px-5 py-3">
-                  <span className="text-[13.5px] text-navy">{candidateLabel(a)} · {formatDate(a.applied_at)}</span>
+                  <span className="text-[13.5px] text-navy">{candidateLabel(a)} · {a.applicant.email} · {formatDate(a.applied_at)}</span>
                   <Badge tone="neutre">{labelFor(STATUS_LABEL, a.status)}</Badge>
                 </li>
               ))}

@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from backend.apps.identity.models import User
 from backend.apps.identity.services.access import require_permission
+from backend.apps.platform.services.records import append_audit
 from backend.apps.recruitment.models import (
     Application,
     ApplicationStatus,
@@ -93,7 +94,17 @@ def finish_interview(actor: User, interview_id: UUID, target: str, feedback: str
         InterviewStatus.CANCELLED,
     }:
         raise DomainValidationError(details={"status": ["Invalid interview transition."]})
+    previous_status = interview.status
     interview.status = target
     interview.feedback = feedback if target == InterviewStatus.COMPLETED else ""
     interview.save(update_fields=["status", "feedback", "updated_at"])
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="recruitment.interview.finish",
+        entity_type="interview",
+        entity_id=interview.id,
+        before={"status": previous_status},
+        after={"status": target},
+    )
     return interview

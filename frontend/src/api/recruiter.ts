@@ -8,8 +8,9 @@ export type RecruiterOffer = {
   status: 'DRAFT' | 'PUBLISHED' | 'PAUSED' | 'CLOSED' | 'ARCHIVED'; published_at: string | null
   easy_apply: boolean; offer_url: string; created_by_id: string
 }
+export type Applicant = { first_name: string; last_name: string; email: string }
 export type RecruiterApplication = {
-  id: string; candidate_id: string; candidate_first_name: string; candidate_last_name: string
+  id: string; candidate_id: string; applicant: Applicant
   offer_id: string; offer_title: string; cv_id: string; status: string; cover_letter: string; applied_at: string
 }
 export type RecruiterInterview = {
@@ -46,4 +47,5 @@ export const scheduleInterview = (data: InterviewInput) => post<RecruiterIntervi
 export const transitionInterview = (id: string, status: 'COMPLETED' | 'CANCELLED', feedback?: string) =>
   post<RecruiterInterview>(`/interviews/${id}/transition/`, { status, feedback })
 
-export const candidateLabel = (a: RecruiterApplication) => `${a.candidate_first_name} ${a.candidate_last_name}`.trim() || 'Candidat'
+export const applicantName = (applicant: Applicant) => `${applicant.first_name} ${applicant.last_name}`.trim() || 'Candidat'
+export const candidateLabel = (a: RecruiterApplication) => applicantName(a.applicant)
