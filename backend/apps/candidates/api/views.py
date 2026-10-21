@@ -120,6 +120,10 @@ class OwnedRecordViewSet(GenericViewSet[Any]):
             updated = records.update_record(actor, self.model, pk, serializer.validated_data)
         return Response(self.get_serializer(updated).data)
 
+    def destroy(self, request: Request, pk: str | None = None) -> Response:
+        records.delete_record(active_request_user(request), self.model, str(pk))
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class ExperienceViewSet(OwnedRecordViewSet):
     model = Experience

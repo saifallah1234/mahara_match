@@ -24,30 +24,38 @@ export function AssistantWorkspace({ basePath }: { basePath: string }) {
   useEffect(() => {
     let live = true
     api.listConversations()
-      .then((list) => { if (live) setConversations(sortByActivity(list)) })
+      .then((list) => { if (live) { setConversations(sortByActivity(list)); setError(null) } })
       .catch((failure) => { if (live) setError(failure instanceof Error ? failure.message : 'Historique indisponible.') })
     return () => { live = false }
   }, [version])
 
+  // Drop the previous conversation's thread at once, so it never shows under the new one.
+  useEffect(() => { setMessages([]) }, [conversationId])
+
   useEffect(() => {
     let live = true
-    if (!conversationId) { setMessages([]); return }
+    if (!conversationId) return
     api.listMessages(conversationId)
-      .then((list) => { if (live) setMessages(list) })
+      .then((list) => { if (live) { setMessages(list); setError(null) } })
       .catch((failure) => { if (live) setError(failure instanceof Error ? failure.message : 'Historique indisponible.') })
     return () => { live = false }
   }, [conversationId, version])
+
+  // The reply may arrive after the user has moved on; only follow it if they are still here.
+  const selected = useRef(conversationId)
+  useEffect(() => { selected.current = conversationId }, [conversationId])
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [messages, thinking])
 
   async function send() {
     const text = input.trim()
     if (!text || thinking) return
+    const sentFrom = conversationId
     setInput(''); setError(null); setThinking(true)
     try {
-      const result = await api.sendMessage(text, conversationId)
+      const result = await api.sendMessage(text, sentFrom)
       setVersion((current) => current + 1)
-      if (result.conversation_id !== conversationId) navigate(`${basePath}/${result.conversation_id}`)
+      if (result.conversation_id !== sentFrom && selected.current === sentFrom) navigate(`${basePath}/${result.conversation_id}`)
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'L’assistant est indisponible pour le moment.')
     } finally {
