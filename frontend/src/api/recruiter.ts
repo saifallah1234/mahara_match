@@ -46,4 +46,4 @@ export const scheduleInterview = (data: InterviewInput) => post<RecruiterIntervi
 export const transitionInterview = (id: string, status: 'COMPLETED' | 'CANCELLED', feedback?: string) =>
   post<RecruiterInterview>(`/interviews/${id}/transition/`, { status, feedback })
 
-export const candidateLabel = (a: RecruiterApplication) => `${a.candidate_first_name} ${a.candidate_last_name}`
+export const candidateLabel = (a: RecruiterApplication) => `${a.candidate_first_name} ${a.candidate_last_name}`.trim() || 'Candidat'

@@ -89,7 +89,7 @@ export default function MockInterview() {
           <Field label="CV facultatif"><Select value={cvId} onChange={(event) => setCvId(event.target.value)}><option value="">Utiliser mon profil</option>{cvs.map((cv) => <option key={cv.id} value={cv.id}>{cv.title}</option>)}</Select></Field>
           <Button disabled={busy} onClick={() => void create()}>Préparer l’entretien</Button>
         </div></Panel>}
-        <Panel title="Mes entretiens"><ul className="space-y-2 p-5">{history.map((item) => <li key={item.id}><Link className="text-teal underline" to={`/candidat/entretiens-blancs/${item.id}`}>{item.offer_title} · {MOCK_INTERVIEW_LABEL[item.status] ?? 'Entretien'} · {formatDateTime(item.created_at)}</Link></li>)}</ul><div className="flex gap-2 p-5"><Button disabled={page <= 1} onClick={() => setPage(page - 1)}>Précédent</Button><Button disabled={!hasNext} onClick={() => setPage(page + 1)}>Suivant</Button></div></Panel>
+        <Panel title="Mes entretiens"><ul className="space-y-2 p-5">{history.map((item) => <li key={item.id}><Link className="text-teal underline" to={`/candidat/entretiens-blancs/${item.id}`}>{item.offer_title && `${item.offer_title} · `}{MOCK_INTERVIEW_LABEL[item.status] ?? 'Entretien'} · {formatDateTime(item.created_at)}</Link></li>)}</ul><div className="flex gap-2 p-5"><Button disabled={page <= 1} onClick={() => setPage(page - 1)}>Précédent</Button><Button disabled={!hasNext} onClick={() => setPage(page + 1)}>Suivant</Button></div></Panel>
       </> : session ? <>
         {session.availability.simulated && <p role="status" className="rounded-lg bg-amber/10 p-3">Mode simulé : tonalités audio, transcription prédéfinie et vidéos sans lip-sync réel.</p>}
         <p role="status">État : {MOCK_INTERVIEW_LABEL[display]}</p>

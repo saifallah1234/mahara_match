@@ -3,7 +3,7 @@ import { PageBody, PageHeader } from '../../components/layout'
 import { EmptyState, Panel, StatTile } from '../../components/ui'
 import { useAdmin } from '../../state/admin'
 import { useAuditLogs, useBatches } from '../../state/adminData'
-import { formatDateTime } from '../../lib/format'
+import { AUDIT_ACTION_LABEL, AUDIT_ENTITY_LABEL, formatDateTime, labelFor } from '../../lib/format'
 
 export default function AdminDashboard() {
   const { users, organizations, error } = useAdmin()
@@ -25,7 +25,7 @@ export default function AdminDashboard() {
             <ul className="divide-y divide-line/70">
               {audit.slice(0, 6).map((l) => (
                 <li key={l.id} className="flex justify-between gap-3 px-5 py-3 text-[13.5px]">
-                  <span className="text-navy">{l.action} · {l.entity_type}</span>
+                  <span className="text-navy">{labelFor(AUDIT_ACTION_LABEL, l.action, 'Autre action')} · {labelFor(AUDIT_ENTITY_LABEL, l.entity_type, 'Autre entité')}</span>
                   <span className="text-slate">{formatDateTime(l.created_at)}</span>
                 </li>
               ))}
