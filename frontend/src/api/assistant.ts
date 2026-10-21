@@ -10,5 +10,6 @@ export type AgentReply = { conversation_id: string; execution_id: string; messag
 
 export const listConversations = () => allPages<Conversation>('/conversations/')
 export const listMessages = (conversationId: string) => allPages<ChatMessage>(`/conversations/${conversationId}/messages/`)
+export const deleteConversation = (conversationId: string) => request<void>(`/conversations/${conversationId}/`, { method: 'DELETE' })
 export const sendMessage = (message: string, conversationId?: string) =>
   request<AgentReply>('/agent-runs/', { method: 'POST', body: JSON.stringify({ message, conversation_id: conversationId }) })

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, EmptyState, Field, Input, Panel, Select, Textarea } from '../../components/ui'
+import { Badge, Button, ConfirmDialog, EmptyState, Field, Input, Panel, Select, Textarea } from '../../components/ui'
 import { useCandidate } from '../../state/candidate'
 import { useAuth } from '../../state/auth'
 import { list, type OwnedRecord, type RecordKind } from '../../api/candidate'
@@ -26,9 +26,10 @@ type Reference = { id: string; canonical_name?: string; name?: string; code?: st
 
 export default function CandidatProfil() {
   const { user } = useAuth()
-  const { profile, records, saveIdentity, saveRecord } = useCandidate()
+  const { profile, records, saveIdentity, saveRecord, deleteRecord } = useCandidate()
   const [identity, setIdentity] = useState({ first_name: '', last_name: '', phone: '', birth_date: '', country_code: '', governorate: '', city: '', headline: '', summary: '', employment_status: '', desired_job_title: '', availability_date: '', profile_visibility: 'PRIVATE' })
   const [editing, setEditing] = useState<{ kind: RecordKind; id?: string } | null>(null)
+  const [deleting, setDeleting] = useState<{ kind: RecordKind; record: OwnedRecord } | null>(null)
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [projectTechnologies, setProjectTechnologies] = useState<string[]>([])
   const [references, setReferences] = useState<Record<string, Reference[]>>({ skills: [], languages: [], education: [] })
@@ -87,13 +88,27 @@ export default function CandidatProfil() {
           if (value == null || value === '') return null
           const reference = field.catalogue ? references[field.catalogue].find((entry) => entry.id === value) : null
           return <span key={field.name} className="mr-2">{reference?.canonical_name || reference?.name || reference?.code || optionLabels[String(value)] || String(value)}</span>
-        })}{kind === 'skills' && record.validated === false && <Badge tone="neutre">Déclarée</Badge>}</div><Button size="sm" variant="discret" onClick={() => begin(kind, record)}>Modifier</Button></li>)}</ul>
+        })}{kind === 'skills' && record.validated === false && <Badge tone="neutre">Déclarée</Badge>}</div><div className="flex gap-2"><Button size="sm" variant="discret" onClick={() => begin(kind, record)}>Modifier</Button><Button size="sm" variant="danger" onClick={() => setDeleting({ kind, record })}>Supprimer</Button></div></li>)}</ul>
         {editing?.kind === kind && <form onSubmit={(event) => void recordSubmit(event)} className="grid gap-3 border-t border-line p-5 sm:grid-cols-2">{fields[kind].map((field) => <Field key={field.name} label={field.label} required={field.required}>
           {field.options || field.catalogue ? <Select required={field.required} value={draft[field.name] ?? ''} onChange={(event) => setDraft({ ...draft, [field.name]: event.target.value })}><option value="">Choisir</option>{field.options?.map((value) => <option key={value} value={value}>{optionLabels[value] ?? value}</option>)}{field.catalogue && references[field.catalogue].map((entry) => <option key={entry.id} value={entry.id}>{entry.canonical_name || entry.name || entry.code}</option>)}</Select>
             : field.name === 'description' ? <Textarea value={draft[field.name] ?? ''} onChange={(event) => setDraft({ ...draft, [field.name]: event.target.value })} />
               : <Input type={field.type ?? 'text'} required={field.required} min={field.type === 'number' ? 0 : undefined} value={draft[field.name] ?? ''} onChange={(event) => setDraft({ ...draft, [field.name]: event.target.value })} />}
         </Field>)}{kind === 'projects' && <fieldset className="sm:col-span-2"><legend className="text-sm font-medium text-navy">Technologies</legend><div className="mt-2 max-h-40 overflow-y-auto rounded border border-line p-2">{references.skills.map((skill) => <label key={skill.id} className="mr-4 inline-flex items-center gap-1 text-sm"><input type="checkbox" checked={projectTechnologies.includes(skill.id)} onChange={(event) => setProjectTechnologies(event.target.checked ? [...projectTechnologies, skill.id] : projectTechnologies.filter((id) => id !== skill.id))} />{skill.canonical_name}</label>)}</div></fieldset>}<div className="flex gap-2 sm:col-span-2"><Button type="submit" disabled={busy}>Enregistrer</Button><Button type="button" variant="secondaire" onClick={() => setEditing(null)}>Annuler</Button></div></form>}
       </Panel>)}
+      {deleting && (
+        <ConfirmDialog
+          title="Supprimer cet élément ?"
+          danger
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => {
+            void deleteRecord(deleting.kind, deleting.record.id).catch(() => {})
+            if (editing?.id === deleting.record.id) setEditing(null)
+            setDeleting(null)
+          }}
+        >
+          Il sera retiré de votre profil.
+        </ConfirmDialog>
+      )}
     </PageBody>
   </>
 }

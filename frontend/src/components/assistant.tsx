@@ -1,0 +1,129 @@
+// Placement: frontend/src/components/assistant.tsx
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { PageBody, PageHeader } from './layout'
+import { Button, ConfirmDialog, EmptyState, Input, Panel } from './ui'
+import { Citations } from './domain'
+import * as api from '../api/assistant'
+import { sortByActivity } from '../lib/assistantConversations'
+import { formatDate } from '../lib/format'
+
+/** Assistant chat with its conversation list. basePath is the route prefix; the selected conversation id is the last segment. */
+export function AssistantWorkspace({ basePath }: { basePath: string }) {
+  const { conversationId } = useParams()
+  const navigate = useNavigate()
+  const [conversations, setConversations] = useState<api.Conversation[]>([])
+  const [messages, setMessages] = useState<api.ChatMessage[]>([])
+  const [version, setVersion] = useState(0)
+  const [input, setInput] = useState('')
+  const [thinking, setThinking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<api.Conversation | null>(null)
+  const endRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    let live = true
+    api.listConversations()
+      .then((list) => { if (live) setConversations(sortByActivity(list)) })
+      .catch((failure) => { if (live) setError(failure instanceof Error ? failure.message : 'Historique indisponible.') })
+    return () => { live = false }
+  }, [version])
+
+  useEffect(() => {
+    let live = true
+    if (!conversationId) { setMessages([]); return }
+    api.listMessages(conversationId)
+      .then((list) => { if (live) setMessages(list) })
+      .catch((failure) => { if (live) setError(failure instanceof Error ? failure.message : 'Historique indisponible.') })
+    return () => { live = false }
+  }, [conversationId, version])
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [messages, thinking])
+
+  async function send() {
+    const text = input.trim()
+    if (!text || thinking) return
+    setInput(''); setError(null); setThinking(true)
+    try {
+      const result = await api.sendMessage(text, conversationId)
+      setVersion((current) => current + 1)
+      if (result.conversation_id !== conversationId) navigate(`${basePath}/${result.conversation_id}`)
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'L’assistant est indisponible pour le moment.')
+    } finally {
+      setThinking(false)
+    }
+  }
+
+  async function remove(conversation: api.Conversation) {
+    setError(null)
+    try {
+      await api.deleteConversation(conversation.id)
+      if (conversation.id === conversationId) navigate(basePath)
+      setVersion((current) => current + 1)
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Suppression impossible.')
+    }
+  }
+
+  return (
+    <>
+      <PageHeader title="Assistant" />
+      <PageBody className="space-y-4">
+        <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
+          <Panel title="Conversations" action={<Button size="sm" variant="secondaire" onClick={() => navigate(basePath)}>Nouvelle conversation</Button>}>
+            {!conversations.length && <EmptyState title="Aucune conversation" />}
+            <ul className="divide-y divide-line">
+              {conversations.map((item) => (
+                <li key={item.id} className={`flex items-center justify-between gap-2 px-4 py-3 ${item.id === conversationId ? 'bg-mist' : ''}`}>
+                  <Link to={`${basePath}/${item.id}`} className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-navy">{item.title || 'Conversation sans titre'}</span>
+                    <span className="text-[12px] text-slate">{formatDate(item.last_message_at ?? item.created_at)}</span>
+                  </Link>
+                  <Button size="sm" variant="discret" onClick={() => setDeleting(item)}>Supprimer</Button>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+          <div className="space-y-4">
+            <Panel>
+              <div className="max-h-[60vh] min-h-64 space-y-3 overflow-y-auto p-5">
+                {messages.length === 0 && !thinking && (
+                  <p className="text-[13.5px] text-slate">Posez une question sur les offres, votre profil ou les formations.</p>
+                )}
+                {messages.map((m) => {
+                  const mine = m.sender_type === 'USER'
+                  return (
+                    <div key={m.id} className={mine ? 'flex justify-end' : 'flex justify-start'}>
+                      <div className={`max-w-[80%] rounded-[10px] px-4 py-2.5 text-[14px] ${mine ? 'bg-navy text-white' : 'bg-mist text-navy'}`}>
+                        <p className="whitespace-pre-line">{m.content}</p>
+                        {!mine && Array.isArray(m.citations_json) && <Citations items={m.citations_json} />}
+                      </div>
+                    </div>
+                  )
+                })}
+                {thinking && <p className="text-[13px] text-slate">L’assistant réfléchit…</p>}
+                <div ref={endRef} />
+              </div>
+            </Panel>
+            {error && <p role="alert" className="text-[13px] text-coral">{error}</p>}
+            <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void send() }}>
+              <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Votre question…" />
+              <Button type="submit" disabled={thinking || !input.trim()}>Envoyer</Button>
+            </form>
+          </div>
+        </div>
+      </PageBody>
+      {deleting && (
+        <ConfirmDialog
+          title="Supprimer cette conversation ?"
+          danger
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => { void remove(deleting); setDeleting(null) }}
+        >
+          « {deleting.title || 'Conversation sans titre'} » et ses messages seront supprimés.
+        </ConfirmDialog>
+      )}
+    </>
+  )
+}

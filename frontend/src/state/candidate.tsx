@@ -27,6 +27,7 @@ type CandidateState = Data & {
   reload: () => Promise<void>;
   saveIdentity: (user: { first_name: string; last_name: string; phone: string }, profile: Partial<api.Profile>) => Promise<void>;
   saveRecord: (kind: api.RecordKind, values: object, id?: string) => Promise<void>;
+  deleteRecord: (kind: api.RecordKind, id: string) => Promise<void>;
   uploadCV: (file: File, title: string, documentId?: string) => Promise<string | undefined>;
   setPrimary: (cv: api.CV) => Promise<void>; deleteCV: (cv: api.CV) => Promise<void>;
   apply: (offerId: string, cvId: string, coverLetter: string) => Promise<void>;
@@ -134,6 +135,11 @@ export function CandidateProvider({ children }: { children: ReactNode }) {
       // Skill changes move the scores, so they are recalculated straight away.
       if (kind === 'skills') await calculateMatches()
     }, 'Enregistré.', ['records']),
+    deleteRecord: (kind, id) => confirmed(async () => {
+      await api.remove(`${api.records[kind]}${id}/`)
+      // A removed skill moves the scores too.
+      if (kind === 'skills') await calculateMatches()
+    }, 'Supprimé.', ['records']),
     uploadCV: async (file, title, documentId) => {
       setError(null); setMessage(null)
       try { const result = await api.uploadCV(file, title, documentId); await refresh(['cvs', 'documents']); setMessage('CV importé.'); return result.documentId }

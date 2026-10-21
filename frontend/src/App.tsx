@@ -66,6 +66,7 @@ export default function App() {
                 <Route path="/candidat/candidatures" element={<CandidatCandidatures />} />
                 <Route path="/candidat/formations" element={<CandidatFormations />} />
                 <Route path="/candidat/assistant" element={<CandidatAssistant />} />
+                <Route path="/candidat/assistant/:conversationId" element={<CandidatAssistant />} />
                 <Route path="/candidat/entretiens-blancs" element={<MockInterview />} />
                 <Route path="/candidat/entretiens-blancs/:sessionId" element={<MockInterview />} />
               </Route>
