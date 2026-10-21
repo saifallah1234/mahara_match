@@ -5,6 +5,9 @@ from backend.apps.recruitment.models import Application, ApplicationStatus
 
 class ApplicationReadSerializer(serializers.ModelSerializer[Application]):
     candidate_id = serializers.UUIDField(read_only=True)
+    # Disclosed to the receiving organization only (ADR 0001).
+    candidate_first_name = serializers.CharField(source="candidate.user.first_name", read_only=True)
+    candidate_last_name = serializers.CharField(source="candidate.user.last_name", read_only=True)
     offer_id = serializers.UUIDField(read_only=True)
     offer_title = serializers.CharField(source="offer.title", read_only=True)
     cv_id = serializers.UUIDField(read_only=True)
@@ -14,6 +17,8 @@ class ApplicationReadSerializer(serializers.ModelSerializer[Application]):
         fields = (
             "id",
             "candidate_id",
+            "candidate_first_name",
+            "candidate_last_name",
             "offer_id",
             "offer_title",
             "cv_id",

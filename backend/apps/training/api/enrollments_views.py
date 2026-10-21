@@ -39,7 +39,7 @@ class TrainingEnrollmentViewSet(GenericViewSet[TrainingEnrollment]):
         queryset = enrollment_services.list_enrollments(
             actor,
             organization_id=uuid_query_param(request, "organization_id"),
-        )
+        ).select_related("candidate__user", "session__program")
         queryset = EnrollmentFilters(data=request.query_params).apply(queryset)
         queryset = queryset.order_by("enrolled_at", "id")
         page = self.paginate_queryset(queryset)

@@ -36,7 +36,7 @@ class ApplicationViewSet(GenericViewSet[Application]):
     def list(self, request: Request) -> Response:
         queryset = application_services.list_applications(
             active_request_user(request)
-        ).select_related("offer")
+        ).select_related("offer", "candidate__user")
         queryset = ApplicationFilters(data=request.query_params).apply(queryset)
         page = self.paginate_queryset(queryset)
         return self.get_paginated_response(ApplicationReadSerializer(page, many=True).data)

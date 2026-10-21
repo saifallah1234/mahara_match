@@ -6,12 +6,23 @@ from backend.apps.training.models import TrainingEnrollment
 
 
 class TrainingEnrollmentReadSerializer(serializers.ModelSerializer[TrainingEnrollment]):
+    # Disclosed to the training provider only (ADR 0001).
+    candidate_first_name = serializers.CharField(source="candidate.user.first_name", read_only=True)
+    candidate_last_name = serializers.CharField(source="candidate.user.last_name", read_only=True)
+    # Kept on the enrollment so a finished session still has a title after it leaves the catalogue.
+    program_title = serializers.CharField(source="session.program.title", read_only=True)
+    session_start_date = serializers.DateTimeField(source="session.start_date", read_only=True)
+
     class Meta:
         model = TrainingEnrollment
         fields = (
             "id",
             "session",
             "candidate_id",
+            "candidate_first_name",
+            "candidate_last_name",
+            "program_title",
+            "session_start_date",
             "status",
             "enrolled_at",
             "completion_rate",
