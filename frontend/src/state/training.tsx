@@ -10,9 +10,12 @@ type State = {
     createProgram: (d: api.ProgramInput, skills: { skillId: string; level: api.ProgramSkill['target_level'] }[]) => Promise<string>
     addSkill: (programId: string, skillId: string, level: api.ProgramSkill['target_level']) => Promise<void>
     removeSkill: (id: string) => Promise<void>
+    updateProgram: (id: string, d: Partial<api.ProgramInput>) => Promise<void>
     setProgramStatus: (id: string, status: api.Program['status']) => Promise<void>
     createSession: (d: api.SessionInput) => Promise<void>
+    updateSession: (id: string, d: api.SessionPatch) => Promise<void>
     setSessionStatus: (id: string, status: api.Session['status']) => Promise<void>
+    setProgress: (enrollmentId: string, completionRate: number) => Promise<void>
 }
 const Context = createContext<State | null>(null)
 
@@ -70,9 +73,12 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
         },
         addSkill: (programId, skillId, level) => run(() => api.addProgramSkill(programId, skillId, level)),
         removeSkill: (id) => run(() => api.removeProgramSkill(id)),
+        updateProgram: (id, d) => run(() => api.updateProgram(id, d)),
         setProgramStatus: (id, status) => run(() => api.updateProgram(id, { status })),
         createSession: (d) => run(() => api.createSession(d)),
+        updateSession: (id, d) => run(() => api.updateSession(id, d)),
         setSessionStatus: (id, status) => run(() => api.updateSession(id, { status })),
+        setProgress: (enrollmentId, completionRate) => run(() => api.updateProgress(enrollmentId, completionRate)),
     }
     return <Context.Provider value={value}>{children}</Context.Provider>
 }

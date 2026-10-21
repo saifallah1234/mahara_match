@@ -35,7 +35,10 @@ export const listEnrollments = (organizationId?: string) =>
 export const createProgram = (d: ProgramInput) => send<Program>('POST', '/training/programs/', d)
 export const updateProgram = (id: string, d: Partial<ProgramInput>) => send<Program>('PATCH', `/training/programs/${id}/`, d)
 export const createSession = (d: SessionInput) => send<Session>('POST', '/training/sessions/', d)
-export const updateSession = (id: string, d: Partial<{ status: Session['status'] }>) => send<Session>('PATCH', `/training/sessions/${id}/`, d)
+export type SessionPatch = Partial<Omit<SessionInput, 'program_id'>> & { status?: Session['status'] }
+export const updateSession = (id: string, d: SessionPatch) => send<Session>('PATCH', `/training/sessions/${id}/`, d)
+export const updateProgress = (enrollmentId: string, completionRate: number) =>
+  send<Enrollment>('PATCH', `/training/enrollments/${enrollmentId}/progress/`, { completion_rate: completionRate })
 export type ProgramSkill = {
   id: string; program: string; skill_id: string
   target_level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT'; purpose: string

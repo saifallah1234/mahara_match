@@ -253,6 +253,13 @@ export function formatDateTime(iso?: string): string {
   return dateTimeFormatter.format(new Date(iso))
 }
 
+/** Valeur d'un champ datetime-local, dans le fuseau du navigateur (là où la saisie l'interprète). */
+export function toDateTimeInput(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 const tunisDateTimeFormatter = new Intl.DateTimeFormat('fr-TN', {
   timeZone: 'Africa/Tunis',
   day: '2-digit',
