@@ -5,8 +5,9 @@ from typing import Any
 
 import pytest
 
-from backend.apps.identity.models import Organization
+from backend.apps.identity.models import Organization, Role
 from backend.apps.identity.services.organizations import verify_organization
+from backend.apps.identity.services.user_roles import assign_role, remove_role
 from backend.apps.platform.models import AuditLog
 from backend.apps.training.models import TrainingEnrollment
 from backend.apps.training.services.enrollments import cancel_enrollment
@@ -115,3 +116,24 @@ def test_enrollment_cancel_and_session_update_write_one_row_each(phase3: dict[st
 
     actions = sorted(AuditLog.objects.values_list("action", flat=True))
     assert actions == ["training.enrollment.cancel", "training.session.update"]
+
+
+def test_removing_a_role_writes_one_row_for_the_removed_assignment(phase3: dict[str, Any]) -> None:
+    # Regression: the audit row used the assignment's id after delete(), which Django clears (NULL entity_id, HTTP 500).
+    assignment = assign_role(
+        phase3["admin"],
+        user_id=phase3["candidate"].id,
+        role_id=Role.objects.get(code="ADMIN").id,
+        organization_id=None,
+    )
+    assignment_id = assignment.id
+    AuditLog.objects.all().delete()
+
+    remove_role(phase3["admin"], assignment)
+
+    row = AuditLog.objects.get()
+    assert (row.action, row.entity_type, row.entity_id) == (
+        "identity.user_role.remove",
+        "user_role",
+        assignment_id,
+    )

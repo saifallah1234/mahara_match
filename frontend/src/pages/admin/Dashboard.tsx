@@ -7,7 +7,7 @@ import { AUDIT_ACTION_LABEL, AUDIT_ENTITY_LABEL, formatDateTime, labelFor } from
 
 export default function AdminDashboard() {
   const { users, organizations, error } = useAdmin()
-  const batches = useBatches().data
+  const batchCount = useBatches().count
   const audit = useAuditLogs().data
   return (
     <>
@@ -18,7 +18,7 @@ export default function AdminDashboard() {
           <StatTile value={users.length} label="Comptes" note={`${users.filter((u) => u.status === 'ACTIVE').length} actifs`} />
           <StatTile value={users.filter((u) => u.status === 'PENDING').length} label="Comptes en attente" tone="coral" />
           <StatTile value={organizations.filter((o) => o.verification_status === 'PENDING').length} label="Organisations à vérifier" tone="teal" />
-          <StatTile value={batches.length} label="Lots d’import" tone="leaf" />
+          <StatTile value={batchCount} label="Lots d’import" tone="leaf" />
         </div>
         <Panel title="Dernières opérations" action={<Link to="/admin/audit" className="text-[13px] font-medium text-teal hover:underline">Journal complet</Link>}>
           {audit.length === 0 ? <EmptyState title="Aucune entrée." /> : (

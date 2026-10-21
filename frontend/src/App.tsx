@@ -14,6 +14,8 @@ import AdminDashboard from './pages/admin/Dashboard'
 import AdminAudit from './pages/admin/Audit'
 import AdminImports from './pages/admin/Imports'
 import AdminReferentiels from './pages/admin/Referentiels'
+import AdminOrganisationDetail from './pages/admin/OrganisationDetail'
+import AdminBatchDetail from './pages/admin/BatchDetail'
 
 import Landing from './pages/Landing'
 import SignIn from './pages/SignIn'
@@ -116,8 +118,10 @@ export default function App() {
                 <Route path="/admin/comptes" element={<AdminComptes />} />
                 <Route path="/admin/demandes" element={<AdminOnboarding />} />
                 <Route path="/admin/organisations" element={<AdminOrganisations />} />
+                <Route path="/admin/organisations/:id" element={<AdminOrganisationDetail />} />
                 <Route path="/admin/referentiels" element={<AdminReferentiels />} />
                 <Route path="/admin/imports" element={<AdminImports />} />
+                <Route path="/admin/imports/batches/:id" element={<AdminBatchDetail />} />
                 <Route path="/admin/audit" element={<AdminAudit />} />
               </Route>
             </Route>

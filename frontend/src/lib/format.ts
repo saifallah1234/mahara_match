@@ -93,12 +93,27 @@ export function labelFor(labels: Record<string, string>, code: string | null | u
   return labels[code] ?? fallback
 }
 
-export const IMPORT_SOURCE_TYPE_LABEL: Record<string, string> = { API: 'API', CSV: 'Fichier CSV' }
+export const IMPORT_SOURCE_TYPE_LABEL: Record<string, string> = { API: 'API', CSV: 'Fichier CSV', MANUAL_FILE: 'Fichier saisi à la main' }
 
 export const IMPORT_BATCH_STATUS_LABEL: Record<string, string> = {
   STARTED: 'En cours',
   COMPLETED: 'Terminé',
   FAILED: 'Échoué',
+}
+
+export const IMPORT_ROW_STATUS_LABEL: Record<string, string> = {
+  ADDED: 'Ajoutée', UPDATED: 'Mise à jour', UNCHANGED: 'Inchangée', REJECTED: 'Rejetée',
+}
+
+/** Codes émis par le pipeline d'import (pipelines/ingestion/offer_adapter.py). */
+export const IMPORT_REJECTION_LABEL: Record<string, string> = {
+  OFFER_CLOSED: 'Offre fermée ou expirée',
+  MISSING_EXTERNAL_ID: 'Identifiant externe absent',
+  INVALID_EXTERNAL_ID: 'Identifiant externe trop long',
+  MISSING_TITLE: 'Titre absent',
+  MISSING_DESCRIPTION: 'Description absente',
+  INVALID_OFFER_URL: 'Lien de l’offre invalide',
+  VALIDATION_ERROR: 'Données invalides',
 }
 
 export const AUDIT_ACTOR_LABEL: Record<string, string> = { USER: 'Utilisateur', SYSTEM: 'Système', ANETI_AGENT: 'Agent ANETI' }

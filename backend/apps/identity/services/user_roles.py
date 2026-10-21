@@ -132,12 +132,13 @@ def assign_role(
 def remove_role(actor: User, assignment: UserRole) -> None:
     require_permission(actor, IdentityPermissionCode.MANAGE_RBAC)
     before = {"user_id": str(assignment.user_id), "role": assignment.role.code}
+    assignment_id = assignment.id  # delete() clears the primary key
     assignment.delete()
     append_audit(
         actor_type="USER",
         actor_user=actor,
         action="identity.user_role.remove",
         entity_type="user_role",
-        entity_id=assignment.id,
+        entity_id=assignment_id,
         before=before,
     )

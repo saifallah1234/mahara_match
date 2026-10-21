@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Cell, EmptyState, Panel, Row, Select, Table } from '../../components/ui'
+import { Badge, Button, Cell, EmptyState, Panel, Row, Select, Table } from '../../components/ui'
 import { useAuditLogs } from '../../state/adminData'
 import { useAdmin } from '../../state/admin'
 import { AUDIT_ACTION_LABEL, AUDIT_ACTOR_LABEL, AUDIT_ENTITY_LABEL, formatDateTime, labelFor } from '../../lib/format'
 
 export default function AdminAudit() {
-  const { data: logs, loading, error } = useAuditLogs()
+  const { data: logs, loading, error, hasMore, loadMore } = useAuditLogs()
   const { users } = useAdmin()
   const [kind, setKind] = useState('')
   const kinds = [...new Set(logs.map((l) => l.actor_type))]
@@ -48,6 +48,7 @@ export default function AdminAudit() {
             </Table>
           )}
         </Panel>
+        {hasMore && <div className="mt-4 text-center"><Button variant="secondaire" disabled={loading} onClick={() => void loadMore()}>Charger plus</Button></div>}
       </PageBody>
     </>
   )
