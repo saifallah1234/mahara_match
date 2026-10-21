@@ -19,6 +19,23 @@ if TYPE_CHECKING:
     from backend.apps.identity.models import User
 
 
+def citations_for(evidence: dict[str, Any]) -> list[dict[str, str]]:
+    """One source per returned offer, profile or training program: IDs and labels only."""
+    found: dict[str, dict[str, str]] = {}
+
+    def cite(reference: str, label: str) -> None:
+        found.setdefault(reference, {"label": label, "reference": reference})
+
+    for match in evidence.get("matches", []):
+        if "profile_id" in match:
+            cite(f"candidate_profile:{match['profile_id']}", f"Profil n°{match['rank']}")
+        if "offer_id" in match:
+            cite(f"offer:{match['offer_id']}", match["title"])
+            for program in match.get("training", []):
+                cite(f"program:{program['program_id']}", program["title"])
+    return list(found.values())
+
+
 def start_agent_run(
     actor: User,
     prompt: str,
@@ -46,6 +63,7 @@ def start_agent_run(
             sender_type="ASSISTANT",
             content=result["reply"],
             intent=route,
+            citations=citations_for(result.get("evidence", {})),
         )
 
     execution = record_execution(

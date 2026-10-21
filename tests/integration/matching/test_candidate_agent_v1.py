@@ -125,6 +125,9 @@ def test_agent_run_persists_messages_execution_and_tool_evidence(
     assert execution.status == "SUCCEEDED"
     assert execution.route == "candidate_job_search"
     assert execution.response_message.content == "Top job: Backend Engineer."
+    assert execution.response_message.citations_json == [
+        {"label": "Backend Engineer", "reference": f"offer:{offer.id}"}
+    ]
     assert ConversationMessage.objects.filter(conversation=conversation).count() == 2
     tool_call = execution.tool_calls.get()
     assert tool_call.tool_name == "search_jobs_for_candidate"
