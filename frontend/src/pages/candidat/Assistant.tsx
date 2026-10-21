@@ -19,7 +19,7 @@ export default function CandidatAssistant() {
       if (!last) return
       setConversationId(last.id)
       setMessages(await api.listMessages(last.id))
-    }).catch(() => {})
+    }).catch((failure) => setError(failure instanceof Error ? failure.message : 'Historique indisponible.'))
   }, [])
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [messages, thinking])

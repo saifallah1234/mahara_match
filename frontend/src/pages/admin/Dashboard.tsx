@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Panel, StatTile } from '../../components/ui'
+import { EmptyState, Panel, StatTile } from '../../components/ui'
 import { useAdmin } from '../../state/admin'
 import { useAuditLogs, useBatches } from '../../state/adminData'
 import { formatDateTime } from '../../lib/format'
@@ -21,7 +21,7 @@ export default function AdminDashboard() {
           <StatTile value={batches.length} label="Lots d’import" tone="leaf" />
         </div>
         <Panel title="Dernières opérations" action={<Link to="/admin/audit" className="text-[13px] font-medium text-teal hover:underline">Journal complet</Link>}>
-          {audit.length === 0 ? <p className="p-5 text-[13.5px] text-slate">Aucune entrée.</p> : (
+          {audit.length === 0 ? <EmptyState title="Aucune entrée." /> : (
             <ul className="divide-y divide-line/70">
               {audit.slice(0, 6).map((l) => (
                 <li key={l.id} className="flex justify-between gap-3 px-5 py-3 text-[13.5px]">

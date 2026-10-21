@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { cx } from '../lib/format'
 
 /* ------------------------------------------------------------------ */
@@ -294,13 +294,28 @@ export function Modal({
   children: ReactNode
   footer?: ReactNode
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => { onCloseRef.current = onClose })
+
+  useEffect(() => {
+    if (!open) return
+    dialogRef.current?.focus()
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open])
+
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-navy/35 p-0 sm:items-center sm:p-6" onClick={onClose}>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-[12px] bg-white shadow-lift sm:rounded-[12px]"
       >
@@ -319,48 +334,43 @@ export function Modal({
   )
 }
 
-/* ------------------------------------------------------------------ */
-/* Notifications éphémères                                             */
-/* ------------------------------------------------------------------ */
-
-export function ToastStack({
-  toasts,
-  onDismiss,
+/** Confirmation d'une action terminale ou destructive. Monté seulement quand il est ouvert, donc son champ repart vide. */
+export function ConfirmDialog({
+  title,
+  children,
+  reasonLabel,
+  danger = false,
+  onConfirm,
+  onCancel,
 }: {
-  toasts: Array<{ id: number; tone: 'succes' | 'echec' | 'info'; message: string }>
-  onDismiss: (id: number) => void
+  title: string
+  children: ReactNode
+  reasonLabel?: string
+  danger?: boolean
+  onConfirm: (reason: string) => void
+  onCancel: () => void
 }) {
-  if (toasts.length === 0) return null
+  const [reason, setReason] = useState('')
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 flex w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-2">
-      {toasts.map((toast) => (
-        <div
-          key={toast.id}
-          role="status"
-          className={cx(
-            'flex items-start gap-3 rounded-[8px] border px-4 py-3 text-[13px] shadow-lift',
-            toast.tone === 'succes' && 'border-leaf/30 bg-white text-navy',
-            toast.tone === 'echec' && 'border-coral/40 bg-white text-navy',
-            toast.tone === 'info' && 'border-line bg-white text-navy',
-          )}
-        >
-          <span
-            aria-hidden
-            className={cx(
-              'mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full',
-              toast.tone === 'succes' && 'bg-leaf',
-              toast.tone === 'echec' && 'bg-coral',
-              toast.tone === 'info' && 'bg-teal',
-            )}
-          />
-          <p className="flex-1 leading-snug">{toast.message}</p>
-          <button onClick={() => onDismiss(toast.id)} aria-label="Fermer" className="text-slate hover:text-navy">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
-      ))}
-    </div>
+    <Modal
+      open
+      onClose={onCancel}
+      title={title}
+      footer={
+        <>
+          <Button variant="secondaire" onClick={onCancel}>Annuler</Button>
+          <Button variant={danger ? 'danger' : 'primaire'} onClick={() => onConfirm(reason.trim())}>Confirmer</Button>
+        </>
+      }
+    >
+      <div className="space-y-4 text-[13.5px] leading-relaxed text-slate">
+        {children}
+        {reasonLabel && (
+          <Field label={reasonLabel}>
+            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} />
+          </Field>
+        )}
+      </div>
+    </Modal>
   )
 }

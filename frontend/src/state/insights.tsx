@@ -12,15 +12,3 @@ export function useOfferMatches() {
   }, [])
   return { matches, loading, byOffer: new Map(matches.map((m) => [m.offer_id, m])) }
 }
-
-export function useCvAnalyses() {
-  const [analyses, setAnalyses] = useState<api.CvAnalysis[]>([])
-  const [loading, setLoading] = useState(true)
-  useEffect(() => {
-    api.listCvAnalyses()
-      .then((list) => setAnalyses([...list].sort((a, b) => +new Date(b.analyzed_at) - +new Date(a.analyzed_at))))
-      .catch(() => setAnalyses([]))
-      .finally(() => setLoading(false))
-  }, [])
-  return { analyses, loading }
-}

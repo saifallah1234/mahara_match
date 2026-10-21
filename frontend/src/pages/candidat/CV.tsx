@@ -1,10 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, EmptyState, Field, Input, Panel } from '../../components/ui'
+import { Badge, Button, ConfirmDialog, EmptyState, Field, Input, Panel } from '../../components/ui'
 import { download } from '../../api/candidate'
 import { useCandidate } from '../../state/candidate'
 import { formatDate } from '../../lib/format'
-import { AtsPanel } from '../../components/insights'
 
 export default function CandidatCV() {
   const { cvs, documents, uploadCV, setPrimary, deleteCV } = useCandidate()
@@ -13,6 +12,7 @@ export default function CandidatCV() {
   const [retryDocumentId, setRetryDocumentId] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [downloadError, setDownloadError] = useState('')
+  const [deleting, setDeleting] = useState<(typeof cvs)[number] | null>(null)
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!file) return
@@ -41,11 +41,20 @@ export default function CandidatCV() {
           return <li key={cv.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"><div><p className="font-medium text-navy">v{cv.version_number} — {cv.title} {cv.is_primary && <Badge tone="teal">Principal</Badge>}</p><p className="text-sm text-slate">{document?.file_name ?? 'Document'} · {formatDate(document?.uploaded_at)}</p></div><div className="flex flex-wrap gap-2">
             {document && <Button size="sm" variant="secondaire" disabled={busy} onClick={() => void action(() => download(document.id, document.file_name))}>Télécharger</Button>}
             {!cv.is_primary && <Button size="sm" variant="secondaire" disabled={busy} onClick={() => void action(() => setPrimary(cv))}>Définir principal</Button>}
-            <Button size="sm" variant="danger" disabled={busy} onClick={() => void action(() => deleteCV(cv))}>Supprimer</Button>
+            <Button size="sm" variant="danger" disabled={busy} onClick={() => setDeleting(cv)}>Supprimer</Button>
           </div></li>
         })}</ul>}
       </Panel>
-            <AtsPanel />
+      {deleting && (
+        <ConfirmDialog
+          title="Supprimer ce CV ?"
+          danger
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => { void action(() => deleteCV(deleting)); setDeleting(null) }}
+        >
+          La version v{deleting.version_number} — {deleting.title} sera supprimée.
+        </ConfirmDialog>
+      )}
     </PageBody>
   </>
 }

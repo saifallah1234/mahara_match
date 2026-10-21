@@ -11,7 +11,8 @@ export type Session = {
   location_or_url: string; registration_deadline: string; status: 'PLANNED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED'
 }
 export type Enrollment = {
-  id: string; session: string; candidate_id: string
+  id: string; session: string; candidate_id: string; candidate_first_name: string; candidate_last_name: string
+  program_title: string; session_start_date: string
   status: 'REGISTERED' | 'IN_PROGRESS' | 'COMPLETED' | 'DROPPED'; enrolled_at: string; completion_rate: string | null
 }
 export type ProgramInput = Pick<Program, 'title' | 'description' | 'level' | 'delivery_mode' | 'status' | 'is_free'> & {

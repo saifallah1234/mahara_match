@@ -1,18 +1,18 @@
 import { useState } from 'react'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, EmptyState, Field, Panel, Select, Tabs } from '../../components/ui'
+import { Badge, Button, ConfirmDialog, EmptyState, Field, Panel, Select, Tabs } from '../../components/ui'
 import { useCandidate } from '../../state/candidate'
-import { formatDate, formatPrice } from '../../lib/format'
+import { ENROLLMENT_STATUS_LABEL, formatDate, formatPrice, labelFor } from '../../lib/format'
 
 type Tab = 'catalogue' | 'mine'
 const delivery: Record<string, string> = { ONLINE: 'À distance', PRESENTIAL: 'Présentiel', HYBRID: 'Hybride' }
 const level: Record<string, string> = { BEGINNER: 'Débutant', INTERMEDIATE: 'Intermédiaire', ADVANCED: 'Avancé' }
-const enrollmentStatus: Record<string, string> = { REGISTERED: 'Inscrit', IN_PROGRESS: 'En cours', COMPLETED: 'Terminé', DROPPED: 'Annulé' }
 export default function CandidatFormations() {
   const { programs, sessions, enrollments, enroll, cancelEnrollment } = useCandidate()
   const [tab, setTab] = useState<Tab>('catalogue')
   const [mode, setMode] = useState('')
   const [busy, setBusy] = useState('')
+  const [cancelling, setCancelling] = useState<(typeof enrollments)[number] | null>(null)
   async function action(id: string, work: () => Promise<void>) { setBusy(id); try { await work() } catch { /* The workspace shows the API error. */ } finally { setBusy('') } }
   const catalogue = programs.filter((program) => program.status === 'ACTIVE' && (!mode || program.delivery_mode === mode))
   return <>
@@ -31,11 +31,18 @@ export default function CandidatFormations() {
         </Panel>)}
       </>}
       {tab === 'mine' && <Panel title="Mes inscriptions">{!enrollments.length ? <EmptyState title="Aucune inscription" /> : <ul className="divide-y divide-line">{enrollments.map((item) => {
-        // ponytail: completed sessions leave the candidate catalog; show the ID until enrollment summaries are exposed.
-        const session = sessions.find((entry) => entry.id === item.session)
-        const program = programs.find((entry) => entry.id === session?.program)
-        return <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm"><div><p className="font-medium text-navy">{program?.title ?? `Session ${item.session.slice(0, 8)}`}</p><p className="text-slate">{session ? `${formatDate(session.start_date)} · ` : ''}{enrollmentStatus[item.status] ?? item.status}</p></div><Button size="sm" variant="danger" disabled={busy === item.id || ['COMPLETED', 'DROPPED'].includes(item.status)} onClick={() => void action(item.id, () => cancelEnrollment(item.id))}>Annuler</Button></li>
+        return <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm"><div><p className="font-medium text-navy">{item.program_title}</p><p className="text-slate">{formatDate(item.session_start_date)} · {labelFor(ENROLLMENT_STATUS_LABEL, item.status)}</p></div><Button size="sm" variant="danger" disabled={busy === item.id || ['COMPLETED', 'DROPPED'].includes(item.status)} onClick={() => setCancelling(item)}>Annuler</Button></li>
       })}</ul>}</Panel>}
+      {cancelling && (
+        <ConfirmDialog
+          title="Annuler mon inscription ?"
+          danger
+          onCancel={() => setCancelling(null)}
+          onConfirm={() => { void action(cancelling.id, () => cancelEnrollment(cancelling.id)); setCancelling(null) }}
+        >
+          Votre inscription sera annulée.
+        </ConfirmDialog>
+      )}
     </PageBody>
   </>
 }

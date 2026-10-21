@@ -11,7 +11,7 @@ export type Interview = { id: string; application_id: string; type: string; sche
 export type History = { id: string; application_id: string; status: string; changed_at: string }
 export type Program = { id: string; organization_id: string; organization_name: string; title: string; description: string; level: string; delivery_mode: string; status: string; is_free: boolean; price: string }
 export type TrainingSession = { id: string; program: string; start_date: string; end_date: string; capacity: number; location_or_url: string; registration_deadline: string; status: string }
-export type Enrollment = { id: string; session: string; candidate_id: string; status: string; enrolled_at: string; completion_rate: number }
+export type Enrollment = { id: string; session: string; candidate_id: string; program_title: string; session_start_date: string; status: string; enrolled_at: string; completion_rate: number }
 
 export const records = {
   experiences: '/experiences/', educations: '/educations/', skills: '/candidate-skills/',

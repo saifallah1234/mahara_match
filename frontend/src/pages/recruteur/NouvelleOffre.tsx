@@ -4,11 +4,9 @@ import { PageBody, PageHeader } from '../../components/layout'
 import { Button, Field, Input, Panel, Select, Textarea } from '../../components/ui'
 import { useAuth } from '../../state/auth'
 import { useRecruiter } from '../../state/recruiter'
-import { GOUVERNORATS } from '../../lib/format'
+import { CONTRACT_OPTIONS, EXPERIENCE_OPTIONS, GOUVERNORATS, contractLabel } from '../../lib/format'
 
-const CONTRACTS = ['CDI', 'CDD', 'STAGE', 'FREELANCE', 'ALTERNANCE']
 const MODES = [['ONSITE', 'Sur site'], ['HYBRID', 'Hybride'], ['REMOTE', 'À distance']]
-const LEVELS = ['JUNIOR', 'MID', 'SENIOR']
 
 export default function RecruteurNouvelleOffre() {
   const { workspace } = useAuth()
@@ -16,7 +14,7 @@ export default function RecruteurNouvelleOffre() {
   const navigate = useNavigate()
 
   const [f, setF] = useState({
-    title: '', description: '', contract_type: 'CDI', work_mode: 'ONSITE', experience_level: 'JUNIOR',
+    title: '', description: '', contract_type: 'CDI', work_mode: 'ONSITE', experience_level: 'Débutant',
     governorate: 'Ariana', city: '', min: '', max: '', deadline: '',
   })
   const [easy, setEasy] = useState(true)
@@ -67,7 +65,7 @@ export default function RecruteurNouvelleOffre() {
             </div>
             <Field label="Contrat">
               <Select value={f.contract_type} onChange={set('contract_type')}>
-                {CONTRACTS.map((c) => <option key={c}>{c}</option>)}
+                {CONTRACT_OPTIONS.map((c) => <option key={c} value={c}>{contractLabel(c)}</option>)}
               </Select>
             </Field>
             <Field label="Mode de travail">
@@ -77,7 +75,7 @@ export default function RecruteurNouvelleOffre() {
             </Field>
             <Field label="Expérience">
               <Select value={f.experience_level} onChange={set('experience_level')}>
-                {LEVELS.map((c) => <option key={c}>{c}</option>)}
+                {EXPERIENCE_OPTIONS.map((c) => <option key={c}>{c}</option>)}
               </Select>
             </Field>
             <Field label="Gouvernorat">
@@ -119,7 +117,7 @@ export default function RecruteurNouvelleOffre() {
                       onChange={() => setChosen(chosen.map((x) => (x.id === c.id ? { ...x, mandatory: !x.mandatory } : x)))}
                     /> obligatoire
                   </label>
-                  <button className="text-coral" onClick={() => setChosen(chosen.filter((x) => x.id !== c.id))}>Retirer</button>
+                  <Button size="sm" variant="discret" onClick={() => setChosen(chosen.filter((x) => x.id !== c.id))}>Retirer</Button>
                 </span>
               </div>
             ))}

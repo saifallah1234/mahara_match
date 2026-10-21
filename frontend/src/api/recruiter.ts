@@ -9,8 +9,8 @@ export type RecruiterOffer = {
   easy_apply: boolean; offer_url: string; created_by_id: string
 }
 export type RecruiterApplication = {
-  id: string; candidate_id: string; offer_id: string; offer_title: string; cv_id: string
-  status: string; cover_letter: string; applied_at: string
+  id: string; candidate_id: string; candidate_first_name: string; candidate_last_name: string
+  offer_id: string; offer_title: string; cv_id: string; status: string; cover_letter: string; applied_at: string
 }
 export type RecruiterInterview = {
   id: string; application_id: string; type: 'IN_PERSON' | 'VIDEO' | 'PHONE'; scheduled_at: string
@@ -46,5 +46,4 @@ export const scheduleInterview = (data: InterviewInput) => post<RecruiterIntervi
 export const transitionInterview = (id: string, status: 'COMPLETED' | 'CANCELLED', feedback?: string) =>
   post<RecruiterInterview>(`/interviews/${id}/transition/`, { status, feedback })
 
-/** Le backend n'expose pas l'identité du candidat au recruteur : on affiche une référence. */
-export const candidateLabel = (a: RecruiterApplication) => `Candidat ${a.candidate_id.slice(0, 8)}`
+export const candidateLabel = (a: RecruiterApplication) => `${a.candidate_first_name} ${a.candidate_last_name}`

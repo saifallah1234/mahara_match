@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, EmptyState, Field, Input, Panel, Select } from '../../components/ui'
+import { Badge, Button, ConfirmDialog, EmptyState, Field, Input, Panel, Select } from '../../components/ui'
 import { useRecruiter } from '../../state/recruiter'
 import { candidateLabel, type RecruiterInterview } from '../../api/recruiter'
-import { formatDateTime } from '../../lib/format'
+import { INTERVIEW_STATUS_LABEL, INTERVIEW_TYPE_LABEL, formatDateTime, labelFor } from '../../lib/format'
 
-const TYPE_LABEL = { PHONE: 'Téléphonique', VIDEO: 'Visioconférence', IN_PERSON: 'Présentiel' } as const
-const STATUS_LABEL = { SCHEDULED: 'Planifié', COMPLETED: 'Réalisé', CANCELLED: 'Annulé' } as const
 const STATUS_TONE = { SCHEDULED: 'encours', COMPLETED: 'positif', CANCELLED: 'negatif' } as const
 const ACTIVE = ['SUBMITTED', 'UNDER_REVIEW', 'PRESELECTED', 'INTERVIEW']
 
@@ -14,6 +12,7 @@ export default function RecruteurEntretiens() {
   const { interviews, applications, error, scheduleInterview, setInterviewStatus } = useRecruiter()
   const [form, setForm] = useState({ application_id: '', type: 'VIDEO', scheduled_at: '', duration_minutes: '45', location_or_url: '' })
   const [busy, setBusy] = useState(false)
+  const [cancelling, setCancelling] = useState<RecruiterInterview | null>(null)
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
 
   const candidates = applications.filter((a) => ACTIVE.includes(a.status))
@@ -45,16 +44,16 @@ export default function RecruteurEntretiens() {
           <div>
             <p className="text-[14px] font-medium text-navy">{who(i)}</p>
             <p className="text-[12.5px] text-slate">
-              {formatDateTime(i.scheduled_at)} · {i.duration_minutes} min · {TYPE_LABEL[i.type]}
+              {formatDateTime(i.scheduled_at)} · {i.duration_minutes} min · {labelFor(INTERVIEW_TYPE_LABEL, i.type)}
               {i.location_or_url && ` · ${i.location_or_url}`}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge tone={STATUS_TONE[i.status]}>{STATUS_LABEL[i.status]}</Badge>
+            <Badge tone={STATUS_TONE[i.status]}>{labelFor(INTERVIEW_STATUS_LABEL, i.status)}</Badge>
             {actions && (
               <>
                 <Button size="sm" onClick={() => void setInterviewStatus(i.id, 'COMPLETED').catch(() => {})}>Réalisé</Button>
-                <Button size="sm" variant="discret" onClick={() => void setInterviewStatus(i.id, 'CANCELLED').catch(() => {})}>Annuler</Button>
+                <Button size="sm" variant="discret" onClick={() => setCancelling(i)}>Annuler</Button>
               </>
             )}
           </div>
@@ -81,7 +80,7 @@ export default function RecruteurEntretiens() {
             </div>
             <Field label="Type">
               <Select value={form.type} onChange={set('type')}>
-                {Object.entries(TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                {Object.entries(INTERVIEW_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </Select>
             </Field>
             <Field label="Date et heure" required><Input type="datetime-local" value={form.scheduled_at} onChange={set('scheduled_at')} /></Field>
@@ -97,6 +96,16 @@ export default function RecruteurEntretiens() {
           {upcoming.length === 0 ? <EmptyState title="Aucun entretien planifié" /> : list(upcoming, true)}
         </Panel>
         {past.length > 0 && <Panel title="Historique">{list(past, false)}</Panel>}
+        {cancelling && (
+          <ConfirmDialog
+            title="Annuler cet entretien ?"
+            danger
+            onCancel={() => setCancelling(null)}
+            onConfirm={() => { void setInterviewStatus(cancelling.id, 'CANCELLED').catch(() => {}); setCancelling(null) }}
+          >
+            L’entretien avec {who(cancelling)} sera annulé.
+          </ConfirmDialog>
+        )}
       </PageBody>
     </>
   )

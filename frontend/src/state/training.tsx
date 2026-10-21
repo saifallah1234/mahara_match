@@ -13,13 +13,6 @@ type State = {
 const Context = createContext<State | null>(null)
 
 function explain(err: unknown): string {
-  const details = (err as { details?: unknown }).details
-  if (details && typeof details === 'object') {
-    const parts = Object.entries(details as Record<string, unknown>).map(
-      ([field, value]) => `${field} : ${Array.isArray(value) ? value.join(' ') : String(value)}`,
-    )
-    if (parts.length) return parts.join(' — ')
-  }
   return err instanceof Error ? err.message : 'Opération refusée.'
 }
 

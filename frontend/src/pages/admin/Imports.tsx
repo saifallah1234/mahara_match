@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, Cell, EmptyState, Field, Input, Panel, Row, Table } from '../../components/ui'
+import { Badge, Button, Cell, ConfirmDialog, EmptyState, Field, Input, Panel, Row, Table } from '../../components/ui'
 import { useBatches, useSources } from '../../state/adminData'
 import * as api from '../../api/admin'
-import { formatDateTime } from '../../lib/format'
+import { IMPORT_BATCH_STATUS_LABEL, IMPORT_SOURCE_TYPE_LABEL, formatDateTime, labelFor } from '../../lib/format'
 
 export default function AdminImports() {
   const sources = useSources()
@@ -11,8 +11,9 @@ export default function AdminImports() {
   const [editing, setEditing] = useState<string | null>(null)
   const [form, setForm] = useState({ acquisition_method: '', permission_evidence: '', expires_at: '' })
   const [error, setError] = useState<string | null>(null)
+  const [revoking, setRevoking] = useState<(typeof sources.data)[number] | null>(null)
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
-  const sourceName = (id: string) => sources.data.find((s) => s.id === id)?.name ?? id.slice(0, 8)
+  const sourceName = (id: string) => sources.data.find((s) => s.id === id)?.name ?? 'Source inconnue'
 
   async function run(work: () => Promise<unknown>) {
     setError(null)
@@ -33,14 +34,14 @@ export default function AdminImports() {
               {sources.data.map((s) => (
                 <Row key={s.id}>
                   <Cell><span className="font-medium text-navy">{s.name}</span>{s.base_url && <p className="text-[12.5px] text-slate">{s.base_url}</p>}</Cell>
-                  <Cell className="text-[13px]">{s.type}</Cell>
+                  <Cell className="text-[13px]">{labelFor(IMPORT_SOURCE_TYPE_LABEL, s.type)}</Cell>
                   <Cell>
                     <Badge tone={s.is_authorized ? 'positif' : 'attention'}>{s.is_authorized ? 'Autorisée' : 'Non autorisée'}</Badge>
                     {s.expires_at && <p className="text-[12px] text-slate">jusqu’au {formatDateTime(s.expires_at)}</p>}
                   </Cell>
                   <Cell className="text-right">
                     {s.is_authorized
-                      ? <Button size="sm" variant="discret" onClick={() => void run(() => api.revokeSource(s.id))}>Révoquer</Button>
+                      ? <Button size="sm" variant="discret" onClick={() => setRevoking(s)}>Révoquer</Button>
                       : <Button size="sm" onClick={() => setEditing(editing === s.id ? null : s.id)}>Autoriser</Button>}
                   </Cell>
                 </Row>
@@ -77,12 +78,22 @@ export default function AdminImports() {
                   <Cell className="tnum text-[13px]">{b.updated_count}</Cell>
                   <Cell className="tnum text-[13px]">{b.unchanged_count}</Cell>
                   <Cell className="tnum text-[13px]">{b.rejected_count}</Cell>
-                  <Cell><Badge tone={b.status === 'COMPLETED' ? 'positif' : 'neutre'}>{b.status}</Badge></Cell>
+                  <Cell><Badge tone={b.status === 'COMPLETED' ? 'positif' : 'neutre'}>{labelFor(IMPORT_BATCH_STATUS_LABEL, b.status)}</Badge></Cell>
                 </Row>
               ))}
             </Table>
           )}
         </Panel>
+        {revoking && (
+          <ConfirmDialog
+            title="Révoquer l’autorisation ?"
+            danger
+            onCancel={() => setRevoking(null)}
+            onConfirm={() => { void run(() => api.revokeSource(revoking.id)); setRevoking(null) }}
+          >
+            La source {revoking.name} ne sera plus autorisée pour les imports. Vous pourrez l’autoriser de nouveau.
+          </ConfirmDialog>
+        )}
       </PageBody>
     </>
   )

@@ -4,8 +4,9 @@ import { answerInterview, createInterview, getInterview, getInterviewFeedback, i
 import { AvatarPlayer } from '../../components/interview/AvatarPlayer'
 import { AnswerRecorder } from '../../components/interview/AnswerRecorder'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Button, Field, Panel, Select } from '../../components/ui'
+import { Button, ConfirmDialog, Field, Panel, Select } from '../../components/ui'
 import { interviewDisplayState, type InterviewDisplayState } from '../../lib/mockInterviewMachine'
+import { MOCK_INTERVIEW_LABEL, MOCK_JOB_STAGE_LABEL, MOCK_JOB_STATUS_LABEL, formatDateTime, labelFor } from '../../lib/format'
 import { useCandidate } from '../../state/candidate'
 
 export default function MockInterview() {
@@ -23,6 +24,7 @@ export default function MockInterview() {
   const [feedback, setFeedback] = useState<InterviewFeedback | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
   const creation = useRef({ input: '', key: crypto.randomUUID() })
   const offerId = search.get('offer') || ''
   function update(value: InterviewSession) {
@@ -87,11 +89,11 @@ export default function MockInterview() {
           <Field label="CV facultatif"><Select value={cvId} onChange={(event) => setCvId(event.target.value)}><option value="">Utiliser mon profil</option>{cvs.map((cv) => <option key={cv.id} value={cv.id}>{cv.title}</option>)}</Select></Field>
           <Button disabled={busy} onClick={() => void create()}>Préparer l’entretien</Button>
         </div></Panel>}
-        <Panel title="Mes entretiens"><ul className="space-y-2 p-5">{history.map((item) => <li key={item.id}><Link className="text-teal underline" to={`/candidat/entretiens-blancs/${item.id}`}>{item.status} — {item.id.slice(0, 8)}</Link></li>)}</ul><div className="flex gap-2 p-5"><Button disabled={page <= 1} onClick={() => setPage(page - 1)}>Précédent</Button><Button disabled={!hasNext} onClick={() => setPage(page + 1)}>Suivant</Button></div></Panel>
+        <Panel title="Mes entretiens"><ul className="space-y-2 p-5">{history.map((item) => <li key={item.id}><Link className="text-teal underline" to={`/candidat/entretiens-blancs/${item.id}`}>{item.offer_title} · {MOCK_INTERVIEW_LABEL[item.status] ?? 'Entretien'} · {formatDateTime(item.created_at)}</Link></li>)}</ul><div className="flex gap-2 p-5"><Button disabled={page <= 1} onClick={() => setPage(page - 1)}>Précédent</Button><Button disabled={!hasNext} onClick={() => setPage(page + 1)}>Suivant</Button></div></Panel>
       </> : session ? <>
         {session.availability.simulated && <p role="status" className="rounded-lg bg-amber/10 p-3">Mode simulé : tonalités audio, transcription prédéfinie et vidéos sans lip-sync réel.</p>}
-        <p role="status">État : {display}</p>
-        {['PREPARING', 'THINKING', 'FAILED'].includes(display) && <Panel title="Traitements"><ul className="p-5">{session.jobs.map((job) => <li key={job.id}>{job.stage} : {job.status}{job.error_code && ` (${job.error_code})`}</li>)}</ul></Panel>}
+        <p role="status">État : {MOCK_INTERVIEW_LABEL[display]}</p>
+        {['PREPARING', 'THINKING', 'FAILED'].includes(display) && <Panel title="Traitements"><ul className="p-5">{session.jobs.map((job) => <li key={job.id}>{labelFor(MOCK_JOB_STAGE_LABEL, job.stage)} : {labelFor(MOCK_JOB_STATUS_LABEL, job.status)}{job.error_code && ` (${job.error_code})`}</li>)}</ul></Panel>}
         {display === 'READY' && <Button disabled={busy} onClick={() => void action('start')}>Commencer</Button>}
         {display === 'INTRO' && <AvatarPlayer playback={{ video: session.playback.introduction }} onDone={() => setDisplay('SPEAKING')} />}
         {turn && <Panel title={turn.kind === 'FOLLOWUP' ? 'Relance' : `Question ${turn.position}/3`}><p className="p-5">{turn.question}</p></Panel>}
@@ -102,12 +104,22 @@ export default function MockInterview() {
           <AnswerRecorder key={turn?.id} busy={busy} onSubmit={submit} />
         </>}
         {display === 'FAILED' && <Button disabled={busy} onClick={() => void action('retry')}>Réessayer le traitement</Button>}
-        {session.allowed_actions.includes('cancel') && <Button disabled={busy} onClick={() => void action('cancel')}>Annuler l’entretien</Button>}
+        {session.allowed_actions.includes('cancel') && <Button disabled={busy} onClick={() => setConfirmingCancel(true)}>Annuler l’entretien</Button>}
         {display === 'COMPLETED' && <>
           {session.playback.closing_audio && <AvatarPlayer playback={{ audio: session.playback.closing_audio, avatar: session.playback.neutral_avatar }} />}
           {feedback && <Panel title="Votre retour"><div className="space-y-4 p-5"><p>{feedback.summary}</p>{feedback.questions.map((row, index) => <section key={row.turn_id}><h2 className="font-semibold">Réponse {index + 1}</h2><p>Points forts : {row.strengths.join(' ')}</p><p>À approfondir : {row.gaps.join(' ')}</p>{row.excerpts.map((quote) => <blockquote key={quote}>« {quote} »</blockquote>)}<p>Pour progresser : {row.improvements.join(' ')}</p></section>)}</div></Panel>}
         </>}
       </> : <p role="status">Chargement…</p>}
+      {confirmingCancel && (
+        <ConfirmDialog
+          title="Annuler l’entretien blanc ?"
+          danger
+          onCancel={() => setConfirmingCancel(false)}
+          onConfirm={() => { setConfirmingCancel(false); void action('cancel') }}
+        >
+          L’entretien en cours sera annulé.
+        </ConfirmDialog>
+      )}
     </PageBody>
   </>
 }

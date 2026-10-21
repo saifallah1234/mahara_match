@@ -1,9 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
-import { useStore } from '../state/store'
+import { useAuth } from '../state/auth'
 import { ROLE_HOME, ROLE_LABEL, cx, initials } from '../lib/format'
 import type { RoleCode } from '../lib/types'
-import { ToastStack } from './ui'
 
 /* ------------------------------------------------------------------ */
 /* Marque                                                              */
@@ -109,7 +108,6 @@ export const NAVIGATION: Record<RoleCode, NavItem[]> = {
   ],
   MINISTRY_MANAGER: [
     { to: '/ministere', label: 'Indicateurs', icon: 'stats', end: true },
-    { to: '/ministere/competences', label: 'Compétences', icon: 'referential' },
   ],
   ADMIN: [
     { to: '/admin', label: 'Tableau de bord', icon: 'dashboard', end: true },
@@ -127,14 +125,14 @@ export const NAVIGATION: Record<RoleCode, NavItem[]> = {
 /* ------------------------------------------------------------------ */
 
 export function AppShell() {
-  const { session, signOut, toasts, dismissToast, dataError } = useStore()
+  const { user, workspace, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
 
-  if (!session) return <Navigate to="/connexion" replace state={{ from: location.pathname }} />
+  if (!user || !workspace) return <Navigate to="/connexion" replace state={{ from: location.pathname }} />
 
-  const items = NAVIGATION[session.role]
-  const { user, role } = session
+  const role = workspace.role_code
+  const items = NAVIGATION[role]
 
   return (
     <div className="flex min-h-screen">
@@ -178,18 +176,18 @@ export function AppShell() {
         <div className="border-t border-white/10 px-3 py-3">
           <div className="flex items-center gap-3 px-2 py-1.5">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal text-[12px] font-semibold text-white">
-              {initials(user.firstName, user.lastName)}
+              {initials(user.first_name, user.last_name)}
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[13px] text-white">
-                {user.firstName} {user.lastName}
+                {user.first_name} {user.last_name}
               </span>
               <span className="block truncate text-[11px] text-white/50">{user.email}</span>
             </span>
           </div>
-          {session.user.roles.length > 1 && <Link className="mt-1 block px-3 py-2 text-[13px] text-cyan" to="/espaces">Changer d’espace</Link>}
+          {user.workspaces.length > 1 && <Link className="mt-1 block px-3 py-2 text-[13px] text-cyan" to="/espaces">Changer d’espace</Link>}
           <button
-            onClick={() => void signOut().catch(() => {})}
+            onClick={() => void logout().catch(() => {})}
             className="mt-1 flex w-full items-center gap-3 rounded-[6px] px-3 py-2 text-[13px] text-white/65 transition-colors hover:bg-white/5 hover:text-white"
           >
             <Icon name="logout" />
@@ -220,14 +218,10 @@ export function AppShell() {
           <Wordmark tone="sombre" />
         </header>
 
-        {!location.pathname.startsWith('/candidat/entretiens-blancs') && <div className="border-b border-amber/30 bg-amber/10 px-5 py-2 text-xs text-navy">Les données métier de cet espace restent des données de démonstration. Les actions métier locales ne sont pas enregistrées sur le serveur.</div>}
-        {dataError && <div role="alert" className="border-b border-coral/30 bg-coral/10 px-5 py-2 text-sm text-coral">{dataError}</div>}
         <main className="flex-1">
           <Outlet />
         </main>
       </div>
-
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, Cell, Panel, Row, Select, Table } from '../../components/ui'
+import { Badge, Button, Cell, ConfirmDialog, Panel, Row, Select, Table } from '../../components/ui'
 import { useAdmin } from '../../state/admin'
 import { formatDate } from '../../lib/format'
 
@@ -20,6 +20,7 @@ export default function AdminComptes() {
     return organizations.find((o) => o.id === id)?.legal_name ?? '—'
   }
   const change = (id: string, s: 'ACTIVE' | 'SUSPENDED') => void setUserStatus(id, s).catch(() => {})
+  const [suspending, setSuspending] = useState<(typeof users)[number] | null>(null)
 
   return (
     <>
@@ -45,7 +46,7 @@ export default function AdminComptes() {
                   <Cell className="text-[13px] text-slate">{u.last_login ? formatDate(u.last_login) : 'Jamais'}</Cell>
                   <Cell><Badge tone={TONE[u.status]}>{STATUS[u.status]}</Badge></Cell>
                   <Cell className="text-right">
-                    {u.status === 'ACTIVE' && <Button size="sm" variant="discret" onClick={() => change(u.id, 'SUSPENDED')}>Suspendre</Button>}
+                    {u.status === 'ACTIVE' && <Button size="sm" variant="discret" onClick={() => setSuspending(u)}>Suspendre</Button>}
                     {u.status === 'SUSPENDED' && <Button size="sm" onClick={() => change(u.id, 'ACTIVE')}>Réactiver</Button>}
                   </Cell>
                 </Row>
@@ -53,6 +54,16 @@ export default function AdminComptes() {
             </Table>
           )}
         </Panel>
+        {suspending && (
+          <ConfirmDialog
+            title="Suspendre ce compte ?"
+            danger
+            onCancel={() => setSuspending(null)}
+            onConfirm={() => { change(suspending.id, 'SUSPENDED'); setSuspending(null) }}
+          >
+            Le compte de {suspending.first_name} {suspending.last_name} sera suspendu. Il pourra être réactivé à tout moment.
+          </ConfirmDialog>
+        )}
       </PageBody>
     </>
   )

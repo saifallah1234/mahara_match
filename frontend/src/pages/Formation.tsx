@@ -1,17 +1,14 @@
 import { useState } from 'react'
 import { PageBody, PageHeader } from '../components/layout'
-import { Badge, Button, Cell, EmptyState, Field, Input, Panel, Row, Select, StatTile, Table, Textarea } from '../components/ui'
+import { Badge, Button, Cell, ConfirmDialog, EmptyState, Field, Input, Panel, Row, Select, StatTile, Table, Textarea } from '../components/ui'
 import { useAuth } from '../state/auth'
 import { useTraining } from '../state/training'
-import { formatDate } from '../lib/format'
+import { ENROLLMENT_STATUS_LABEL, PROGRAM_STATUS_LABEL, SESSION_STATUS_LABEL, formatDate, labelFor } from '../lib/format'
 import type { Program, ProgramInput } from '../api/training'
 
 const MODE = { ONLINE: 'En ligne', PRESENTIAL: 'Présentiel', HYBRID: 'Hybride' } as const
 const LEVEL = { BEGINNER: 'Débutant', INTERMEDIATE: 'Intermédiaire', ADVANCED: 'Avancé' } as const
-const PSTATUS = { DRAFT: 'Brouillon', ACTIVE: 'Actif', ARCHIVED: 'Archivé' } as const
-const SSTATUS = { PLANNED: 'Planifiée', ONGOING: 'En cours', COMPLETED: 'Terminée', CANCELLED: 'Annulée' } as const
 const price = (p: Program) => (p.is_free ? 'Gratuit' : `${p.price} TND`)
-const ENROLL = { REGISTERED: 'Inscrit', IN_PROGRESS: 'En cours', COMPLETED: 'Terminé', DROPPED: 'Abandonné' } as const
 
 export function FormationDashboard() {
   const { workspace } = useAuth()
@@ -39,6 +36,7 @@ export function FormationProgrammes() {
   const [open, setOpen] = useState(false)
   const [f, setF] = useState({ title: '', description: '', level: 'BEGINNER', delivery_mode: 'ONLINE', is_free: true, price: '' })
   const orgId = workspace?.organization?.id
+  const [archiving, setArchiving] = useState<Program | null>(null)
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
 
   async function submit(status: Program['status']) {
@@ -82,16 +80,26 @@ export function FormationProgrammes() {
                   <Cell><span className="font-medium text-navy">{p.title}</span><p className="text-[12.5px] text-slate">{LEVEL[p.level]}</p></Cell>
                   <Cell className="text-[13px]">{MODE[p.delivery_mode]}</Cell>
                   <Cell className="text-[13px]">{price(p)}</Cell>
-                  <Cell><Badge tone={p.status === 'ACTIVE' ? 'positif' : 'neutre'}>{PSTATUS[p.status]}</Badge></Cell>
+                  <Cell><Badge tone={p.status === 'ACTIVE' ? 'positif' : 'neutre'}>{labelFor(PROGRAM_STATUS_LABEL, p.status)}</Badge></Cell>
                   <Cell className="text-right">
                     {p.status === 'DRAFT' && <Button size="sm" onClick={() => void setProgramStatus(p.id, 'ACTIVE').catch(() => {})}>Publier</Button>}
-                    {p.status === 'ACTIVE' && <Button size="sm" variant="discret" onClick={() => void setProgramStatus(p.id, 'ARCHIVED').catch(() => {})}>Archiver</Button>}
+                    {p.status === 'ACTIVE' && <Button size="sm" variant="discret" onClick={() => setArchiving(p)}>Archiver</Button>}
                   </Cell>
                 </Row>
               ))}
             </Table>
           )}
         </Panel>
+        {archiving && (
+          <ConfirmDialog
+            title="Archiver ce programme ?"
+            danger
+            onCancel={() => setArchiving(null)}
+            onConfirm={() => { void setProgramStatus(archiving.id, 'ARCHIVED').catch(() => {}); setArchiving(null) }}
+          >
+            Le programme « {archiving.title} » sera archivé et ne sera plus proposé au catalogue.
+          </ConfirmDialog>
+        )}
       </PageBody>
     </>
   )
@@ -101,6 +109,7 @@ export function FormationSessions() {
   const { programs, sessions, enrollments, loading, error, createSession, setSessionStatus } = useTraining()
   const [open, setOpen] = useState(false)
     const [selected, setSelected] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState<(typeof sessions)[number] | null>(null)
   const [f, setF] = useState({ program_id: '', start_date: '', end_date: '', registration_deadline: '', capacity: '20', location_or_url: '' })
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
   const title = (id: string) => programs.find((p) => p.id === id)?.title ?? 'Programme'
@@ -152,15 +161,16 @@ export function FormationSessions() {
                   <Cell><span className="font-medium text-navy">{title(s.program)}</span><p className="text-[12.5px] text-slate">{s.location_or_url}</p></Cell>
                   <Cell className="text-[13px]">{formatDate(s.start_date)} → {formatDate(s.end_date)}</Cell>
                   <Cell className="tnum text-[13px]">
-                    <button className="font-medium text-teal hover:underline" onClick={() => setSelected(selected === s.id ? null : s.id)}>
+                    <Button size="sm" variant="discret" className="font-medium text-teal" onClick={() => setSelected(selected === s.id ? null : s.id)}>
                       {enrollments.filter((e) => e.session === s.id).length} / {s.capacity}
-                    </button>
-                  </Cell>                  <Cell><Badge tone={s.status === 'CANCELLED' ? 'negatif' : s.status === 'COMPLETED' ? 'neutre' : 'positif'}>{SSTATUS[s.status]}</Badge></Cell>
+                    </Button>
+                  </Cell>
+                  <Cell><Badge tone={s.status === 'CANCELLED' ? 'negatif' : s.status === 'COMPLETED' ? 'neutre' : 'positif'}>{labelFor(SESSION_STATUS_LABEL, s.status)}</Badge></Cell>
                   <Cell className="text-right">
                     {s.status === 'PLANNED' && (
                       <>
                         <Button size="sm" onClick={() => void setSessionStatus(s.id, 'ONGOING').catch(() => {})}>Démarrer</Button>{' '}
-                        <Button size="sm" variant="discret" onClick={() => void setSessionStatus(s.id, 'CANCELLED').catch(() => {})}>Annuler</Button>
+                        <Button size="sm" variant="discret" onClick={() => setCancelling(s)}>Annuler</Button>
                       </>
                     )}
                     {s.status === 'ONGOING' && <Button size="sm" onClick={() => void setSessionStatus(s.id, 'COMPLETED').catch(() => {})}>Terminer</Button>}
@@ -169,26 +179,37 @@ export function FormationSessions() {
               ))}
             </Table>
           )}
-        </Panel>*        {selected && (
+        </Panel>
+        {selected && (
           <Panel title={`Inscrits — ${title(sessions.find((s) => s.id === selected)?.program ?? '')}`}>
             {enrollments.filter((e) => e.session === selected).length === 0 ? (
-              <p className="px-5 py-4 text-[13.5px] text-slate">Aucune inscription pour cette session.</p>
+              <EmptyState title="Aucune inscription pour cette session." />
             ) : (
               <ul className="divide-y divide-line/70">
                 {enrollments.filter((e) => e.session === selected).map((e) => (
                   <li key={e.id} className="flex items-center justify-between gap-3 px-5 py-3">
                     <span className="text-[13.5px] text-navy">
-                      Candidat {e.candidate_id.slice(0, 8)} · inscrit le {formatDate(e.enrolled_at)}
+                      {e.candidate_first_name} {e.candidate_last_name} · inscrit le {formatDate(e.enrolled_at)}
                     </span>
                     <span className="flex items-center gap-3">
                       {e.completion_rate !== null && <span className="tnum text-[12.5px] text-slate">{e.completion_rate} %</span>}
-                      <Badge tone={e.status === 'COMPLETED' ? 'positif' : e.status === 'DROPPED' ? 'negatif' : 'neutre'}>{ENROLL[e.status]}</Badge>
+                      <Badge tone={e.status === 'COMPLETED' ? 'positif' : e.status === 'DROPPED' ? 'negatif' : 'neutre'}>{labelFor(ENROLLMENT_STATUS_LABEL, e.status)}</Badge>
                     </span>
                   </li>
                 ))}
               </ul>
             )}
           </Panel>
+        )}
+        {cancelling && (
+          <ConfirmDialog
+            title="Annuler cette session ?"
+            danger
+            onCancel={() => setCancelling(null)}
+            onConfirm={() => { void setSessionStatus(cancelling.id, 'CANCELLED').catch(() => {}); setCancelling(null) }}
+          >
+            La session du {formatDate(cancelling.start_date)} au {formatDate(cancelling.end_date)} sera annulée.
+          </ConfirmDialog>
         )}
       </PageBody>
     </>

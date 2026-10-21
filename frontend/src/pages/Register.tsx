@@ -25,10 +25,7 @@ export default function Register() {
       setResult(response.status)
     } catch (failure) {
       if (failure instanceof ApiError) {
-        const firstDetail = failure.details && typeof failure.details === 'object'
-          ? Object.values(failure.details)[0] : null
-        setError(Array.isArray(firstDetail) && typeof firstDetail[0] === 'string'
-          ? firstDetail[0] : failure.message)
+        setError(failure.message)
       } else setError('Inscription impossible. Réessayez.')
     } finally { setBusy(false) }
   }

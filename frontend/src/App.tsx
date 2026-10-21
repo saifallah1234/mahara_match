@@ -1,8 +1,8 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/layout'
+import { Button } from './components/ui'
 import { ProtectedRoute, RoleRoute } from './components/authRoutes'
 import { AuthProvider } from './state/auth'
-import { StoreProvider } from './state/store'
 import { CandidateProvider, useCandidate } from './state/candidate'
 import { RecruiterProvider } from './state/recruiter'
 import { TrainingProvider } from './state/training'
@@ -45,7 +45,7 @@ import MinistereCompetences from './pages/ministere/Competences'
 
 export default function App() {
   return (
-    <AuthProvider><StoreProvider>
+    <AuthProvider>
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/connexion" element={<SignIn />} />
@@ -116,7 +116,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </StoreProvider></AuthProvider >
+    </AuthProvider>
   )
 }
 
@@ -128,8 +128,8 @@ function CandidateWorkspaceContent() {
   const { loading, error, message, profile, clearMessage, reload } = useCandidate()
   return <>
     {loading && <div role="status" className="mx-auto max-w-5xl p-5">Chargement de votre espace…</div>}
-    {error && <div role="alert" className="mx-auto max-w-5xl p-5 text-coral">{error} <button className="underline" onClick={() => void reload()}>Réessayer</button></div>}
-    {message && <div role="status" className="mx-auto max-w-5xl p-5 text-teal">{message} <button className="underline" onClick={clearMessage}>Fermer</button></div>}
+    {error && <div role="alert" className="mx-auto max-w-5xl p-5 text-coral">{error} <Button size="sm" variant="secondaire" onClick={() => void reload()}>Réessayer</Button></div>}
+    {message && <div role="status" className="mx-auto max-w-5xl p-5 text-teal">{message} <Button size="sm" variant="discret" onClick={clearMessage}>Fermer</Button></div>}
     {(profile || (!loading && !error)) && <Outlet />}
   </>
 }

@@ -1,16 +1,17 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, Cell, EmptyState, Panel, Row, Table } from '../../components/ui'
+import { Badge, Button, Cell, ConfirmDialog, EmptyState, Panel, Row, Table } from '../../components/ui'
 import { useRecruiter } from '../../state/recruiter'
-import { formatDate } from '../../lib/format'
+import { OFFER_STATUS_LABEL, contractLabel, formatDate } from '../../lib/format'
 import type { RecruiterOffer } from '../../api/recruiter'
 
 const TONE = { PUBLISHED: 'positif', DRAFT: 'neutre', PAUSED: 'attention', CLOSED: 'negatif', ARCHIVED: 'neutre' } as const
-const LABEL = { PUBLISHED: 'Publiée', DRAFT: 'Brouillon', PAUSED: 'En pause', CLOSED: 'Clôturée', ARCHIVED: 'Archivée' } as const
 
 export default function RecruteurOffres() {
   const { offers, applications, loading, error, setOfferStatus } = useRecruiter()
   const act = (o: RecruiterOffer, s: RecruiterOffer['status']) => void setOfferStatus(o.id, s).catch(() => {})
+  const [closing, setClosing] = useState<RecruiterOffer | null>(null)
 
   return (
     <>
@@ -36,27 +37,37 @@ export default function RecruteurOffres() {
                 <Row key={o.id}>
                   <Cell>
                     <Link to={`/recruteur/offres/${o.id}`} className="font-medium text-navy hover:text-teal">{o.title}</Link>
-                    <p className="text-[12.5px] text-slate">{o.contract_type} · {o.city || o.governorate}</p>
+                    <p className="text-[12.5px] text-slate">{contractLabel(o.contract_type)} · {o.city || o.governorate}</p>
                   </Cell>
                   <Cell className="text-[13px] text-slate">{o.organization_name}</Cell>
                   <Cell className="tnum text-[13px] text-navy">
                     {applications.filter((a) => a.offer_id === o.id).length}
                   </Cell>
                   <Cell>
-                    <Badge tone={TONE[o.status]}>{LABEL[o.status]}</Badge>
+                    <Badge tone={TONE[o.status]}>{OFFER_STATUS_LABEL[o.status]}</Badge>
                     {o.application_deadline && o.status === 'PUBLISHED' && (
                       <p className="mt-0.5 text-[12px] text-slate">clôture {formatDate(o.application_deadline)}</p>
                     )}
                   </Cell>
                   <Cell className="text-right">
                     {o.status === 'DRAFT' && <Button size="sm" onClick={() => act(o, 'PUBLISHED')}>Publier</Button>}
-                    {o.status === 'PUBLISHED' && <Button size="sm" variant="discret" onClick={() => act(o, 'CLOSED')}>Clôturer</Button>}
+                    {o.status === 'PUBLISHED' && <Button size="sm" variant="discret" onClick={() => setClosing(o)}>Clôturer</Button>}
                   </Cell>
                 </Row>
               ))}
             </Table>
           )}
         </Panel>
+        {closing && (
+          <ConfirmDialog
+            title="Clôturer cette offre ?"
+            danger
+            onCancel={() => setClosing(null)}
+            onConfirm={() => { act(closing, 'CLOSED'); setClosing(null) }}
+          >
+            L’offre « {closing.title} » ne sera plus ouverte aux candidatures.
+          </ConfirmDialog>
+        )}
       </PageBody>
     </>
   )

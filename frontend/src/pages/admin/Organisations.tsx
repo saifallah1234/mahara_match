@@ -1,5 +1,6 @@
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, Cell, Panel, Row, Table } from '../../components/ui'
+import { useState } from 'react'
+import { Badge, Button, Cell, ConfirmDialog, Panel, Row, Table } from '../../components/ui'
 import { useAdmin } from '../../state/admin'
 
 const TYPE: Record<string, string> = {
@@ -10,6 +11,7 @@ const TONE = { PENDING: 'attention', VERIFIED: 'positif', REJECTED: 'negatif' } 
 
 export default function AdminOrganisations() {
   const { organizations, loading, error, verify, reject } = useAdmin()
+  const [rejecting, setRejecting] = useState<(typeof organizations)[number] | null>(null)
   return (
     <>
       <PageHeader title="Organisations" />
@@ -27,13 +29,23 @@ export default function AdminOrganisations() {
                   <Cell><Badge tone={TONE[o.verification_status]}>{STATUS[o.verification_status]}</Badge></Cell>
                   <Cell className="text-right">
                     {o.verification_status !== 'VERIFIED' && <Button size="sm" onClick={() => void verify(o.id).catch(() => {})}>Vérifier</Button>}{' '}
-                    {o.verification_status === 'PENDING' && <Button size="sm" variant="danger" onClick={() => void reject(o.id).catch(() => {})}>Rejeter</Button>}
+                    {o.verification_status === 'PENDING' && <Button size="sm" variant="danger" onClick={() => setRejecting(o)}>Rejeter</Button>}
                   </Cell>
                 </Row>
               ))}
             </Table>
           )}
         </Panel>
+        {rejecting && (
+          <ConfirmDialog
+            title="Rejeter cette organisation ?"
+            danger
+            onCancel={() => setRejecting(null)}
+            onConfirm={() => { void reject(rejecting.id).catch(() => {}); setRejecting(null) }}
+          >
+            L’organisation {rejecting.legal_name} sera marquée comme rejetée.
+          </ConfirmDialog>
+        )}
       </PageBody>
     </>
   )
