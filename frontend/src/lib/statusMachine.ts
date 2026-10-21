@@ -103,6 +103,12 @@ export function isTerminal(status: ApplicationStatus): boolean {
 }
 
 /** Position dans le cycle nominal, utilisée par la frise de suivi. */
+/** Stages after the current one on the flow; a recruiter may skip optional ones. */
+export function laterStages(status: ApplicationStatus): ApplicationStatus[] {
+  const index = flowIndex(status)
+  return index < 0 ? [] : APPLICATION_FLOW.slice(index + 1)
+}
+
 export function flowIndex(status: ApplicationStatus): number {
   const index = APPLICATION_FLOW.indexOf(status)
   if (index >= 0) return index

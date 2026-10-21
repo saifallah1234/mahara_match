@@ -3,7 +3,6 @@ import type {
   LanguageLevel,
   OfferStatus,
   RoleCode,
-  SkillLevel,
   WorkMode,
 } from './types'
 
@@ -56,10 +55,11 @@ export const WORK_MODE_LABEL: Record<WorkMode, string> = {
   REMOTE: 'À distance',
 }
 
-export const SKILL_LEVEL_LABEL: Record<SkillLevel, string> = {
-  DEBUTANT: 'Débutant',
-  INTERMEDIAIRE: 'Intermédiaire',
-  AVANCE: 'Avancé',
+// Backend codes (candidates.SkillLevel); the frontend's French SkillLevel type is not what the API sends.
+export const SKILL_LEVEL_LABEL: Record<string, string> = {
+  BEGINNER: 'Débutant',
+  INTERMEDIATE: 'Intermédiaire',
+  ADVANCED: 'Avancé',
   EXPERT: 'Expert',
 }
 
@@ -251,6 +251,22 @@ export function formatDate(iso?: string): string {
 export function formatDateTime(iso?: string): string {
   if (!iso) return 'Non renseigné'
   return dateTimeFormatter.format(new Date(iso))
+}
+
+const tunisDateTimeFormatter = new Intl.DateTimeFormat('fr-TN', {
+  timeZone: 'Africa/Tunis',
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZoneName: 'short',
+})
+
+/** Interview times are shown on the Tunis clock, with its zone label, whatever the viewer's zone. */
+export function formatTunisDateTime(iso?: string): string {
+  if (!iso) return 'Non renseigné'
+  return tunisDateTimeFormatter.format(new Date(iso))
 }
 
 export function formatMonthYear(iso?: string): string {

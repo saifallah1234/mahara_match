@@ -1,21 +1,23 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
 import { Badge, Button, ConfirmDialog, EmptyState, Field, Input, Panel, Select } from '../../components/ui'
 import { useRecruiter } from '../../state/recruiter'
 import { candidateLabel, type RecruiterInterview } from '../../api/recruiter'
-import { INTERVIEW_STATUS_LABEL, INTERVIEW_TYPE_LABEL, formatDateTime, labelFor } from '../../lib/format'
+import { INTERVIEW_STATUS_LABEL, INTERVIEW_TYPE_LABEL, formatTunisDateTime, labelFor } from '../../lib/format'
 
 const STATUS_TONE = { SCHEDULED: 'encours', COMPLETED: 'positif', CANCELLED: 'negatif' } as const
-const ACTIVE = ['SUBMITTED', 'UNDER_REVIEW', 'PRESELECTED', 'INTERVIEW']
 
 export default function RecruteurEntretiens() {
   const { interviews, applications, error, scheduleInterview, setInterviewStatus } = useRecruiter()
   const [form, setForm] = useState({ application_id: '', type: 'VIDEO', scheduled_at: '', duration_minutes: '45', location_or_url: '' })
   const [busy, setBusy] = useState(false)
   const [cancelling, setCancelling] = useState<RecruiterInterview | null>(null)
+  const [completing, setCompleting] = useState<RecruiterInterview | null>(null)
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
 
-  const candidates = applications.filter((a) => ACTIVE.includes(a.status))
+  // The backend refuses an interview unless the application is already at INTERVIEW.
+  const candidates = applications.filter((a) => a.status === 'INTERVIEW')
   const sorted = [...interviews].sort((a, b) => +new Date(a.scheduled_at) - +new Date(b.scheduled_at))
   const upcoming = sorted.filter((i) => i.status === 'SCHEDULED')
   const past = sorted.filter((i) => i.status !== 'SCHEDULED')
@@ -44,15 +46,16 @@ export default function RecruteurEntretiens() {
           <div>
             <p className="text-[14px] font-medium text-navy">{who(i)}</p>
             <p className="text-[12.5px] text-slate">
-              {formatDateTime(i.scheduled_at)} · {i.duration_minutes} min · {labelFor(INTERVIEW_TYPE_LABEL, i.type)}
+              {formatTunisDateTime(i.scheduled_at)} · {i.duration_minutes} min · {labelFor(INTERVIEW_TYPE_LABEL, i.type)}
               {i.location_or_url && ` · ${i.location_or_url}`}
             </p>
+            {i.feedback && <p className="mt-1 text-[12.5px] text-navy">{i.feedback}</p>}
           </div>
           <div className="flex items-center gap-2">
             <Badge tone={STATUS_TONE[i.status]}>{labelFor(INTERVIEW_STATUS_LABEL, i.status)}</Badge>
             {actions && (
               <>
-                <Button size="sm" onClick={() => void setInterviewStatus(i.id, 'COMPLETED').catch(() => {})}>Réalisé</Button>
+                <Button size="sm" onClick={() => setCompleting(i)}>Réalisé</Button>
                 <Button size="sm" variant="discret" onClick={() => setCancelling(i)}>Annuler</Button>
               </>
             )}
@@ -77,6 +80,9 @@ export default function RecruteurEntretiens() {
                   {candidates.map((a) => <option key={a.id} value={a.id}>{candidateLabel(a)} — {a.offer_title}</option>)}
                 </Select>
               </Field>
+              <p className="mt-1.5 text-[12.5px] text-slate">
+                Seules les candidatures au statut Entretien apparaissent ici. Faites avancer la candidature depuis le <Link to="/recruteur/candidatures" className="text-teal hover:underline">Suivi des candidatures</Link>.
+              </p>
             </div>
             <Field label="Type">
               <Select value={form.type} onChange={set('type')}>
@@ -96,6 +102,16 @@ export default function RecruteurEntretiens() {
           {upcoming.length === 0 ? <EmptyState title="Aucun entretien planifié" /> : list(upcoming, true)}
         </Panel>
         {past.length > 0 && <Panel title="Historique">{list(past, false)}</Panel>}
+        {completing && (
+          <ConfirmDialog
+            title="Marquer cet entretien comme réalisé ?"
+            reasonLabel="Compte rendu (facultatif)"
+            onCancel={() => setCompleting(null)}
+            onConfirm={(feedback) => { void setInterviewStatus(completing.id, 'COMPLETED', feedback || undefined).catch(() => {}); setCompleting(null) }}
+          >
+            L’entretien avec {who(completing)} sera enregistré comme réalisé.
+          </ConfirmDialog>
+        )}
         {cancelling && (
           <ConfirmDialog
             title="Annuler cet entretien ?"

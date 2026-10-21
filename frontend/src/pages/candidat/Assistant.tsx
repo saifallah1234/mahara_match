@@ -1,5 +1,5 @@
 import { AssistantWorkspace } from '../../components/assistant'
 
 export default function CandidatAssistant() {
-  return <AssistantWorkspace basePath="/candidat/assistant" />
+  return <AssistantWorkspace basePath="/candidat/assistant" role="CANDIDATE" />
 }

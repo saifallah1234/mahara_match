@@ -38,7 +38,7 @@ export default function RecruteurDashboard() {
           <Panel
             title="Dossiers à examiner"
             description="Les candidatures en attente d’une première lecture."
-            action={<Link to="/recruteur/candidatures" className="text-[13px] font-medium text-teal hover:underline">Ouvrir le pipeline</Link>}
+            action={<Link to="/recruteur/candidatures" className="text-[13px] font-medium text-teal hover:underline">Ouvrir le suivi des candidatures</Link>}
           >
             {toReview.length === 0 ? (
               <EmptyState title="Aucun dossier en attente">

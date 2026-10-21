@@ -1,3 +1,7 @@
+import { Link } from 'react-router-dom'
+import { citationPath } from '../lib/citations'
+import type { RoleCode } from '../lib/types'
+
 /* ------------------------------------------------------------------ */
 /* Pastille de score                                                   */
 /* ------------------------------------------------------------------ */
@@ -52,16 +56,20 @@ export function ScoreDial({ score, available, size = 56 }: { score: number; avai
 /* Mention de source                                                   */
 /* ------------------------------------------------------------------ */
 
-export function Citations({ items }: { items: Array<{ label: string; reference: string }> }) {
+export function Citations({ items, role }: { items: Array<{ label: string; reference: string }>; role: RoleCode }) {
   if (items.length === 0) return null
   return (
     <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-slate">
       <span className="font-medium text-navy">Sources</span>
-      {items.map((c) => (
-        <span key={c.reference}>
-          {c.label} <span className="text-slate/70">{c.reference}</span>
-        </span>
-      ))}
+      {items.map((c) => {
+        const to = citationPath(c.reference, role)
+        return (
+          <span key={c.reference}>
+            {to ? <Link to={to} className="text-teal hover:underline">{c.label}</Link> : c.label}{' '}
+            <span className="text-slate/70">{c.reference}</span>
+          </span>
+        )
+      })}
     </p>
   )
 }

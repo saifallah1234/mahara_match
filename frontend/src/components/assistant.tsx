@@ -8,8 +8,13 @@ import * as api from '../api/assistant'
 import { sortByActivity } from '../lib/assistantConversations'
 import { formatDate } from '../lib/format'
 
+const EMPTY_HINT: Record<'CANDIDATE' | 'RECRUITER', string> = {
+  CANDIDATE: 'Posez une question sur les offres, votre profil ou les formations.',
+  RECRUITER: 'Demandez par exemple « candidats pour <offre> » ou une recherche libre de profils.',
+}
+
 /** Assistant chat with its conversation list. basePath is the route prefix; the selected conversation id is the last segment. */
-export function AssistantWorkspace({ basePath }: { basePath: string }) {
+export function AssistantWorkspace({ basePath, role }: { basePath: string; role: 'CANDIDATE' | 'RECRUITER' }) {
   const { conversationId } = useParams()
   const navigate = useNavigate()
   const [conversations, setConversations] = useState<api.Conversation[]>([])
@@ -97,7 +102,7 @@ export function AssistantWorkspace({ basePath }: { basePath: string }) {
             <Panel>
               <div className="max-h-[60vh] min-h-64 space-y-3 overflow-y-auto p-5">
                 {messages.length === 0 && !thinking && (
-                  <p className="text-[13.5px] text-slate">Posez une question sur les offres, votre profil ou les formations.</p>
+                  <p className="text-[13.5px] text-slate">{EMPTY_HINT[role]}</p>
                 )}
                 {messages.map((m) => {
                   const mine = m.sender_type === 'USER'
@@ -105,7 +110,7 @@ export function AssistantWorkspace({ basePath }: { basePath: string }) {
                     <div key={m.id} className={mine ? 'flex justify-end' : 'flex justify-start'}>
                       <div className={`max-w-[80%] rounded-[10px] px-4 py-2.5 text-[14px] ${mine ? 'bg-navy text-white' : 'bg-mist text-navy'}`}>
                         <p className="whitespace-pre-line">{m.content}</p>
-                        {!mine && Array.isArray(m.citations_json) && <Citations items={m.citations_json} />}
+                        {!mine && Array.isArray(m.citations_json) && <Citations items={m.citations_json} role={role} />}
                       </div>
                     </div>
                   )

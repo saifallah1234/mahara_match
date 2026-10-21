@@ -1,18 +1,27 @@
-import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
 import { Badge, Button, ConfirmDialog, EmptyState, Panel } from '../../components/ui'
 import { useRecruiter } from '../../state/recruiter'
-import { candidateLabel } from '../../api/recruiter'
+import { candidateLabel, listOfferSkills, type OfferSkill } from '../../api/recruiter'
 import { OFFER_STATUS_LABEL, WORK_MODE_LABEL, contractLabel, experienceLabel, formatDate, labelFor } from '../../lib/format'
 import { STATUS_LABEL } from '../../lib/statusMachine'
+import { offerActions, type OfferAction } from '../../lib/offerLifecycle'
 import type { WorkMode } from '../../lib/types'
 
 export default function RecruteurOffreDetail() {
   const { offerId } = useParams()
-  const { offers, applications, loading, error, setOfferStatus } = useRecruiter()
+  const { offers, applications, skills, loading, error, setOfferStatus } = useRecruiter()
+  const [pending, setPending] = useState<OfferAction | null>(null)
+  const [offerSkills, setOfferSkills] = useState<OfferSkill[]>([])
   const offer = offers.find((o) => o.id === offerId)
-  const [closing, setClosing] = useState(false)
+
+  useEffect(() => {
+    if (!offerId) return
+    let live = true
+    listOfferSkills(offerId).then((rows) => { if (live) setOfferSkills(rows) }).catch(() => {})
+    return () => { live = false }
+  }, [offerId])
 
   if (loading && !offer) return <PageBody><p className="text-slate">Chargement…</p></PageBody>
   if (!offer) {
@@ -27,6 +36,7 @@ export default function RecruteurOffreDetail() {
   const salary = offer.min_salary || offer.max_salary
     ? `${offer.min_salary ?? '…'} – ${offer.max_salary ?? '…'} TND`
     : 'Non renseigné'
+  const skillName = (id: string) => skills.find((s) => s.id === id)?.canonical_name ?? 'Compétence'
 
   return (
     <>
@@ -37,14 +47,18 @@ export default function RecruteurOffreDetail() {
         action={
           <>
             <Badge tone={offer.status === 'PUBLISHED' ? 'positif' : 'neutre'}>{OFFER_STATUS_LABEL[offer.status]}</Badge>
-            {offer.status === 'DRAFT' && (
-              <Button onClick={() => void setOfferStatus(offer.id, 'PUBLISHED').catch(() => {})}>Publier</Button>
+            {offer.status !== 'ARCHIVED' && (
+              <Link to={`/recruteur/offres/${offer.id}/modifier`}><Button variant="secondaire">Modifier</Button></Link>
             )}
-            {offer.status === 'PUBLISHED' && (
-              <Button variant="secondaire" onClick={() => setClosing(true)}>
-                Clôturer l’offre
+            {offerActions(offer.status).map((action) => (
+              <Button
+                key={action.to}
+                variant={action.confirm ? 'secondaire' : 'primaire'}
+                onClick={() => (action.confirm ? setPending(action) : void setOfferStatus(offer.id, action.to).catch(() => {}))}
+              >
+                {action.label}
               </Button>
-            )}
+            ))}
           </>
         }
       />
@@ -66,7 +80,25 @@ export default function RecruteurOffreDetail() {
           </Panel>
         </div>
 
-        <Panel title={`Candidatures reçues (${received.length})`}>
+        <Panel title={`Compétences (${offerSkills.length})`}>
+          {offerSkills.length === 0 ? (
+            <EmptyState title="Aucune compétence." />
+          ) : (
+            <ul className="divide-y divide-line/70">
+              {offerSkills.map((s) => (
+                <li key={s.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                  <span className="text-[13.5px] text-navy">{skillName(s.skill_id)}</span>
+                  <Badge tone={s.is_mandatory ? 'attention' : 'neutre'}>{s.is_mandatory ? 'Obligatoire' : 'Souhaitée'}</Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel
+          title={`Candidatures reçues (${received.length})`}
+          action={<Link to={`/recruteur/candidatures?offer=${offer.id}`} className="text-[13px] font-medium text-teal hover:underline">Voir le suivi</Link>}
+        >
           {received.length === 0 ? (
             <EmptyState title="Aucune candidature pour cette offre." />
           ) : (
@@ -80,14 +112,14 @@ export default function RecruteurOffreDetail() {
             </ul>
           )}
         </Panel>
-        {closing && (
+        {pending && (
           <ConfirmDialog
-            title="Clôturer cette offre ?"
-            danger
-            onCancel={() => setClosing(false)}
-            onConfirm={() => { void setOfferStatus(offer.id, 'CLOSED').catch(() => {}); setClosing(false) }}
+            title={`${pending.label} ?`}
+            danger={pending.to === 'CLOSED' || pending.to === 'ARCHIVED'}
+            onCancel={() => setPending(null)}
+            onConfirm={() => { void setOfferStatus(offer.id, pending.to).catch(() => {}); setPending(null) }}
           >
-            L’offre « {offer.title} » ne sera plus ouverte aux candidatures.
+            L’offre « {offer.title} » passera au statut « {OFFER_STATUS_LABEL[pending.to]} ».
           </ConfirmDialog>
         )}
       </PageBody>

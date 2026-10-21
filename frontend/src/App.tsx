@@ -38,6 +38,9 @@ import RecruteurNouvelleOffre from './pages/recruteur/NouvelleOffre'
 import RecruteurOffreDetail from './pages/recruteur/OffreDetail'
 import RecruteurCandidatures from './pages/recruteur/Candidatures'
 import RecruteurEntretiens from './pages/recruteur/Entretiens'
+import RecruteurCandidats from './pages/recruteur/Candidats'
+import RecruteurCandidatDetail from './pages/recruteur/CandidatDetail'
+import RecruteurAssistant from './pages/recruteur/Assistant'
 
 import { FormationDashboard, FormationOrganisme, FormationProgrammes, FormationSessions } from './pages/Formation'
 import MinistereIndicateurs from './pages/ministere/Indicateurs'
@@ -80,8 +83,13 @@ export default function App() {
                 <Route path="/recruteur/offres" element={<RecruteurOffres />} />
                 <Route path="/recruteur/offres/nouvelle" element={<RecruteurNouvelleOffre />} />
                 <Route path="/recruteur/offres/:offerId" element={<RecruteurOffreDetail />} />
+                <Route path="/recruteur/offres/:offerId/modifier" element={<RecruteurNouvelleOffre />} />
                 <Route path="/recruteur/candidatures" element={<RecruteurCandidatures />} />
                 <Route path="/recruteur/entretiens" element={<RecruteurEntretiens />} />
+                <Route path="/recruteur/candidats" element={<RecruteurCandidats />} />
+                <Route path="/recruteur/candidats/:candidateId" element={<RecruteurCandidatDetail />} />
+                <Route path="/recruteur/assistant" element={<RecruteurAssistant />} />
+                <Route path="/recruteur/assistant/:conversationId" element={<RecruteurAssistant />} />
               </Route>
             </Route>
             {/* Espace organisme de formation */}

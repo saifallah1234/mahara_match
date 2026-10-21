@@ -6,6 +6,7 @@ import {
   apiErrorMessage,
   contractLabel,
   experienceLabel,
+  formatTunisDateTime,
 } from '../src/lib/format.ts'
 
 test('one shared contract list is offered by the form and the filter', () => {
@@ -39,4 +40,8 @@ test('known API errors are translated and unknown ones keep the original text', 
 
 test('field names without a French label fall back to a generic French label', () => {
   assert.match(apiErrorMessage('validation_error', 'Request validation failed.', { mystery_field: ['Odd.'] }), /^Champ : /)
+})
+
+test('interview times show the Tunis wall clock with its zone label', () => {
+  assert.equal(formatTunisDateTime('2026-10-24T09:00:00Z'), '24 oct. 2026, 10:00 AM UTC+1')
 })

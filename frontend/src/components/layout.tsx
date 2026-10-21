@@ -98,8 +98,10 @@ export const NAVIGATION: Record<RoleCode, NavItem[]> = {
     { to: '/recruteur', label: 'Tableau de bord', icon: 'dashboard', end: true },
     { to: '/recruteur/entreprise', label: 'Mon entreprise', icon: 'company' },
     { to: '/recruteur/offres', label: 'Mes offres', icon: 'offers' },
-    { to: '/recruteur/candidatures', label: 'Candidatures', icon: 'applications' },
+    { to: '/recruteur/candidatures', label: 'Suivi des candidatures', icon: 'applications' },
     { to: '/recruteur/entretiens', label: 'Entretiens', icon: 'interview' },
+    { to: '/recruteur/candidats', label: 'Candidats', icon: 'people' },
+    { to: '/recruteur/assistant', label: 'Assistant', icon: 'assistant' },
   ],
   TRAINING_MANAGER: [
     { to: '/formation', label: 'Tableau de bord', icon: 'dashboard', end: true },
