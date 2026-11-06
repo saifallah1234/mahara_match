@@ -3,6 +3,7 @@
 
 from collections.abc import Iterator
 from hashlib import sha256
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -246,3 +247,142 @@ def test_analysis_is_stored_degraded_when_the_model_fails(storage, chat) -> None
     second = analyse(client, cv.id)
     assert second.json()["breakdown_json"]["parse_degraded"] is False
     assert len(chat.calls) == 1 + 3  # the first transport error stops further calls
+
+
+@pytest.fixture
+def embeddings_down() -> Iterator[None]:
+    with patch(
+        "backend.apps.candidates.services.cv_review.embed", side_effect=ConnectionError("down")
+    ):
+        yield
+
+
+def first_bullet(body) -> tuple[str, str]:
+    entries = body["breakdown_json"]["structure"]["entries"]
+    key = next(name for name in ("experience", "projects") if entries.get(name))
+    return f"{key}.0.0", entries[key][0]["bullets"][0]
+
+
+def test_rewrite_then_accept_edit_reject_and_confirm_a_missing_skill(
+    storage, chat, embeddings_down
+) -> None:
+    user, profile = candidate()
+    profile_before = model_to_dict(profile)
+    client = client_for(user)
+    cv = stored_cv(user, profile, render("de_good_pdf"), storage)
+    body = analyse(client, cv.id).json()
+    detail = body["id"]
+    key, original = first_bullet(body)
+    first_word = original.split()[0]
+    rest = original[len(first_word) :]
+    chat.reply = lambda messages: SimpleNamespace(content=f"Built{rest} [X]")
+
+    rewrite = client.post(
+        reverse("cv-analysis-result-rewrite", args=(detail,)), {"bullet": key}, format="json"
+    )
+    assert rewrite.status_code == 200
+    assert rewrite.json()["source"] == "model" and rewrite.json()["original"] == original
+    proposed = rewrite.json()["text"]
+    assert proposed.endswith("[X]")
+    assert (
+        client.get(reverse("cv-analysis-result-detail", args=(detail,))).json()["cv_draft_json"]
+        == {}
+    )  # nothing stored until accepted
+
+    draft_url = reverse("cv-analysis-result-draft", args=(detail,))
+    accepted = client.patch(
+        draft_url, {"bullet": key, "decision": "accept", "text": proposed}, format="json"
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["cv_draft_json"]["bullets"][key] == {
+        "original": original,
+        "decision": "accept",
+        "text": proposed,
+    }
+    edited_text = proposed.replace("[X]", "for 4 teams")
+    edited = client.patch(
+        draft_url, {"bullet": key, "decision": "accept", "text": edited_text}, format="json"
+    )
+    assert edited.json()["cv_draft_json"]["bullets"][key]["text"] == edited_text
+    rejected = client.patch(draft_url, {"bullet": key, "decision": "reject"}, format="json")
+    assert rejected.json()["cv_draft_json"]["bullets"][key] == {
+        "original": original,
+        "decision": "reject",
+        "text": original,
+    }
+
+    known = next(row["name"] for row in body["breakdown_json"]["skills"] if row["evidence"])
+    known_skill = client.patch(draft_url, {"skill": known, "has_experience": True}, format="json")
+    assert known_skill.status_code == 400  # only missing core skills are asked about
+
+    text = "Data Engineer building pipelines."
+    summary = client.patch(draft_url, {"summary": text}, format="json")
+    assert summary.json()["cv_draft_json"]["summary"] == text
+    unknown = {"bullet": "experience.9.9", "decision": "reject"}
+    assert client.patch(draft_url, unknown, format="json").status_code == 400
+    assert client.patch(draft_url, {}, format="json").status_code == 400
+
+    profile.refresh_from_db()
+    assert model_to_dict(profile) == profile_before
+    assert not profile.skills.exists() and not profile.experiences.exists()
+
+
+def test_missing_core_skill_question_enters_the_draft_only_after_yes(storage) -> None:
+    user, profile = candidate()
+    client = client_for(user)
+    cv = stored_cv(user, profile, render("se_good_pdf"), storage)
+    body = analyse(client, cv.id, "data_engineer").json()
+    missing = [
+        row["name"]
+        for row in body["breakdown_json"]["skills"]
+        if row["tier"] == "core" and not row["evidence"]
+    ]
+    assert missing
+    draft_url = reverse("cv-analysis-result-draft", args=(body["id"],))
+    no = client.patch(draft_url, {"skill": missing[0], "has_experience": False}, format="json")
+    assert no.status_code == 200
+    assert no.json()["cv_draft_json"]["confirmed_skills"] == []
+    yes = client.patch(draft_url, {"skill": missing[0], "has_experience": True}, format="json")
+    assert yes.json()["cv_draft_json"]["confirmed_skills"] == [missing[0]]
+    assert not profile.skills.exists()
+
+
+def test_rewrite_falls_back_to_the_rule_when_the_model_is_down(storage, embeddings_down) -> None:
+    user, profile = candidate()
+    client = client_for(user)
+    cv = stored_cv(user, profile, render("de_good_pdf"), storage)
+    body = analyse(client, cv.id).json()
+    key, _ = first_bullet(body)
+    response = client.post(
+        reverse("cv-analysis-result-rewrite", args=(body["id"],)), {"bullet": key}, format="json"
+    )
+    assert response.status_code == 200
+    assert response.json()["source"] == "rule" and response.json()["suggestion"]
+    summary = client.post(reverse("cv-analysis-result-summary", args=(body["id"],)))
+    assert summary.status_code == 200 and summary.json()["source"] == "rule"
+
+
+def test_other_candidates_cannot_rewrite_or_edit_the_draft(storage, embeddings_down) -> None:
+    owner, owner_profile = candidate("owner@example.test")
+    other, _ = candidate("other@example.test")
+    cv = stored_cv(owner, owner_profile, render("de_good_pdf"), storage)
+    body = analyse(client_for(owner), cv.id).json()
+    key, _ = first_bullet(body)
+    intruder = client_for(other)
+    args = (body["id"],)
+    assert (
+        intruder.post(
+            reverse("cv-analysis-result-rewrite", args=args), {"bullet": key}, format="json"
+        ).status_code
+        == 404
+    )
+    assert intruder.post(reverse("cv-analysis-result-summary", args=args)).status_code == 404
+    assert (
+        intruder.patch(
+            reverse("cv-analysis-result-draft", args=args),
+            {"bullet": key, "decision": "reject"},
+            format="json",
+        ).status_code
+        == 404
+    )
+    assert CVAnalysisResult.objects.get().cv_draft_json == {}

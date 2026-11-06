@@ -26,8 +26,9 @@ initial migrations. Integration tests cover access, upload, download and deletio
   return 400 and store nothing. List and retrieve return `role_profile_id`,
   `role_profile_version`, `level`, `breakdown_json` (six component scores, weights,
   `ats_readiness`, `role_fit`, `parse_degraded`, counts), `issues_json` (code,
-  severity, component, French message, params) and `cv_draft_json` (empty until the
-  rewrite ticket). `target_offer` stays unused. The analysis never changes the profile.
+  severity, component, French message, params) and `cv_draft_json` (the CV draft, see
+  below). `breakdown_json.structure` snapshots the parsed entries and skills lines; bullet
+  keys such as `experience.0.2` index into it. `target_offer` stays unused. The analysis never changes the profile.
   The local chat model structures the experience, projects and education sections (one
   call per section, JSON schema, every value checked against the section text) and the
   structure is cached on the CV (`parsed_data_json` with `checksum` and
@@ -35,6 +36,22 @@ initial migrations. Integration tests cover access, upload, download and deletio
   parser version skips the model; a degraded parse is retried. If the model is down or
   its output fails validation, the analysis uses the line-based split and
   `parse_degraded` is true.
+- `/api/v1/cv-analysis-results/{id}/rewrite/`: `POST {"bullet": "experience.0.2"}`
+  rewrites one experience or project bullet with the local model (temperature 0.4, role
+  verbs, metric hints and the 3 closest role examples by `bge-m3`, else the first 3). The
+  rewrite is rejected if it adds a number, role skill or capitalised name absent from the
+  original (`[X]` placeholders allowed), exceeds 25 words or one line; one retry at 0.1,
+  then `source: "rule"` with a French `suggestion` and `text: null`. Nothing is stored.
+- `/api/v1/cv-analysis-results/{id}/summary/`: `POST` proposes a professional summary
+  from the structure and role label, same validator against the CV's facts (two
+  sentences, at most 60 words, one line). Nothing is stored.
+- `/api/v1/cv-analysis-results/{id}/draft/`: `PATCH` with exactly one change:
+  `bullet` + `decision` (`accept` with `text`, also used for an edit, or `reject`);
+  `skill` + `has_experience` for a missing core skill of the analysis (only a yes adds it
+  to `confirmed_skills`; others go to `declined_skills`); or `summary` (empty clears).
+  `cv_draft_json` is `{bullets: {key: {original, decision, text}}, confirmed_skills,
+  declined_skills, summary}`. The model never adds a skill; the profile is never changed.
+  Another candidate's analysis returns 404 on all three routes.
 
 Candidates need an active global `CANDIDATE` role for candidate records. Another
 candidate's owned record returns 404. Recruiter discovery does not grant access to

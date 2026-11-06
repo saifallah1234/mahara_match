@@ -1,8 +1,9 @@
 // Placement: frontend/src/pages/candidat/AtsPanel.tsx
 import { useEffect, useState } from 'react'
 import { Badge, Button, EmptyState, Field, Meter, Note, Panel, Select, StatTile } from '../../components/ui'
-import { analyseCV, reviewRoles, type AtsAnalysis, type CV, type ReviewLevel, type ReviewRole } from '../../api/candidate'
+import { analyseCV, analyses, reviewRoles, type AtsAnalysis, type CV, type ReviewLevel, type ReviewRole } from '../../api/candidate'
 import { ApiError } from '../../api/client'
+import AtsDraft from './AtsDraft'
 
 const LEVELS: { id: ReviewLevel; label: string }[] = [
   { id: 'intern', label: 'Stagiaire' },
@@ -37,6 +38,15 @@ export default function AtsPanel({ cvs }: { cvs: CV[] }) {
   const [busy, setBusy] = useState(false)
   useEffect(() => { reviewRoles().then((items) => { setRoles(items); setRole((current) => current || items[0]?.id || '') }).catch(() => setError('Les rôles ne sont pas disponibles.')) }, [])
   const selectedCv = cvId || cvs.find((cv) => cv.is_primary)?.id || cvs[0]?.id || ''
+  // The latest analysis of the selected CV, so its draft survives leaving and returning.
+  useEffect(() => {
+    if (!selectedCv) return
+    let current = true
+    setResult(undefined)
+    // A fresh run() result wins over this late load.
+    analyses().then((items) => { if (current) setResult((shown) => shown ?? items.find((item) => item.cv === selectedCv)) }).catch(() => undefined)
+    return () => { current = false }
+  }, [selectedCv])
 
   async function run() {
     setBusy(true); setError('')
@@ -71,6 +81,7 @@ export default function AtsPanel({ cvs }: { cvs: CV[] }) {
             return <li key={issue.code} className="flex gap-2 text-sm text-navy"><Badge tone={tone}>{label}</Badge><span>{issue.message}</span></li>
           })}</ul>}
         </div>
+        <AtsDraft key={result.id} analysis={result} onChange={setResult} />
       </div>}
     </div>
   </Panel>

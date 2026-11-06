@@ -15,7 +15,8 @@ class FakeChat:
         self.calls: list[tuple[list[Any], dict[str, Any]]] = []
         self.reply = reply
 
-    def invoke(self, messages, **options):
+    def invoke(self, input, **options):  # same parameter name as the ChatModel protocol
+        messages = input
         self.calls.append((messages, options))
         if self.reply is not None:
             return self.reply(messages)

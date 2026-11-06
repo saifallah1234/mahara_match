@@ -52,8 +52,28 @@ export const download = (documentId: string, fileName: string) => downloadPath(`
 export type ReviewRole = { id: string; label: string; version: string }
 export type ReviewLevel = 'intern' | 'junior' | 'mid'
 export type AtsIssue = { code: string; severity: 'high' | 'medium' | 'low'; component: string; message: string }
-export type AtsBreakdown = { components: Record<string, number>; ats_readiness: number; role_fit: number; parse_degraded: boolean }
-export type AtsAnalysis = { id: string; cv: string; overall_score: string; issues_json: AtsIssue[]; role_profile_id: string; role_profile_version: string; level: ReviewLevel; breakdown_json: AtsBreakdown; analyzed_at: string }
+export type AtsEntry = { title: string; organisation: string; dates: string; bullets: string[] }
+export type AtsBreakdown = {
+  components: Record<string, number>; ats_readiness: number; role_fit: number; parse_degraded: boolean
+  skills: { name: string; tier: 'core' | 'common' | 'bonus'; evidence: number }[]
+  structure?: { entries: Partial<Record<'experience' | 'projects' | 'education', AtsEntry[]>>; skills: string[] }
+}
+export type CvDraft = {
+  bullets?: Record<string, { original: string; decision: 'accept' | 'reject'; text: string }>
+  confirmed_skills?: string[]; declined_skills?: string[]; summary?: string | null
+}
+export type AtsAnalysis = { id: string; cv: string; overall_score: string; issues_json: AtsIssue[]; role_profile_id: string; role_profile_version: string; level: ReviewLevel; breakdown_json: AtsBreakdown; cv_draft_json: CvDraft; analyzed_at: string }
+export type Rewrite = { original?: string; text: string | null; source: 'model' | 'rule'; suggestion: string | null }
+export type DraftChange =
+  | { bullet: string; decision: 'accept'; text: string } | { bullet: string; decision: 'reject' }
+  | { skill: string; has_experience: boolean } | { summary: string }
 export const reviewRoles = () => request<ReviewRole[]>('/cv-review-roles/')
 export const analyseCV = (cv: string, role_profile_id: string, level: ReviewLevel) =>
   save<AtsAnalysis>('/cv-analysis-results/', { cv, role_profile_id, level }, 'POST')
+export const analyses = () => list<AtsAnalysis>('/cv-analysis-results/')
+export const rewriteBullet = (analysis: string, bullet: string) =>
+  save<Rewrite>(`/cv-analysis-results/${analysis}/rewrite/`, { bullet }, 'POST')
+export const proposeSummary = (analysis: string) =>
+  save<Rewrite>(`/cv-analysis-results/${analysis}/summary/`, {}, 'POST')
+export const updateDraft = (analysis: string, change: DraftChange) =>
+  save<AtsAnalysis>(`/cv-analysis-results/${analysis}/draft/`, change)

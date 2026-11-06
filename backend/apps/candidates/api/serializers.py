@@ -262,3 +262,40 @@ class RoleProfileSerializer(serializers.Serializer[dict[str, Any]]):
     id = serializers.CharField()
     label = serializers.CharField()  # type: ignore[assignment]  # role label, not Field.label
     version = serializers.CharField()
+
+
+class CVRewriteRequestSerializer(serializers.Serializer[dict[str, Any]]):
+    bullet = serializers.CharField(max_length=40, help_text='e.g. "experience.0.2"')
+
+
+class CVRewriteSerializer(serializers.Serializer[dict[str, Any]]):
+    original = serializers.CharField(required=False)
+    text = serializers.CharField(allow_null=True)
+    source = serializers.ChoiceField(choices=("model", "rule"))  # type: ignore[assignment]  # response key, not Field.source
+    suggestion = serializers.CharField(allow_null=True)
+
+
+class CVDraftUpdateSerializer(serializers.Serializer[dict[str, Any]]):
+    """Exactly one change: a bullet decision, a missing-skill answer or the summary."""
+
+    bullet = serializers.CharField(max_length=40, required=False)
+    decision = serializers.ChoiceField(choices=("accept", "reject"), required=False)
+    text = serializers.CharField(max_length=300, required=False, allow_blank=True)
+    skill = serializers.CharField(max_length=100, required=False)
+    has_experience = serializers.BooleanField(required=False)
+    summary = serializers.CharField(max_length=600, required=False, allow_blank=True)
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        groups = [
+            "bullet" in attrs and "decision" in attrs,
+            "skill" in attrs and "has_experience" in attrs,
+            "summary" in attrs,
+        ]
+        if sum(groups) != 1:
+            raise serializers.ValidationError(
+                "Send exactly one of: bullet and decision, skill and has_experience, or summary."
+            )
+        for name in ("text", "summary"):
+            if "\n" in attrs.get(name, "").strip():
+                raise serializers.ValidationError({name: "Must be a single line."})
+        return attrs

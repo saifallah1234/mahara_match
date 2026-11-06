@@ -96,6 +96,11 @@ def analyze_cv(
     ]
     result = _score(cv, role, level)
     result.breakdown["parse_degraded"] = parsed["degraded"]
+    # Snapshot for rewrites and the CV draft: bullet keys stay valid if the CV cache changes.
+    result.breakdown["structure"] = {
+        "entries": parsed["sections"],
+        "skills": cv.sections.get("skills", []),
+    }
     return replace(result, parsed=parsed)
 
 

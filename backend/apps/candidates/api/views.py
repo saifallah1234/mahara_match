@@ -16,6 +16,9 @@ from backend.apps.candidates.api.serializers import (
     CertificationSerializer,
     CVAnalysisCreateSerializer,
     CVAnalysisResultSerializer,
+    CVDraftUpdateSerializer,
+    CVRewriteRequestSerializer,
+    CVRewriteSerializer,
     CVSerializer,
     EducationSerializer,
     ExperienceSerializer,
@@ -196,6 +199,44 @@ class CVAnalysisResultViewSet(GenericViewSet[CVAnalysisResult]):
             active_request_user(request), data["cv"], data["role_profile_id"], data["level"]
         )
         return Response(self.get_serializer(analysis).data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        request=CVRewriteRequestSerializer,
+        responses={200: CVRewriteSerializer},
+        description="Rewrite one bullet with the local model, validated; nothing is stored.",
+    )
+    @action(detail=True, methods=("post",))
+    def rewrite(self, request: Request, pk: str | None = None) -> Response:
+        serializer = CVRewriteRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = cv_review.request_rewrite(
+            active_request_user(request), str(pk), serializer.validated_data["bullet"]
+        )
+        return Response(CVRewriteSerializer(result).data)
+
+    @extend_schema(
+        request=None,
+        responses={200: CVRewriteSerializer},
+        description="Propose a validated professional summary; nothing is stored.",
+    )
+    @action(detail=True, methods=("post",))
+    def summary(self, request: Request, pk: str | None = None) -> Response:
+        result = cv_review.request_summary(active_request_user(request), str(pk))
+        return Response(CVRewriteSerializer(result).data)
+
+    @extend_schema(
+        request=CVDraftUpdateSerializer,
+        responses={200: CVAnalysisResultSerializer},
+        description="Record one choice in the CV draft: a bullet, a missing skill or the summary.",
+    )
+    @action(detail=True, methods=("patch",))
+    def draft(self, request: Request, pk: str | None = None) -> Response:
+        serializer = CVDraftUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        analysis = cv_review.update_draft(
+            active_request_user(request), str(pk), serializer.validated_data
+        )
+        return Response(self.get_serializer(analysis).data)
 
 
 class CVReviewRoleViewSet(GenericViewSet[Any]):
