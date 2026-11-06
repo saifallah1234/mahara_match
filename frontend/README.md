@@ -24,8 +24,7 @@ Lancer Django avec `backend.config.settings.development` : cette configuration
 autorise les origines CSRF `http://localhost:5173` et `http://127.0.0.1:5173`.
 Cela fonctionne aussi depuis un navigateur Windows lorsque les serveurs tournent
 dans WSL et que les ports locaux sont accessibles.
-`npm test` vérifie les règles de redirection. Les données métier des tableaux de
-bord restent une démonstration et sont signalées comme telles dans l'interface.
+`npm test` vérifie les règles de redirection.
 
 ---
 
@@ -36,7 +35,7 @@ Cinq espaces, un par acteur retenu.
 | Espace | Pages |
 |---|---|
 | Chercheur d'emploi | tableau de bord, profil, CV, offres, candidatures, formations, assistant |
-| Employeur / Recruteur | tableau de bord, entreprise et filiales, offres, pipeline, entretiens |
+| Employeur / Recruteur | tableau de bord, entreprise et filiales, offres, suivi des candidatures, entretiens, candidats, assistant |
 | Organisme de formation | tableau de bord, programmes, sessions et inscriptions |
 | Responsable du ministère | indicateurs régionaux, compétences du marché |
 | Administrateur | comptes et rôles, organisations, référentiels, imports, journal d'audit |
@@ -49,21 +48,16 @@ Cinq espaces, un par acteur retenu.
 src/
   lib/
     types.ts          Types du domaine, calqués sur le modèle de données logique
-    matching.ts       Calcul de couverture des compétences
     statusMachine.ts  Machine à états de la candidature
     format.ts         Libellés français et formatage
-  data/
-    referentials.ts   Compétences, niveaux, langues, matrice RBAC
-    seed.ts           Jeu de données de démonstration
   api/
-    client.ts         Transport HTTP, rafraîchissement et règles métier de démonstration
+    client.ts         Transport HTTP et rafraîchissement de session
     auth.ts           Contrats d'identité et appels API
   state/
     auth.tsx          Session authentifiée et espace sélectionné
-    store.tsx         Données métier de démonstration et identité réelle
   components/
     ui.tsx            Boutons, panneaux, champs, tableaux, modales
-    domain.tsx        Registre de correspondance, frise de statuts, provenance CV
+    domain.tsx        Pastille de score et mention de source
     charts.tsx        Graphiques du tableau de bord ministère
     layout.tsx        Coquille applicative et navigation par rôle
   pages/              Une page par route
@@ -73,10 +67,9 @@ src/
 
 ## Les trois règles métier portées par le frontend
 
-**1. Le score de correspondance se recalcule à la main** (`lib/matching.ts`)
+**1. Le score de correspondance est calculé par le serveur**
 
-Une compétence obligatoire pèse 2 points, une compétence souhaitée 1 point.
-Le score est le rapport des points couverts sur les points demandés.
+Le frontend n'en recalcule aucun : il affiche le score renvoyé par l'API.
 
 ```
 SQL      obligatoire  poids 2   couverte     2 / 2
@@ -111,37 +104,10 @@ ou refuser. Chaque changement est historisé et visible des deux côtés.
 **3. L'agent conversationnel n'agit qu'après confirmation** (`pages/candidat/Assistant.tsx`)
 
 L'agent prépare, affiche un récapitulatif, et attend un accord explicite.
-Au moment du clic, les droits et l'ouverture de l'offre sont revérifiés par
-`checkApply` — la même fonction que l'espace candidat. Une donnée absente est
+Au moment du clic, les droits et l'ouverture de l'offre sont revérifiés par le
+serveur. Une donnée absente est
 signalée, jamais estimée. L'agent n'est pas un acteur : c'est un composant
 interne qui agit sous l'identité et les permissions de l'utilisateur.
-
----
-
-## Données métier encore à brancher
-
-L'authentification et les listes d'identité de l'administration viennent de
-l'API réelle. Les autres données métier viennent encore de `src/data/seed.ts`.
-
-1. Brancher chaque domaine sur ses services API avec `request(...)` :
-
-```ts
-export async function listOffers(): Promise<JobOffer[]> {
-  return request<JobOffer[]>('/offers')
-}
-```
-
-2. Dans `src/state/store.tsx`, remplacer les `useState(SEED)` par un chargement
-   via ces fonctions.
-
-Les types de domaine actuels sont conçus pour la démonstration et peuvent
-nécessiter une adaptation aux contrats API réels.
-`checkApply` et `checkTransition` restent utiles côté client pour désactiver
-les actions impossibles, mais le backend doit refaire ces contrôles : ils ne
-font pas autorité depuis le navigateur.
-
-Les noms de champs sont en camelCase côté interface; adapter chaque réponse API
-à la frontière du domaine concerné.
 
 ---
 
@@ -171,12 +137,6 @@ contraste sur fond clair.
 
 ## Limites connues
 
-- Les données sont fictives et en mémoire : un rechargement de page les remet
-  à l'état initial.
-- L'import de CV simule l'extraction ; PyMuPDF et Tesseract tournent côté
-  backend.
-- Les réponses de l'assistant sont construites à partir des données réelles du
-  magasin, mais ne passent pas encore par un LLM.
 - Le forum communautaire et la planification avancée des entretiens sont
   post-MVP et ne sont pas implémentés.
 - Interface en français uniquement ; seul l'assistant accepte l'arabe et le

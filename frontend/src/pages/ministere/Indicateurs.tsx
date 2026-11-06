@@ -6,7 +6,7 @@ import { useIndicators } from '../../state/reporting'
 export function Unavailable() {
   return (
     <Panel className="p-8">
-      <p className="text-center text-[14px] text-slate">Les indicateurs ne sont pas encore disponibles : l’API de reporting n’est pas activée.</p>
+      <p className="text-center text-[14px] text-slate">Les indicateurs seront disponibles après validation de leur définition.</p>
     </Panel>
   )
 }

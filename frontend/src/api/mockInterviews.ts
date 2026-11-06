@@ -5,7 +5,7 @@ export interface InterviewTurn {
 }
 export interface Playback { video?: string | null; audio?: string | null; avatar?: string; simulated?: boolean; lip_synced?: boolean }
 export interface InterviewSession {
-  id: string; status: string; version: number; current_turn_id: string | null; turns: InterviewTurn[]
+  id: string; status: string; offer_title: string; created_at: string; version: number; current_turn_id: string | null; turns: InterviewTurn[]
   jobs: { id: string; stage: string; status: string; error_code: string; simulated: boolean }[]
   allowed_actions: string[]; availability: { simulated: boolean }; error_code: string
   playback: { introduction: string | null; closing_audio: string | null; neutral_avatar: string; thinking_avatar: string; listening_avatar: string; turn: Playback | null }

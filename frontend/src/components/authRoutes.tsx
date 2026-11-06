@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../state/auth'
+import { Button } from './ui'
 import { ROLE_HOME } from '../lib/format'
 import type { RoleCode } from '../lib/types'
 
@@ -16,7 +17,7 @@ export function ProtectedRoute() {
 function SessionError() {
   const { restore } = useAuth()
   return <main className="p-8"><p>La session n’a pas pu être chargée.</p>
-    <button className="mt-3 text-teal" onClick={() => void restore()}>Réessayer</button></main>
+    <Button variant="secondaire" className="mt-3" onClick={() => void restore()}>Réessayer</Button></main>
 }
 
 export function RoleRoute({ role }: { role: RoleCode }) {

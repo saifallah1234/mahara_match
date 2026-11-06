@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from backend.apps.identity.models import User
 from backend.apps.identity.services.access import require_permission
+from backend.apps.platform.services.records import append_audit, send_notification
 from backend.apps.recruitment.models import (
     Application,
     ApplicationStatus,
@@ -54,7 +55,7 @@ def schedule_interview(actor: User, data: Mapping[str, Any]) -> Interview:
     duration = data.get("duration_minutes")
     if duration is not None and duration < 1:
         raise DomainValidationError(details={"duration_minutes": ["Must be positive."]})
-    return Interview.objects.create(
+    interview = Interview.objects.create(
         application=application,
         scheduled_by=actor,
         type=data["type"],
@@ -63,6 +64,14 @@ def schedule_interview(actor: User, data: Mapping[str, Any]) -> Interview:
         location_or_url=data.get("location_or_url", ""),
         status=InterviewStatus.SCHEDULED,
     )
+    send_notification(
+        application.candidate.user,
+        type="recruitment.interview.scheduled",
+        title="Entretien planifié",
+        body=f"Un entretien est planifié pour votre candidature à « {application.offer.title} ».",
+        payload_json={"application_id": str(application.id), "interview_id": str(interview.id)},
+    )
+    return interview
 
 
 @transaction.atomic
@@ -93,7 +102,28 @@ def finish_interview(actor: User, interview_id: UUID, target: str, feedback: str
         InterviewStatus.CANCELLED,
     }:
         raise DomainValidationError(details={"status": ["Invalid interview transition."]})
+    previous_status = interview.status
     interview.status = target
     interview.feedback = feedback if target == InterviewStatus.COMPLETED else ""
     interview.save(update_fields=["status", "feedback", "updated_at"])
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="recruitment.interview.finish",
+        entity_type="interview",
+        entity_id=interview.id,
+        before={"status": previous_status},
+        after={"status": target},
+    )
+    if target == InterviewStatus.CANCELLED:
+        send_notification(
+            interview.application.candidate.user,
+            type="recruitment.interview.cancelled",
+            title="Entretien annulé",
+            body=f"Votre entretien pour « {interview.application.offer.title} » est annulé.",
+            payload_json={
+                "application_id": str(interview.application_id),
+                "interview_id": str(interview.id),
+            },
+        )
     return interview

@@ -57,6 +57,7 @@ class SessionReadSerializer(serializers.ModelSerializer[MockInterviewSession]):
     allowed_actions = serializers.SerializerMethodField()
     playback = serializers.SerializerMethodField()
     availability = serializers.SerializerMethodField()
+    offer_title = serializers.CharField(source="offer.title", read_only=True)
 
     def get_allowed_actions(self, session: MockInterviewSession) -> list[str]:
         actions = {
@@ -105,6 +106,7 @@ class SessionReadSerializer(serializers.ModelSerializer[MockInterviewSession]):
         fields = (
             "id",
             "offer_id",
+            "offer_title",
             "cv_id",
             "language",
             "status",

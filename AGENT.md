@@ -18,7 +18,8 @@
    and `uv.lock` together; keep runtime additions scoped to the feature.
 9. Run Ruff, mypy and relevant tests when implementation begins. Report actual
    results and limitations, including an empty test suite.
-10. Update architecture documentation and CONTEXT.md when decisions change.
+10. Update architecture documentation and CONTEXT.md when decisions change. Record dated
+    decisions in [decisions_log.md](docs/architecture/decisions_log.md), not in CONTEXT.md.
 11. Document ambiguity in [open_questions.md](docs/architecture/open_questions.md)
     with a source reference instead of inventing business rules.
 12. Avoid unrelated module changes. Coordinate shared contracts and migration

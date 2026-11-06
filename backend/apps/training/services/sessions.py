@@ -7,6 +7,7 @@ from django.db.models import QuerySet
 
 from backend.apps.identity.models import User
 from backend.apps.identity.services.access import require_permission
+from backend.apps.platform.services.records import append_audit
 from backend.apps.training.models import (
     EnrollmentStatus,
     ProgramStatus,
@@ -23,7 +24,7 @@ from backend.common.exceptions import (
 )
 
 
-def list_program_sessions(actor: User, program_id: UUID | str) -> QuerySet[TrainingSession]:
+def list_program_sessions(actor: User, program_id: UUID) -> QuerySet[TrainingSession]:
     require_permission(actor, TrainingPermissionCode.VIEW_CATALOG)
     try:
         organization_id = TrainingProgram.objects.values_list("organization_id", flat=True).get(
@@ -35,14 +36,22 @@ def list_program_sessions(actor: User, program_id: UUID | str) -> QuerySet[Train
             organization_id=organization_id,
         )
     except (DomainPermissionError, TrainingProgram.DoesNotExist):
-        return TrainingSession.objects.filter(
-            program_id=program_id,
-            program__status=ProgramStatus.ACTIVE,
-            program__organization__deleted_at__isnull=True,
-            program__organization__verification_status="VERIFIED",
-            status__in=(SessionStatus.PLANNED, SessionStatus.ONGOING),
-        )
+        return _catalogue_sessions().filter(program_id=program_id)
     return TrainingSession.objects.filter(program_id=program_id)
+
+
+def list_catalogue_sessions(actor: User) -> QuerySet[TrainingSession]:
+    require_permission(actor, TrainingPermissionCode.VIEW_CATALOG)
+    return _catalogue_sessions()
+
+
+def _catalogue_sessions() -> QuerySet[TrainingSession]:
+    return TrainingSession.objects.filter(
+        program__status=ProgramStatus.ACTIVE,
+        program__organization__deleted_at__isnull=True,
+        program__organization__verification_status="VERIFIED",
+        status__in=(SessionStatus.PLANNED, SessionStatus.ONGOING),
+    )
 
 
 def get_session(actor: User, session_id: UUID | str) -> TrainingSession:
@@ -126,6 +135,7 @@ def update_session(
         data.get("end_date", session.end_date),
         data.get("registration_deadline", session.registration_deadline),
     )
+    previous_status = session.status
     for field in (
         "start_date",
         "end_date",
@@ -137,6 +147,15 @@ def update_session(
         if field in data:
             setattr(session, field, data[field])
     session.save(update_fields=[*data.keys(), "updated_at"])
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="training.session.update",
+        entity_type="training_session",
+        entity_id=session.id,
+        before={"status": previous_status},
+        after={"status": session.status, "changed_fields": list(data)},
+    )
     return session
 
 

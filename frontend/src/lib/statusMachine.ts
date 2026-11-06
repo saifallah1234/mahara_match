@@ -109,6 +109,12 @@ export function flowIndex(status: ApplicationStatus): number {
   return -1
 }
 
+/** Stages after the current one on the flow; a recruiter may skip optional ones. */
+export function laterStages(status: ApplicationStatus): ApplicationStatus[] {
+  const index = flowIndex(status)
+  return index < 0 ? [] : APPLICATION_FLOW.slice(index + 1)
+}
+
 export type StatusTone = 'neutre' | 'encours' | 'positif' | 'negatif'
 
 export function statusTone(status: ApplicationStatus): StatusTone {

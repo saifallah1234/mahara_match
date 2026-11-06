@@ -9,6 +9,7 @@ class IdentityPermissionCode:
     MANAGE_USERS = "identity.user.manage"
     MANAGE_RBAC = "identity.rbac.manage"
     MANAGE_ORGANIZATIONS = "identity.organization.manage"
+    READ_ORGANIZATION_MEMBERS = "identity.organization.read_members"
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,11 @@ BASE_PERMISSIONS = (
     PermissionDefinition(IdentityPermissionCode.MANAGE_RBAC, "identity.rbac", "manage"),
     PermissionDefinition(
         IdentityPermissionCode.MANAGE_ORGANIZATIONS, "identity.organization", "manage"
+    ),
+    PermissionDefinition(
+        IdentityPermissionCode.READ_ORGANIZATION_MEMBERS,
+        "identity.organization",
+        "read_members",
     ),
 )
 
@@ -55,5 +61,7 @@ BASELINE_GRANTS: frozenset[tuple[str, str]] = frozenset(
         (RoleCode.ADMIN, IdentityPermissionCode.MANAGE_USERS),
         (RoleCode.ADMIN, IdentityPermissionCode.MANAGE_RBAC),
         (RoleCode.ADMIN, IdentityPermissionCode.MANAGE_ORGANIZATIONS),
+        (RoleCode.RECRUITER, IdentityPermissionCode.READ_ORGANIZATION_MEMBERS),
+        (RoleCode.TRAINING_MANAGER, IdentityPermissionCode.READ_ORGANIZATION_MEMBERS),
     }
 )

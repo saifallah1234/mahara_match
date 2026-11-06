@@ -12,6 +12,7 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from backend.apps.identity.models import OnboardingRequest, User, UserStatus
 from backend.apps.identity.services.access import require_permission
 from backend.apps.identity.services.contracts import IdentityPermissionCode
+from backend.apps.platform.services.records import append_audit
 from backend.common.exceptions import DomainNotFoundError, DomainValidationError
 
 
@@ -85,7 +86,16 @@ def workspace_summaries(user: User) -> list[dict[str, Any]]:
 @transaction.atomic
 def create_user(actor: User, data: Mapping[str, Any]) -> User:
     require_permission(actor, IdentityPermissionCode.MANAGE_USERS)
-    return create_account(data)
+    user = create_account(data)
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="identity.user.create",
+        entity_type="user",
+        entity_id=user.id,
+        after={"status": user.status},
+    )
+    return user
 
 
 @transaction.atomic
@@ -148,8 +158,18 @@ def update_status(actor: User, target: User, status: str) -> User:
     if target.status == status:
         return target
 
+    previous_status = target.status
     target.status = status
     target.save(update_fields=["status", "updated_at"])
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="identity.user.status_change",
+        entity_type="user",
+        entity_id=target.id,
+        before={"status": previous_status},
+        after={"status": status},
+    )
     _invalidate_credentials(target)
     return target
 
@@ -162,4 +182,12 @@ def delete_own_account(actor: User) -> None:
         user.status = UserStatus.DISABLED
         user.deleted_at = timezone.now()
         user.save(update_fields=["status", "deleted_at", "updated_at"])
+        append_audit(
+            actor_type="USER",
+            actor_user=actor,
+            action="identity.user.delete",
+            entity_type="user",
+            entity_id=user.id,
+            after={"status": UserStatus.DISABLED},
+        )
     _invalidate_credentials(user)

@@ -9,51 +9,18 @@ are the business sources of truth. PDF citations throughout this repository use
 page 9). Identity, candidates, training, recruitment and persisted match models
 have partial implementations; several planned workflows remain.
 
-**User clarification (2026-09-20):** the ANETI employment advisor is the system's
-AI agent for recommendations and CV assistance, not a human advisor account.
-This supersedes the human-role interpretation in DM §2 and the initial scaffold;
-the original source files remain unchanged. See Q22 in the question register.
+Dated decisions (2026-09-20 onward) are in the [decisions log](docs/architecture/decisions_log.md).
+Open questions are in the [question register](docs/architecture/open_questions.md).
+Key points that still shape the design:
 
-**Phase 1 gate decisions (2026-09-21):** the user approved the architecture direction
-for G01–G10: Django `AbstractUser`, custom RBAC and JWT; UUID keys and timestamps;
-role/organization-scoped access and preferred soft deletion for important records;
-central taxonomy references and aliases; separate candidate preferences and raw CV
-results; offer salary bounds and language fields; retained recruitment history;
-import provenance; controlled training/pricing fields; and protected attributable
-assistant/audit traces. The exact enum vocabularies, transition matrices, limits and
-retention periods not supplied by that decision remain owning-contract details and
-must not be invented. See the [Phase 1 gate register](docs/team/phase_01_data_backend.md#decision-gates-before-coding-the-affected-part)
-and [question register](docs/architecture/open_questions.md).
-
-**User decisions (2026-09-25):** the PostgreSQL recommendation baseline is a pilot;
-the MVP label requires evaluated Phase 7 hybrid plus graph/GraphRAG. Five human
-roles remain Candidate, Recruiter, Training Manager, Ministry Manager and Admin.
-Offers use TND only with no currency column, superseding the earlier G06 direction.
-One candidate preference holds work mode, relocation and maximum commute distance;
-one internal Easy Apply application per candidate/offer retains status history.
-Frontend technology is React, TypeScript and Vite under `frontend/`. Q01–Q27 in
-the [question register](docs/architecture/open_questions.md) record the full
-decisions and the concrete details still owed by each domain owner.
-
-**Identity onboarding decision (2026-10-08):** candidate registration activates
-immediately with a private profile. Recruiter/provider requests remain pending
-until an administrator verifies the organization and grants scoped access.
-Ministry and admin accounts are provisioned only by privileged administrators.
-
-**Discussion refinements (2026-09-25):** no departments or department labels in
-the MVP. Leave existing optional candidate/CV language fields; do not add offer
-language requirements or language-based rejection for now. Recruiter access to a
-limited profile requires candidate opt-in; submitted CVs go only to the receiving
-organization. Training prices are TND, free `0` or paid greater than `0`.
-Recruiters may skip optional forward application stages or reject an active
-application; candidates may withdraw while active. Hired, rejected and withdrawn
-are terminal, with no reapplication to the same offer. Automated import rows
-without `external_id` are rejected. Raw CV extraction and conversation history
-have no age-based automatic deletion. Account deletion remains soft deletion.
-Deleted CV metadata remains for historical references; the CV object-storage bytes
-are purged when there are no applications or every linked application is rejected
-(2026-10-08 candidate workspace decision). A daily command retries failed purges.
-Retained-data policy still needs review before release.
+- The ANETI employment advisor is the system's AI agent, not a human advisor account
+  (Q22). It supersedes the human-role reading of DM §2.
+- Five human roles: Candidate, Recruiter, Training Manager, Ministry Manager, Admin.
+- Offers use TND only. Training prices are TND, free `0` or paid greater than `0`.
+- Frontend is React, TypeScript and Vite under `frontend/`, French-only for the MVP.
+- Candidate registration activates immediately; recruiter/provider access waits for admin verification.
+- Applying or enrolling discloses the candidate's name, e-mail and limited profile to that organization only (Q32, [ADR 0001](docs/adr/0001-applicant-identity-disclosure.md)).
+- Retained-data policy still needs review before release.
 
 The task adds technical decisions not stated in those documents: a Django/DRF
 modular monolith, Django ORM as schema authority, Python 3.12, uv, and the chosen
@@ -135,20 +102,10 @@ processes without creating independent business services or schema ownership.
 
 ## AI and agentic workflows
 
-**Mock interview implementation (2026-10-11):** the approved
-[implementation plan](docs/team/ai_mock_interview_implementation_plan.md) adds
-assistant-owned rehearsal sessions, turns and durable jobs, separate from
-recruitment appointments. Phase 1 persistence/API checks pass on isolated local
-PostgreSQL. Local phases now include the checkpointed graph, authorized evidence,
-protected streaming, recording/cleanup, candidate playback and leased tasks.
-Queue coordination and the standalone local-avatar worker pass fake-queue tests;
-the complete mocked journey passes Chromium and real local MinIO checks. Optional
-Piper/faster-whisper need existing model files, which have not been supplied.
-One short ElevenLabs French test was separately approved and decoded successfully;
-The user subsequently approved ElevenLabs for interview speech; local configuration
-now enables that provider and paid TTS. Cloud access remains separately gated. No deployment or real GPU
-inference has occurred. See the [runbook](docs/deployment/mock_interviews.md) and
-[API contract](docs/api/mock_interviews_v1.md) for configuration and release gates.
+Mock interviews (assistant-owned rehearsal sessions, separate from recruitment appointments),
+their configuration and release gates: see the [decisions log](docs/architecture/decisions_log.md)
+(2026-10-11), the [runbook](docs/deployment/mock_interviews.md) and the
+[API contract](docs/api/mock_interviews_v1.md). No deployment or real GPU inference has occurred.
 
 The ANETI employment advisor is the AI agent of the system. Its future reasoning
 and orchestration live in `ai/agents/` and `ai/workflows/`; CV capabilities live in
@@ -174,8 +131,8 @@ CV processing separates text extraction (PyMuPDF) and OCR for scanned/image inpu
 Extracted profile information must be confirmed by the candidate. Under G05, raw
 CV results are stored separately from candidate-validated normalized data and
 remain linked to the CV without an age-based automatic deletion timer. Account
-deletion is soft deletion; deleted CV bytes follow the eligibility rule above.
-Retained-data policy still needs review before release
+deletion is soft deletion; deleted CV bytes follow the eligibility rule in the
+decisions log (2026-09-25 refinements). Retained-data policy still needs review before release
 (DM §4.B; PDF p. 9).
 
 RAG uses retrieved internal sources; GraphRAG adds relationships among
@@ -185,17 +142,11 @@ skills. Neither retrieval nor model output can replace business authorization or
 make final hiring decisions (PDF pp. 2, 5, 7, 9). The baseline is a pilot; the MVP
 label requires demonstrated and evaluated hybrid plus graph/GraphRAG retrieval.
 
-**Scoped agent retrieval (2026-10-15):** the ANETI agent serves candidates and
-verified recruiters. Candidates get up to 5 visible offers ranked by lexical +
-vector + skill-graph retrieval, with matched/missing skills and up to 2 active
-training programs per offer as suggestions (not persisted as `OfferMatch`).
-Recruiters search `RECRUITERS`/`PUBLIC` limited profiles (Q28; only IDs and matched
-skills reach assistant history, details open in discovery, Q29) or their own
-offers, drafts included. Routing and replies
-cover EN/FR/AR; Tunisian dialect is not covered yet (Q31). An Ollama outage
-degrades to lexical + graph and is recorded in the tool trace. Training manager,
-ministry and admin retrieval are deferred (Q30). Details: the
-[AI architecture](docs/ai/architecture.md#scoped-retrieval-in-the-agent-2026-10-15)
+Scoped agent retrieval: the ANETI agent serves candidates and verified recruiters;
+training manager, ministry and admin retrieval is deferred (Q30). Recruiters see
+limited profiles only as IDs and matched skills in assistant history (Q28, Q29).
+Details and the 2026-10-15 rules: the [decisions log](docs/architecture/decisions_log.md),
+the [AI architecture](docs/ai/architecture.md#scoped-retrieval-in-the-agent-2026-10-15)
 and the [matching README](backend/apps/matching/README.md#production-retrieval-2026-10-15).
 
 ## Background pipelines

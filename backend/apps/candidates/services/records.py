@@ -157,6 +157,18 @@ def update_record[RecordT: models.Model](
 
 
 @transaction.atomic
+def delete_record[RecordT: models.Model](
+    actor: User, model: type[RecordT], record_id: UUID | str
+) -> None:
+    record = get_record(actor, model, record_id)
+    if model is CV:
+        raise DomainValidationError("Use the CV deletion service.")
+    if model is Project:
+        ProjectSkill.objects.filter(project=cast(Project, record)).delete()
+    record.delete()
+
+
+@transaction.atomic
 def create_cv(actor: User, data: Mapping[str, Any]) -> CV:
     profile = own_profile(actor)
     document = get_owned_document(actor, data["document"].id)

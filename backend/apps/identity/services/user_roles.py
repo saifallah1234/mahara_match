@@ -12,6 +12,7 @@ from backend.apps.identity.services.contracts import (
     ORGANIZATION_ROLE_TYPES,
     IdentityPermissionCode,
 )
+from backend.apps.platform.services.records import append_audit
 from backend.common.exceptions import (
     DomainNotFoundError,
     DomainPermissionError,
@@ -103,7 +104,7 @@ def assign_role(
 
     _validate_scope(user, role, organization_id)
     try:
-        return UserRole.objects.create(
+        assignment = UserRole.objects.create(
             user=user,
             role=role,
             organization_id=organization_id,
@@ -112,9 +113,32 @@ def assign_role(
         raise DomainValidationError(
             details={"assignment": ["This role is already assigned."]}
         ) from exc
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="identity.user_role.assign",
+        entity_type="user_role",
+        entity_id=assignment.id,
+        after={
+            "user_id": str(user.id),
+            "role": role.code,
+            "organization_id": str(organization_id) if organization_id else None,
+        },
+    )
+    return assignment
 
 
 @transaction.atomic
 def remove_role(actor: User, assignment: UserRole) -> None:
     require_permission(actor, IdentityPermissionCode.MANAGE_RBAC)
+    before = {"user_id": str(assignment.user_id), "role": assignment.role.code}
+    assignment_id = assignment.id  # delete() clears the primary key
     assignment.delete()
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="identity.user_role.remove",
+        entity_type="user_role",
+        entity_id=assignment_id,
+        before=before,
+    )

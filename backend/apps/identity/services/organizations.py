@@ -9,6 +9,7 @@ from backend.apps.identity.models import Organization
 from backend.apps.identity.models.organizations import VerificationStatus
 from backend.apps.identity.services.access import require_permission
 from backend.apps.identity.services.contracts import IdentityPermissionCode
+from backend.apps.platform.services.records import append_audit
 from backend.common.exceptions import DomainNotFoundError, DomainValidationError
 
 
@@ -178,6 +179,15 @@ def verify_organization(
 
     organization.verification_status = VerificationStatus.VERIFIED
     organization.save(update_fields=["verification_status", "updated_at"])
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="identity.organization.verify",
+        entity_type="organization",
+        entity_id=organization.id,
+        before={"verification_status": VerificationStatus.PENDING},
+        after={"verification_status": VerificationStatus.VERIFIED},
+    )
 
     return organization
 
@@ -196,5 +206,14 @@ def reject_organization(
 
     organization.verification_status = VerificationStatus.REJECTED
     organization.save(update_fields=["verification_status", "updated_at"])
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="identity.organization.reject",
+        entity_type="organization",
+        entity_id=organization.id,
+        before={"verification_status": VerificationStatus.PENDING},
+        after={"verification_status": VerificationStatus.REJECTED},
+    )
 
     return organization

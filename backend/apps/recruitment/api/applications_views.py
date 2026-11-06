@@ -11,8 +11,10 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from backend.apps.identity.api.common_permissions import IsActiveAuthenticated, active_request_user
+from backend.apps.identity.services.organization_members import member_organization_ids
 from backend.apps.recruitment.api.applications_serializers import (
     ApplicationReadSerializer,
+    ApplicationReceiverReadSerializer,
     ApplicationSubmitSerializer,
     ApplicationTransitionSerializer,
 )
@@ -23,6 +25,12 @@ from backend.apps.recruitment.services.application_lifecycle import (
     submit_application,
     transition_application,
 )
+
+
+def _read(application: Application, member_org_ids: set[UUID]) -> dict[str, object]:
+    if application.offer.organization_id in member_org_ids:
+        return dict(ApplicationReceiverReadSerializer(application).data)
+    return dict(ApplicationReadSerializer(application).data)
 
 
 class ApplicationViewSet(GenericViewSet[Application]):
@@ -36,14 +44,17 @@ class ApplicationViewSet(GenericViewSet[Application]):
     def list(self, request: Request) -> Response:
         queryset = application_services.list_applications(
             active_request_user(request)
-        ).select_related("offer")
+        ).select_related("offer", "candidate__user")
         queryset = ApplicationFilters(data=request.query_params).apply(queryset)
         page = self.paginate_queryset(queryset)
-        return self.get_paginated_response(ApplicationReadSerializer(page, many=True).data)
+        member_org_ids = member_organization_ids(active_request_user(request))
+        return self.get_paginated_response(
+            [_read(application, member_org_ids) for application in page or []]
+        )
 
     def retrieve(self, request: Request, pk: UUID) -> Response:
         application = application_services.get_application(active_request_user(request), pk)
-        return Response(ApplicationReadSerializer(application).data)
+        return Response(_read(application, member_organization_ids(active_request_user(request))))
 
     @extend_schema(
         description="Download the exact active CV version submitted with this application.",
@@ -83,4 +94,4 @@ class ApplicationViewSet(GenericViewSet[Application]):
             serializer.validated_data["status"],
             serializer.validated_data.get("reason", ""),
         )
-        return Response(ApplicationReadSerializer(application).data)
+        return Response(_read(application, member_organization_ids(active_request_user(request))))

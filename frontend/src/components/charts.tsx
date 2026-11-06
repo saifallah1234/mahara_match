@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import { cx } from '../lib/format'
-import { Table, Row, Cell } from './ui'
+import { Button, Table, Row, Cell } from './ui'
 
 /**
  * Palette des graphiques.
@@ -55,12 +55,9 @@ export function BarChart({
           </h3>
           {note && <p className="mt-0.5 text-[12px] text-slate">{note}</p>}
         </div>
-        <button
-          onClick={() => setAsTable((v) => !v)}
-          className="rounded-[4px] border border-line px-2.5 py-1 text-[12px] font-medium text-slate hover:border-teal hover:text-teal"
-        >
+        <Button size="sm" variant="secondaire" onClick={() => setAsTable((v) => !v)}>
           {asTable ? 'Voir le graphique' : 'Voir le tableau'}
-        </button>
+        </Button>
       </figcaption>
 
       {multi && !asTable && (

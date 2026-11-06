@@ -8,6 +8,7 @@ from django.db.models import QuerySet
 from backend.apps.identity.models import Organization, OrganizationType, User
 from backend.apps.identity.models.organizations import VerificationStatus
 from backend.apps.identity.services.access import require_permission
+from backend.apps.platform.services.records import append_audit
 from backend.apps.training.models import DeliveryMode, ProgramLevel, ProgramStatus, TrainingProgram
 from backend.apps.training.services.contracts import TrainingPermissionCode
 from backend.common.exceptions import (
@@ -85,6 +86,9 @@ def create_program(actor: User, data: Mapping[str, Any]) -> TrainingProgram:
     require_permission(
         actor, TrainingPermissionCode.MANAGE_PROGRAMS, organization_id=organization_id
     )
+    # A new program has no skills yet, so it can only start as a draft.
+    if data.get("status") == ProgramStatus.ACTIVE:
+        raise _skill_required()
     try:
         organization = Organization.objects.get(
             id=organization_id,
@@ -116,10 +120,22 @@ def update_program(
         organization_id=program.organization_id,
     )
     _validate_price(data.get("is_free", program.is_free), data.get("price", program.price))
+    if data.get("status") == ProgramStatus.ACTIVE and not program.program_skills.exists():
+        raise _skill_required()
+    previous_status = program.status
     for field in ("title", "description", "level", "delivery_mode", "status", "is_free", "price"):
         if field in data:
             setattr(program, field, data[field])
     program.save(update_fields=[*data.keys(), "updated_at"])
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="training.program.update",
+        entity_type="training_program",
+        entity_id=program.id,
+        before={"status": previous_status},
+        after={"status": program.status, "changed_fields": list(data)},
+    )
     return program
 
 
@@ -129,8 +145,24 @@ def delete_program(actor: User, program: TrainingProgram) -> None:
         TrainingPermissionCode.MANAGE_PROGRAMS,
         organization_id=program.organization_id,
     )
+    previous_status = program.status
     program.status = ProgramStatus.ARCHIVED
     program.save(update_fields=["status", "updated_at"])
+    append_audit(
+        actor_type="USER",
+        actor_user=actor,
+        action="training.program.archive",
+        entity_type="training_program",
+        entity_id=program.id,
+        before={"status": previous_status},
+        after={"status": ProgramStatus.ARCHIVED},
+    )
+
+
+def _skill_required() -> DomainValidationError:
+    return DomainValidationError(
+        details={"status": ["Add at least one skill before activating this program."]}
+    )
 
 
 def _validate_price(is_free: bool, price: Any) -> None:

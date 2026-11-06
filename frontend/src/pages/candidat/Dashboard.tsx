@@ -9,15 +9,14 @@ import type { ApplicationStatus } from '../../lib/types'
 
 export default function CandidatDashboard() {
   const { user } = useAuth()
-  const { applications, offers, enrollments } = useCandidate()
+  const { applications, offers } = useCandidate()
   const active = applications.filter((item) => !['REJECTED', 'WITHDRAWN', 'HIRED'].includes(item.status))
   return <>
     <PageHeader title={`Bonjour ${user?.first_name ?? ''}`} action={<Link to="/candidat/offres"><Button>Rechercher des offres</Button></Link>} />
     <PageBody className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <StatTile value={active.length} label="Candidatures en cours" note={`${applications.length} au total`} />
         <StatTile value={offers.length} label="Offres publiées" tone="teal" />
-        <StatTile value={enrollments.length} label="Inscriptions en formation" tone="leaf" />
       </div>
       <Panel title="Mes candidatures" action={<Link to="/candidat/candidatures" className="text-teal">Tout voir</Link>}>
         {active.length ? <ul className="divide-y divide-line">{active.slice(0, 5).map((item) => <li key={item.id} className="px-5 py-3"><p className="font-medium text-navy">{item.offer_title}</p><p className="text-sm text-slate">Déposée le {formatDate(item.applied_at)} · {STATUS_LABEL[item.status as ApplicationStatus] ?? item.status}</p></li>)}</ul> : <EmptyState title="Aucune candidature en cours" />}

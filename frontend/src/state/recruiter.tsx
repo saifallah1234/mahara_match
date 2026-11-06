@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { useAuth } from './auth'
 import * as api from '../api/recruiter'
 
+type SkillChoice = { id: string; mandatory: boolean }
+
 type State = {
   offers: api.RecruiterOffer[]
   applications: api.RecruiterApplication[]
@@ -10,8 +12,11 @@ type State = {
   loading: boolean
   error: string | null
   reload: () => Promise<void>
-  createOffer: (data: api.OfferInput, skills: { id: string; mandatory: boolean }[], publish: boolean) => Promise<void>
+  createOffer: (data: api.OfferInput) => Promise<string>
+  updateOffer: (id: string, data: Partial<api.OfferInput>) => Promise<void>
+  syncOfferSkills: (offerId: string, chosen: SkillChoice[], current: api.OfferSkill[]) => Promise<void>
   setOfferStatus: (id: string, status: api.RecruiterOffer['status']) => Promise<void>
+  publishOffer: (id: string) => Promise<void>
   moveApplication: (id: string, status: string, reason?: string) => Promise<void>
   scheduleInterview: (data: api.InterviewInput) => Promise<void>
   setInterviewStatus: (id: string, status: 'COMPLETED' | 'CANCELLED', feedback?: string) => Promise<void>
@@ -47,23 +52,54 @@ export function RecruiterProvider({ children }: { children: ReactNode }) {
   }, [active, orgId])
   useEffect(() => { void reload() }, [reload])
 
-  const run = async (work: () => Promise<unknown>) => {
+  const run = async <T,>(work: () => Promise<T>): Promise<T> => {
     setError(null)
-    try { await work(); await reload() }
-    catch (e) { setError(e instanceof Error ? e.message : 'Opération refusée.'); throw e }
+    try {
+      const result = await work()
+      await reload()
+      return result
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Opération refusée.')
+      throw e
+    }
+  }
+
+  const mutate = async (work: () => Promise<unknown>) => { await run(work) }
+  const skillName = (id: string) => skills.find((s) => s.id === id)?.canonical_name ?? 'inconnue'
+  // Names the skill in the message, so the recruiter knows which one did not save.
+  const saving = async (skillId: string, work: () => Promise<unknown>) => {
+    try {
+      await work()
+    } catch (e) {
+      throw new Error(`Compétence « ${skillName(skillId)} » non enregistrée : ${e instanceof Error ? e.message : 'erreur'}`)
+    }
   }
 
   const value: State = {
     offers, applications, interviews, skills, loading, error, reload,
-    createOffer: (data, chosen, publish) => run(async () => {
-      const offer = await api.createOffer(data)
-      for (const s of chosen) await api.addOfferSkill(offer.id, s.id, s.mandatory)
-      if (publish) await api.transitionOffer(offer.id, 'PUBLISHED')
+    createOffer: (data) => run(async () => (await api.createOffer(data)).id),
+    updateOffer: (id, data) => mutate(() => api.updateOffer(id, data)),
+    syncOfferSkills: (offerId, chosen, current) => mutate(async () => {
+      for (const row of current) {
+        if (!chosen.some((c) => c.id === row.skill_id)) await saving(row.skill_id, () => api.deleteOfferSkill(row.id))
+      }
+      for (const c of chosen) {
+        const row = current.find((x) => x.skill_id === c.id)
+        if (!row) await saving(c.id, () => api.addOfferSkill(offerId, c.id, c.mandatory))
+        else if (row.is_mandatory !== c.mandatory) await saving(c.id, () => api.updateOfferSkill(row.id, c.mandatory))
+      }
     }),
-    setOfferStatus: (id, status) => run(() => api.transitionOffer(id, status)),
-    moveApplication: (id, status, reason) => run(() => api.transitionApplication(id, status, reason)),
-    scheduleInterview: (data) => run(() => api.scheduleInterview(data)),
-    setInterviewStatus: (id, status, feedback) => run(() => api.transitionInterview(id, status, feedback)),
+    setOfferStatus: (id, status) => mutate(() => api.transitionOffer(id, status)),
+    publishOffer: (id) => mutate(async () => {
+      try {
+        await api.transitionOffer(id, 'PUBLISHED')
+      } catch (e) {
+        throw new Error(`Publication impossible : ${e instanceof Error ? e.message : 'erreur'}`)
+      }
+    }),
+    moveApplication: (id, status, reason) => mutate(() => api.transitionApplication(id, status, reason)),
+    scheduleInterview: (data) => mutate(() => api.scheduleInterview(data)),
+    setInterviewStatus: (id, status, feedback) => mutate(() => api.transitionInterview(id, status, feedback)),
   }
   return <Context.Provider value={value}>{children}</Context.Provider>
 }

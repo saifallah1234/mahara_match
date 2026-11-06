@@ -11,7 +11,8 @@ export type Session = {
   location_or_url: string; registration_deadline: string; status: 'PLANNED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED'
 }
 export type Enrollment = {
-  id: string; session: string; candidate_id: string
+  id: string; session: string; candidate_id: string; applicant: { first_name: string; last_name: string; email: string }
+  program_title: string; session_start_date: string
   status: 'REGISTERED' | 'IN_PROGRESS' | 'COMPLETED' | 'DROPPED'; enrolled_at: string; completion_rate: string | null
 }
 export type ProgramInput = Pick<Program, 'title' | 'description' | 'level' | 'delivery_mode' | 'status' | 'is_free'> & {
@@ -34,4 +35,16 @@ export const listEnrollments = (organizationId?: string) =>
 export const createProgram = (d: ProgramInput) => send<Program>('POST', '/training/programs/', d)
 export const updateProgram = (id: string, d: Partial<ProgramInput>) => send<Program>('PATCH', `/training/programs/${id}/`, d)
 export const createSession = (d: SessionInput) => send<Session>('POST', '/training/sessions/', d)
-export const updateSession = (id: string, d: Partial<{ status: Session['status'] }>) => send<Session>('PATCH', `/training/sessions/${id}/`, d)
+export type SessionPatch = Partial<Omit<SessionInput, 'program_id'>> & { status?: Session['status'] }
+export const updateSession = (id: string, d: SessionPatch) => send<Session>('PATCH', `/training/sessions/${id}/`, d)
+export const updateProgress = (enrollmentId: string, completionRate: number) =>
+  send<Enrollment>('PATCH', `/training/enrollments/${enrollmentId}/progress/`, { completion_rate: completionRate })
+export type ProgramSkill = {
+  id: string; program: string; skill_id: string
+  target_level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT'; purpose: string
+}
+export const listProgramSkills = (programId: string) =>
+  allPages<ProgramSkill>(`/training/skills/?program_id=${programId}`)
+export const addProgramSkill = (programId: string, skillId: string, targetLevel: ProgramSkill['target_level']) =>
+  send<ProgramSkill>('POST', '/training/skills/', { program_id: programId, skill_id: skillId, target_level: targetLevel })
+export const removeProgramSkill = (id: string) => send<void>('DELETE', `/training/skills/${id}/`)
