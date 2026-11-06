@@ -14,6 +14,7 @@ from django.utils import timezone
 from backend.apps.candidates.models import CV, CandidateProfile, CVAnalysisResult
 from backend.apps.documents.models import Document
 from backend.apps.identity.models import User
+from tests.fixtures.cv_review.fake_chat import FakeChat
 from tests.fixtures.cv_review.render import render
 from tests.integration.candidates.test_cv_access_and_deletion import (
     account,
@@ -26,6 +27,14 @@ from tests.integration.candidates.test_cv_access_and_deletion import (
 pytestmark = pytest.mark.django_db
 
 DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+
+@pytest.fixture(autouse=True)
+def chat() -> Iterator[FakeChat]:
+    """Swap the chat provider; by default it fails like an unreachable Ollama."""
+    model = FakeChat(lambda messages: (_ for _ in ()).throw(ConnectionError("Ollama is down")))
+    with patch("backend.apps.candidates.services.cv_review.get_chat_model", return_value=model):
+        yield model
 
 
 @pytest.fixture
@@ -196,3 +205,44 @@ def test_non_candidates_cannot_analyse(storage) -> None:
     recruiter(reviewer, organization("12"))
     assert analyse(client_for(reviewer), cv.id).status_code == 403
     assert client_for(reviewer).get(reverse("cv-analysis-result-list")).status_code == 403
+
+
+def test_rerun_on_the_same_document_reuses_the_cached_structure(storage, chat) -> None:
+    user, profile = candidate()
+    cv = stored_cv(user, profile, render("de_good_pdf"), storage)
+    client = client_for(user)
+    chat.reply = None  # the fake now answers with a valid structure
+
+    first = analyse(client, cv.id)
+    calls = len(chat.calls)
+    second = analyse(client, cv.id, "software_engineer")
+
+    assert first.status_code == second.status_code == 201
+    assert calls == 3 and len(chat.calls) == calls
+    assert first.json()["breakdown_json"]["parse_degraded"] is False
+    assert second.json()["breakdown_json"]["parse_degraded"] is False
+    assert first.json()["breakdown_json"]["bullets"]["total"] == 8
+    assert second.json()["breakdown_json"]["bullets"]["total"] == 8
+    stored = client.get(reverse("cv-detail", args=(cv.id,))).json()
+    assert stored["parse_status"] == "parsed"
+    assert stored["parsed_data_json"]["sections"]["experience"][0]["title"] == (
+        "Data Engineering Intern"
+    )
+
+
+def test_analysis_is_stored_degraded_when_the_model_fails(storage, chat) -> None:
+    user, profile = candidate()
+    cv = stored_cv(user, profile, render("de_good_pdf"), storage)
+    client = client_for(user)
+
+    first = analyse(client, cv.id)
+    assert first.status_code == 201
+    assert first.json()["breakdown_json"]["parse_degraded"] is True
+    assert first.json()["breakdown_json"]["bullets"]["total"] == 8
+    assert CVAnalysisResult.objects.filter(cv=cv).count() == 1
+    assert client.get(reverse("cv-detail", args=(cv.id,))).json()["parse_status"] == "degraded"
+
+    chat.reply = None  # Ollama is back: a degraded parse is not reused
+    second = analyse(client, cv.id)
+    assert second.json()["breakdown_json"]["parse_degraded"] is False
+    assert len(chat.calls) == 1 + 3  # the first transport error stops further calls

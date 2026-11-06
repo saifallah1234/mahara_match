@@ -28,6 +28,13 @@ initial migrations. Integration tests cover access, upload, download and deletio
   `ats_readiness`, `role_fit`, `parse_degraded`, counts), `issues_json` (code,
   severity, component, French message, params) and `cv_draft_json` (empty until the
   rewrite ticket). `target_offer` stays unused. The analysis never changes the profile.
+  The local chat model structures the experience, projects and education sections (one
+  call per section, JSON schema, every value checked against the section text) and the
+  structure is cached on the CV (`parsed_data_json` with `checksum` and
+  `parser_version`, `parse_status` `parsed` or `degraded`). A rerun on the same file and
+  parser version skips the model; a degraded parse is retried. If the model is down or
+  its output fails validation, the analysis uses the line-based split and
+  `parse_degraded` is true.
 
 Candidates need an active global `CANDIDATE` role for candidate records. Another
 candidate's owned record returns 404. Recruiter discovery does not grant access to

@@ -11,7 +11,7 @@ lives here; it is not a human advisor account or staffing workflow.
 | `agents/` | ANETI agent: `intents.py` (EN/FR/AR role-aware routing), `templates.py` (deterministic replies), `anetai.py` (routes, grounding check, trace allow-list), `service.py` (run + history) |
 | `workflows/` | LangGraph orchestration: `job_matching.py` runs any route's tool then its explainer |
 | `tools/` | Agent-facing adapters to authorized application services: `job_search.py` (candidate), `candidate_search.py` (recruiter), `job_matches.py` (Phase 7 baseline, rollback only) |
-| `document_intelligence/` | `parsing/cv_reader.py` (PDF/DOCX text, format risks, sections, contacts) and `ats/analysis.py` (deterministic ATS readiness and role fit against the YAML role profiles in `ats/roles/` and level table `ats/levels.yaml`); CV generation is reserved |
+| `document_intelligence/` | `parsing/cv_reader.py` (PDF/DOCX text, format risks, sections, contacts), `parsing/section_extraction.py` (per-section entries from the local chat model, validated against the source text, line-split fallback) and `ats/analysis.py` (deterministic ATS readiness and role fit against the YAML role profiles in `ats/roles/` and level table `ats/levels.yaml`); CV generation is reserved |
 | `rag/` | Answers grounded in retrieved internal sources |
 | `graphrag/` | `missing_skill_training.py`: missing skills → active training programs |
 | `retrieval/` | `lexical/scoring.py` (FR/AR/EN token overlap, zero-overlap excluded), `hybrid/retriever.py` (legs + RRF, degrades without vectors); scoped database legs live in `backend/apps/matching/services/retrieval.py` |

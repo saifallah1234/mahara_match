@@ -7,6 +7,7 @@ import pytest
 
 from ai.document_intelligence.ats.analysis import AtsResult, CVReviewError, analyze_cv
 from ai.document_intelligence.ats.profiles import RoleProfileError, load_levels, load_roles, roles
+from ai.document_intelligence.parsing.cv_reader import heading_key
 from tests.fixtures.cv_review.render import cv_spec, render, synthetic_cvs
 
 pytestmark = pytest.mark.unit
@@ -145,3 +146,18 @@ def test_malformed_level_table_fails_loudly(tmp_path: Path):
     path.write_text("levels:\n  junior:\n    label: Junior\n    weights: {parseability: 1}\n")
     with pytest.raises(RoleProfileError):
         load_levels(path)
+
+
+@pytest.mark.parametrize(
+    ("line", "key"),
+    [
+        ("Work Experience", "experience"),
+        ("TECHNICAL SKILLS", "skills"),
+        ("Professional Summary", "summary"),
+        ("Languages", "other"),
+        ("Experiance", "experience"),
+        ("Built ETL pipelines in Python", None),
+    ],
+)
+def test_common_heading_variants_start_their_section(line, key):
+    assert heading_key(line) == key

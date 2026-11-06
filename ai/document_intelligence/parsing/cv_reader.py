@@ -154,7 +154,8 @@ def heading_key(line: str) -> str | None:
     cleaned = re.sub(r"[^a-z& ]", "", line.casefold()).strip()
     if not cleaned or len(cleaned) > 40 or len(cleaned.split()) > 5:
         return None
-    match = process.extractOne(cleaned, _HEADING_LOOKUP, scorer=fuzz.ratio, score_cutoff=85)
+    # a list, not the dict: on a mapping rapidfuzz compares against the values (section keys)
+    match = process.extractOne(cleaned, list(_HEADING_LOOKUP), scorer=fuzz.ratio, score_cutoff=85)
     return _HEADING_LOOKUP[match[0]] if match else None
 
 

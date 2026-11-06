@@ -6,7 +6,7 @@ profile data (the UI is French; CV content and role data stay English), never mo
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from rapidfuzz import fuzz, process
@@ -20,9 +20,13 @@ from ai.document_intelligence.ats.profiles import (
     roles,
 )
 from ai.document_intelligence.parsing.cv_reader import CVText, contacts, read_cv
+from ai.document_intelligence.parsing.section_extraction import (
+    PARSER_VERSION,
+    ChatModel,
+    extract_structure,
+)
 from pipelines.ingestion.language_detection import detect_language_code
 
-PARSER_VERSION = "rules-1"
 READINESS = ("parseability", "sections", "content", "length")
 FIT = ("skill_coverage", "evidence")
 FORMAT_PENALTIES = {
@@ -55,9 +59,18 @@ class AtsResult:
     overall_score: float
     breakdown: dict[str, Any]
     issues: list[dict[str, Any]]
+    parsed: dict[str, Any] | None = None  # section structure to cache on the CV; None for a scan
 
 
-def analyze_cv(content: bytes, role_id: str, level_id: str) -> AtsResult:
+def analyze_cv(
+    content: bytes,
+    role_id: str,
+    level_id: str,
+    *,
+    model: ChatModel | None = None,
+    cached: dict[str, Any] | None = None,
+) -> AtsResult:
+    """Score a CV; `model` structures sections, `cached` (same document) skips that step."""
     role, level = roles().get(role_id), levels().get(level_id)
     if role is None:
         raise CVReviewError(f"Unknown role {role_id!r}.")
@@ -69,7 +82,21 @@ def analyze_cv(content: bytes, role_id: str, level_id: str) -> AtsResult:
         raise CVReviewError(str(exc)) from exc
     if cv.has_text_layer and detect_language_code(cv.text) != "en":
         raise CVReviewError("Only English CVs can be analysed for now.")
-    return _score(cv, role, level)
+    if not cv.has_text_layer:
+        return _score(cv, role, level)
+    if cached is not None and cached.get("parser_version") == PARSER_VERSION:
+        parsed = cached
+    else:
+        parsed = extract_structure(cv.sections, model)
+    cv.bullets = [
+        bullet
+        for key in ("experience", "projects")
+        for entry in parsed["sections"].get(key, [])
+        for bullet in entry["bullets"]
+    ]
+    result = _score(cv, role, level)
+    result.breakdown["parse_degraded"] = parsed["degraded"]
+    return replace(result, parsed=parsed)
 
 
 def _issue(code: str, severity: str, component: str, message: str, **params: Any) -> dict[str, Any]:
