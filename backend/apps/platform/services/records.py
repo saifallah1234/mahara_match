@@ -1,11 +1,10 @@
-from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
 from django.db.models import QuerySet
 from django.utils import timezone
 
-from backend.apps.identity.models import User
+from backend.apps.identity.models import User, UserStatus
 from backend.apps.identity.services.access import require_permission
 from backend.apps.platform.models import AuditLog, Notification
 from backend.apps.platform.services.contracts import PlatformPermissionCode
@@ -31,9 +30,25 @@ def mark_read(actor: User, notification_id: UUID | str) -> Notification:
     return notification
 
 
-def send_notification(user: User, data: Mapping[str, Any]) -> Notification:
+def send_notification(user: User, **data: Any) -> Notification:
     """Trusted application-service entrypoint; delivery channels are a later phase."""
     return Notification.objects.create(user=user, **data)
+
+
+def notify_role_holders(actor: User, organization_id: UUID, role_code: str, **data: Any) -> None:
+    """Notify active holders of an organization role, except the user who made the change."""
+    holders = (
+        User.objects.filter(
+            status=UserStatus.ACTIVE,
+            deleted_at__isnull=True,
+            role_assignments__organization_id=organization_id,
+            role_assignments__role__code=role_code,
+        )
+        .exclude(pk=actor.pk)
+        .distinct()
+    )
+    for holder in holders:
+        send_notification(holder, **data)
 
 
 def append_audit(

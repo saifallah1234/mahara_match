@@ -22,7 +22,7 @@ from backend.apps.identity.services.contracts import IdentityPermissionCode
 from backend.apps.identity.services.organization_members import create_member
 from backend.apps.identity.services.user_roles import assign_role
 from backend.apps.identity.services.users import create_account, update_status
-from backend.apps.platform.services.records import append_audit
+from backend.apps.platform.services.records import append_audit, send_notification
 from backend.common.exceptions import DomainNotFoundError, DomainValidationError
 
 
@@ -125,6 +125,13 @@ def approve(actor: User, request_id: UUID, organization_id: UUID) -> OnboardingR
         },
     )
     update_status(actor, request.user, UserStatus.ACTIVE)
+    send_notification(
+        request.user,
+        type="identity.onboarding.approved",
+        title="Demande approuvée",
+        body="Votre demande d’accès a été approuvée. Vous pouvez vous connecter à votre espace.",
+        payload_json={"onboarding_request_id": str(request.id)},
+    )
     return request
 
 
@@ -147,5 +154,12 @@ def reject(actor: User, request_id: UUID) -> OnboardingRequest:
         entity_id=request.id,
         before={"status": OnboardingRequest.Status.PENDING},
         after={"status": OnboardingRequest.Status.REJECTED},
+    )
+    send_notification(
+        request.user,
+        type="identity.onboarding.rejected",
+        title="Demande refusée",
+        body="Votre demande d’accès n’a pas été retenue.",
+        payload_json={"onboarding_request_id": str(request.id)},
     )
     return request

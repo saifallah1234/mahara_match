@@ -8,9 +8,13 @@ from django.utils import timezone
 from backend.apps.candidates.models import CV
 from backend.apps.candidates.services.records import get_record, own_profile, purge_cv_bytes
 from backend.apps.documents.services.documents import DocumentStorageError
-from backend.apps.identity.models import User
+from backend.apps.identity.models import RoleCode, User
 from backend.apps.identity.services.access import require_permission
-from backend.apps.platform.services.records import append_audit
+from backend.apps.platform.services.records import (
+    append_audit,
+    notify_role_holders,
+    send_notification,
+)
 from backend.apps.recruitment.models import (
     Application,
     ApplicationStatus,
@@ -88,6 +92,15 @@ def submit_application(actor: User, data: Mapping[str, Any]) -> Application:
         entity_id=application.id,
         after={"status": application.status, "offer_id": str(offer.id)},
     )
+    notify_role_holders(
+        actor,
+        offer.organization_id,
+        RoleCode.RECRUITER,
+        type="recruitment.application.submitted",
+        title="Nouvelle candidature",
+        body=f"Une candidature a été déposée pour « {offer.title} ».",
+        payload_json={"application_id": str(application.id), "offer_id": str(offer.id)},
+    )
     return application
 
 
@@ -138,6 +151,25 @@ def transition_application(
         before={"status": previous_status},
         after={"status": target},
     )
+    payload = {"application_id": str(application.id), "status": target}
+    if target == ApplicationStatus.WITHDRAWN:
+        notify_role_holders(
+            actor,
+            application.offer.organization_id,
+            RoleCode.RECRUITER,
+            type="recruitment.application.withdrawn",
+            title="Candidature retirée",
+            body=f"Le candidat a retiré sa candidature à « {application.offer.title} ».",
+            payload_json=payload,
+        )
+    else:
+        send_notification(
+            application.candidate.user,
+            type="recruitment.application.status_changed",
+            title="Candidature mise à jour",
+            body=f"Le statut de votre candidature à « {application.offer.title} » a changé.",
+            payload_json=payload,
+        )
     if target == ApplicationStatus.REJECTED:
         try:
             purge_cv_bytes(application.cv_id)

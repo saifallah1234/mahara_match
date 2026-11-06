@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
 import { Badge, Button, ConfirmDialog, EmptyState, Panel } from '../../components/ui'
 import { useRecruiter } from '../../state/recruiter'
@@ -11,15 +11,19 @@ import type { WorkMode } from '../../lib/types'
 
 export default function RecruteurOffreDetail() {
   const { offerId } = useParams()
+  const notice = (useLocation().state as { notice?: string } | null)?.notice
   const { offers, applications, skills, loading, error, setOfferStatus } = useRecruiter()
   const [pending, setPending] = useState<OfferAction | null>(null)
   const [offerSkills, setOfferSkills] = useState<OfferSkill[]>([])
+  const [skillsError, setSkillsError] = useState<string | null>(null)
   const offer = offers.find((o) => o.id === offerId)
 
   useEffect(() => {
     if (!offerId) return
     let live = true
-    listOfferSkills(offerId).then((rows) => { if (live) setOfferSkills(rows) }).catch(() => {})
+    listOfferSkills(offerId)
+      .then((rows) => { if (live) setOfferSkills(rows) })
+      .catch((failure) => { if (live) setSkillsError(failure instanceof Error ? failure.message : 'Compétences indisponibles.') })
     return () => { live = false }
   }, [offerId])
 
@@ -64,6 +68,8 @@ export default function RecruteurOffreDetail() {
       />
       <PageBody className="space-y-6">
         {error && <p role="alert" className="text-coral">{error}</p>}
+        {notice && <p role="alert" className="text-coral">{notice}</p>}
+        {skillsError && <p role="alert" className="text-coral">{skillsError}</p>}
         <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
           <Panel title="Description">
             <p className="max-w-[68ch] whitespace-pre-line px-5 py-4 text-[14px] leading-relaxed text-navy">{offer.description}</p>

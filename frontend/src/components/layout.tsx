@@ -3,6 +3,7 @@ import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../state/auth'
 import { ROLE_HOME, ROLE_LABEL, cx, initials } from '../lib/format'
 import type { RoleCode } from '../lib/types'
+import { NotificationBell } from './notifications'
 
 /* ------------------------------------------------------------------ */
 /* Marque                                                              */
@@ -187,6 +188,7 @@ export function AppShell() {
               </span>
               <span className="block truncate text-[11px] text-white/50">{user.email}</span>
             </span>
+            <NotificationBell role={role} />
           </div>
           {user.workspaces.length > 1 && <Link className="mt-1 block px-3 py-2 text-[13px] text-cyan" to="/espaces">Changer d’espace</Link>}
           <button

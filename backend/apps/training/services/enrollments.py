@@ -8,9 +8,13 @@ from django.db.models import QuerySet
 from django.utils import timezone
 
 from backend.apps.candidates.services.records import own_profile
-from backend.apps.identity.models import User
+from backend.apps.identity.models import RoleCode, User
 from backend.apps.identity.services.access import require_permission
-from backend.apps.platform.services.records import append_audit
+from backend.apps.platform.services.records import (
+    append_audit,
+    notify_role_holders,
+    send_notification,
+)
 from backend.apps.training.models import (
     EnrollmentStatus,
     SessionStatus,
@@ -144,6 +148,15 @@ def enroll_candidate(actor: User, data: Mapping[str, Any]) -> TrainingEnrollment
         entity_id=enrollment.id,
         after={"status": enrollment.status, "session_id": str(session.id)},
     )
+    notify_role_holders(
+        actor,
+        session.program.organization_id,
+        RoleCode.TRAINING_MANAGER,
+        type="training.enrollment.created",
+        title="Nouvelle inscription",
+        body=f"Une inscription a été enregistrée pour « {session.program.title} ».",
+        payload_json={"enrollment_id": str(enrollment.id), "session_id": str(session.id)},
+    )
     return enrollment
 
 
@@ -194,7 +207,19 @@ def update_progress(
         before={"status": previous_status},
         after={"status": enrollment.status, "completion_rate": completion_rate},
     )
+    if enrollment.status != previous_status:
+        _notify_candidate_status(enrollment)
     return enrollment
+
+
+def _notify_candidate_status(enrollment: TrainingEnrollment) -> None:
+    send_notification(
+        enrollment.candidate.user,
+        type="training.enrollment.status_changed",
+        title="Inscription mise à jour",
+        body=f"Le statut de votre inscription à « {enrollment.session.program.title} » a changé.",
+        payload_json={"enrollment_id": str(enrollment.id), "status": enrollment.status},
+    )
 
 
 @transaction.atomic
@@ -226,4 +251,19 @@ def cancel_enrollment(actor: User, enrollment: TrainingEnrollment) -> TrainingEn
         before={"status": previous_status},
         after={"status": EnrollmentStatus.DROPPED},
     )
+    if enrollment.candidate.user_id == actor.id:
+        notify_role_holders(
+            actor,
+            enrollment.session.program.organization_id,
+            RoleCode.TRAINING_MANAGER,
+            type="training.enrollment.cancelled",
+            title="Inscription annulée",
+            body=f"Un candidat a annulé son inscription à « {enrollment.session.program.title} ».",
+            payload_json={
+                "enrollment_id": str(enrollment.id),
+                "session_id": str(enrollment.session_id),
+            },
+        )
+    else:
+        _notify_candidate_status(enrollment)
     return enrollment

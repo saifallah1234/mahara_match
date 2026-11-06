@@ -7,23 +7,34 @@ import { candidateLabel, type RecruiterInterview } from '../../api/recruiter'
 import { INTERVIEW_STATUS_LABEL, INTERVIEW_TYPE_LABEL, formatTunisDateTime, labelFor } from '../../lib/format'
 
 const STATUS_TONE = { SCHEDULED: 'encours', COMPLETED: 'positif', CANCELLED: 'negatif' } as const
+const PRE_INTERVIEW = ['SUBMITTED', 'UNDER_REVIEW', 'PRESELECTED']
 
 export default function RecruteurEntretiens() {
-  const { interviews, applications, error, scheduleInterview, setInterviewStatus } = useRecruiter()
+  const { interviews, applications, error, scheduleInterview, setInterviewStatus, moveApplication } = useRecruiter()
   const [form, setForm] = useState({ application_id: '', type: 'VIDEO', scheduled_at: '', duration_minutes: '45', location_or_url: '' })
   const [busy, setBusy] = useState(false)
   const [cancelling, setCancelling] = useState<RecruiterInterview | null>(null)
   const [completing, setCompleting] = useState<RecruiterInterview | null>(null)
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
 
-  // The backend refuses an interview unless the application is already at INTERVIEW.
-  const candidates = applications.filter((a) => a.status === 'INTERVIEW')
+  // The backend refuses an interview unless the application is already at INTERVIEW, so earlier stages are offered with a one-click advance.
+  const candidates = applications.filter((a) => a.status === 'INTERVIEW' || PRE_INTERVIEW.includes(a.status))
+  const picked = applications.find((a) => a.id === form.application_id)
   const sorted = [...interviews].sort((a, b) => +new Date(a.scheduled_at) - +new Date(b.scheduled_at))
   const upcoming = sorted.filter((i) => i.status === 'SCHEDULED')
   const past = sorted.filter((i) => i.status !== 'SCHEDULED')
   const who = (i: RecruiterInterview) => {
     const a = applications.find((x) => x.id === i.application_id)
     return a ? `${candidateLabel(a)} — ${a.offer_title}` : 'Candidature'
+  }
+
+  async function advance() {
+    if (!picked) return
+    setBusy(true)
+    try {
+      await moveApplication(picked.id, 'INTERVIEW')
+    } catch { /* l'erreur s'affiche en haut de la page */ }
+    finally { setBusy(false) }
   }
 
   async function submit() {
@@ -80,8 +91,14 @@ export default function RecruteurEntretiens() {
                   {candidates.map((a) => <option key={a.id} value={a.id}>{candidateLabel(a)} — {a.offer_title}</option>)}
                 </Select>
               </Field>
+              {picked && picked.status !== 'INTERVIEW' && (
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <p className="text-[12.5px] text-slate">Une candidature doit être au statut Entretien avant d’être planifiée.</p>
+                  <Button size="sm" variant="secondaire" disabled={busy} onClick={() => void advance()}>Passer la candidature au statut Entretien</Button>
+                </div>
+              )}
               <p className="mt-1.5 text-[12.5px] text-slate">
-                Seules les candidatures au statut Entretien apparaissent ici. Faites avancer la candidature depuis le <Link to="/recruteur/candidatures" className="text-teal hover:underline">Suivi des candidatures</Link>.
+                Vous pouvez aussi la faire avancer depuis le <Link to="/recruteur/candidatures" className="text-teal hover:underline">Suivi des candidatures</Link>.
               </p>
             </div>
             <Field label="Type">
@@ -93,7 +110,7 @@ export default function RecruteurEntretiens() {
             <Field label="Durée (minutes)"><Input type="number" value={form.duration_minutes} onChange={set('duration_minutes')} /></Field>
             <Field label="Lieu ou lien"><Input value={form.location_or_url} onChange={set('location_or_url')} /></Field>
             <div className="sm:col-span-2">
-              <Button disabled={busy || !form.application_id || !form.scheduled_at} onClick={() => void submit()}>Planifier</Button>
+              <Button disabled={busy || picked?.status !== 'INTERVIEW' || !form.scheduled_at} onClick={() => void submit()}>Planifier</Button>
             </div>
           </div>
         </Panel>

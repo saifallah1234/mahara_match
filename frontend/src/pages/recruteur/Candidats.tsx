@@ -17,6 +17,7 @@ export default function RecruteurCandidats() {
   const verified = workspace?.organization?.verification_status === 'VERIFIED'
   const [filters, setFilters] = useState(EMPTY)
   const [levels, setLevels] = useState<EducationLevel[]>([])
+  const [levelsError, setLevelsError] = useState<string | null>(null)
   const [cards, setCards] = useState<CandidateCard[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString()
@@ -26,7 +27,9 @@ export default function RecruteurCandidats() {
   useEffect(() => {
     if (!verified) return
     let live = true
-    listEducationLevels().then((rows) => { if (live) setLevels(rows) }).catch(() => {})
+    listEducationLevels()
+      .then((rows) => { if (live) setLevels(rows) })
+      .catch((failure) => { if (live) setLevelsError(failure instanceof Error ? failure.message : 'Niveaux de formation indisponibles.') })
     return () => { live = false }
   }, [verified])
 
@@ -48,6 +51,7 @@ export default function RecruteurCandidats() {
           <Note tone="attention">{UNVERIFIED_MESSAGE}</Note>
         ) : (
           <>
+            {levelsError && <p role="alert" className="text-coral">{levelsError}</p>}
             <Panel title="Filtres">
               <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
                 <Field label="Recherche"><Input value={filters.search} onChange={set('search')} placeholder="Titre, expérience…" /></Field>

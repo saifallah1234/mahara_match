@@ -57,3 +57,7 @@ video/
 /retrieval_candidates.json
 /metrics-retrieval*.json
 /metrics-retrieval*.md
+
+# Local issue tracker (agent skills)
+.scratch/
+

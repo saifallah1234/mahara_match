@@ -112,12 +112,13 @@ export default function RecruteurCandidatures() {
 function ApplicationPanel({ application: a, onClose }: { application: RecruiterApplication; onClose: () => void }) {
   const { interviews } = useRecruiter()
   const [history, setHistory] = useState<StatusHistory[] | null>(null)
+  const [historyError, setHistoryError] = useState('')
   const [downloadError, setDownloadError] = useState('')
   useEffect(() => {
     let live = true
     listStatusHistory(a.id)
       .then((rows) => { if (live) setHistory(rows) })
-      .catch(() => { if (live) setHistory([]) })
+      .catch((failure) => { if (live) setHistoryError(failure instanceof Error ? failure.message : 'Historique indisponible.') })
     return () => { live = false }
   }, [a.id])
   const mine = interviews.filter((i) => i.application_id === a.id)
@@ -148,7 +149,9 @@ function ApplicationPanel({ application: a, onClose }: { application: RecruiterA
 
         <section>
           <h3 className="mb-1 font-medium text-navy">Historique</h3>
-          {history === null ? (
+          {historyError ? (
+            <p role="alert" className="text-coral">{historyError}</p>
+          ) : history === null ? (
             <p className="text-slate">Chargement…</p>
           ) : history.length === 0 ? (
             <p className="text-slate">Aucun changement de statut.</p>

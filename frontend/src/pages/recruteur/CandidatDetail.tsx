@@ -20,11 +20,14 @@ export default function RecruteurCandidatDetail() {
   const [levels, setLevels] = useState<EducationLevel[]>([])
   const [gone, setGone] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [levelsError, setLevelsError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!verified || !candidateId) return
     let live = true
-    listEducationLevels().then((rows) => { if (live) setLevels(rows) }).catch(() => {})
+    listEducationLevels()
+      .then((rows) => { if (live) setLevels(rows) })
+      .catch((failure) => { if (live) setLevelsError(failure instanceof Error ? failure.message : 'Niveaux de formation indisponibles.') })
     getCandidate(candidateId)
       .then((c) => { if (live) setCard(c) })
       .catch((e: unknown) => {
@@ -46,6 +49,7 @@ export default function RecruteurCandidatDetail() {
         {!verified && <Note tone="attention">{UNVERIFIED_MESSAGE}</Note>}
         {verified && gone && <Note tone="attention">Ce profil n’est plus visible.</Note>}
         {verified && loadError && <p role="alert" className="text-coral">{loadError}</p>}
+        {levelsError && <p role="alert" className="text-coral">{levelsError}</p>}
         {verified && !card && !gone && !loadError && <p className="text-slate">Chargement…</p>}
         {card && (
           <>

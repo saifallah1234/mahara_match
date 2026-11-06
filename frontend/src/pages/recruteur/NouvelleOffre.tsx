@@ -78,10 +78,18 @@ function OfferForm({ offer, current = [] }: { offer?: RecruiterOffer; current?: 
         navigate(`/recruteur/offres/${offer.id}`)
         return
       }
-      // The draft exists once createOffer returns. A failing skill or publish step is shown on the draft.
+      // The draft exists once createOffer returns. A failing skill or publish step is named on the draft page.
       const id = await createOffer(data)
-      const skillsSaved = await syncOfferSkills(id, chosen, []).then(() => true, () => false)
-      if (skillsSaved && publish) await publishOffer(id).catch(() => {})
+      let step = 'compétences'
+      try {
+        await syncOfferSkills(id, chosen, [])
+        step = 'publication'
+        if (publish) await publishOffer(id)
+      } catch (failure) {
+        const reason = failure instanceof Error ? failure.message : 'erreur inconnue'
+        navigate(`/recruteur/offres/${id}`, { state: { notice: `Le brouillon est enregistré, mais l’étape « ${step} » a échoué : ${reason}` } })
+        return
+      }
       navigate(`/recruteur/offres/${id}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Échec de l’enregistrement.')
