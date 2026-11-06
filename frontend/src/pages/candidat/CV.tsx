@@ -7,7 +7,7 @@ import { formatDate } from '../../lib/format'
 import AtsPanel from './AtsPanel'
 
 export default function CandidatCV() {
-  const { cvs, documents, uploadCV, setPrimary, deleteCV } = useCandidate()
+  const { cvs, documents, uploadCV, setPrimary, deleteCV, reload } = useCandidate()
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
   const [retryDocumentId, setRetryDocumentId] = useState<string>()
@@ -46,7 +46,7 @@ export default function CandidatCV() {
           </div></li>
         })}</ul>}
       </Panel>
-      <AtsPanel cvs={cvs} />
+      <AtsPanel cvs={cvs} onSaved={reload} />
       {deleting && (
         <ConfirmDialog
           title="Supprimer ce CV ?"

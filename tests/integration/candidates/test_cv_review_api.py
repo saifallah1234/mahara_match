@@ -386,3 +386,82 @@ def test_other_candidates_cannot_rewrite_or_edit_the_draft(storage, embeddings_d
         == 404
     )
     assert CVAnalysisResult.objects.get().cv_draft_json == {}
+
+
+def test_generate_both_formats_then_save_as_a_new_cv_version(storage, embeddings_down) -> None:
+    user, profile = candidate()
+    profile_before = model_to_dict(profile)
+    client = client_for(user)
+    cv = stored_cv(user, profile, render("de_good_pdf"), storage, is_primary=True)
+    body = analyse(client, cv.id).json()
+    detail = body["id"]
+    key, original = first_bullet(body)
+    text = f"{original} for [X] analysts"
+    draft_url = reverse("cv-analysis-result-draft", args=(detail,))
+    client.patch(draft_url, {"bullet": key, "decision": "accept", "text": text}, format="json")
+    generate_url = reverse("cv-analysis-result-generate", args=(detail,))
+
+    pdf = client.get(generate_url, {"file_format": "pdf"})
+    docx_file = client.get(generate_url, {"file_format": "docx"})
+
+    assert pdf.status_code == 200 and pdf["Content-Type"] == "application/pdf"
+    assert pdf["X-CV-Placeholders"] == "1"  # warned, not blocked
+    pdf_bytes = pdf.getvalue()
+    assert pdf_bytes.startswith(b"%PDF-")
+    assert docx_file.status_code == 200 and docx_file["Content-Type"] == DOCX
+    assert docx_file.getvalue().startswith(b"PK\x03\x04")
+    assert client.get(generate_url, {"file_format": "odt"}).status_code == 400
+    assert CV.objects.filter(candidate=profile).count() == 1  # generating stores nothing
+    assert Document.objects.filter(owner_user=user).count() == 1
+
+    saved = client.post(
+        reverse("cv-analysis-result-save-cv", args=(detail,)), {"file_format": "pdf"}, format="json"
+    )
+
+    assert saved.status_code == 201
+    new_cv = CV.objects.get(id=saved.json()["id"])
+    assert new_cv.version_number == 2 and not new_cv.is_primary
+    assert new_cv.document.mime_type == "application/pdf"
+    assert new_cv.document.file_name.endswith(".pdf")
+    assert storage[new_cv.document.storage_uri].startswith(b"%PDF-")
+    cv.refresh_from_db()
+    assert cv.is_primary
+    listed = client.get(reverse("cv-list")).json()["results"]
+    assert {row["version_number"] for row in listed} == {1, 2}
+    # The saved version can itself be analysed like any uploaded CV.
+    assert analyse(client, new_cv.id).status_code == 201
+    profile.refresh_from_db()
+    assert model_to_dict(profile) == profile_before
+    assert not profile.skills.exists() and not profile.experiences.exists()
+
+
+def test_other_candidates_cannot_generate_or_save(storage) -> None:
+    user, profile = candidate()
+    cv = stored_cv(user, profile, render("de_good_pdf"), storage)
+    detail = analyse(client_for(user), cv.id).json()["id"]
+    other, _ = candidate("other@example.test")
+    intruder = client_for(other)
+
+    generate = intruder.get(reverse("cv-analysis-result-generate", args=(detail,)))
+    save = intruder.post(
+        reverse("cv-analysis-result-save-cv", args=(detail,)), {"file_format": "pdf"}, format="json"
+    )
+
+    assert generate.status_code == 404 and save.status_code == 404
+    assert CV.objects.count() == 1
+
+
+def test_purged_cv_and_non_candidates_cannot_generate(storage) -> None:
+    user, profile = candidate()
+    cv = stored_cv(user, profile, render("de_good_pdf"), storage)
+    detail = analyse(client_for(user), cv.id).json()["id"]
+    generate_url = reverse("cv-analysis-result-generate", args=(detail,))
+    reviewer = account("reviewer@example.test")
+    recruiter(reviewer, organization("12"))
+
+    assert client_for(reviewer).get(generate_url).status_code == 403
+    CV.objects.filter(id=cv.id).update(bytes_purged_at=timezone.now())
+    assert client_for(user).get(generate_url).status_code == 400
+    save_url = reverse("cv-analysis-result-save-cv", args=(detail,))
+    assert client_for(user).post(save_url, {}, format="json").status_code == 400
+    assert CV.objects.count() == 1

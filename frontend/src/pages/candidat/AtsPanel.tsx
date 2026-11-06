@@ -4,6 +4,7 @@ import { Badge, Button, EmptyState, Field, Meter, Note, Panel, Select, StatTile 
 import { analyseCV, analyses, reviewRoles, type AtsAnalysis, type CV, type ReviewLevel, type ReviewRole } from '../../api/candidate'
 import { ApiError } from '../../api/client'
 import AtsDraft from './AtsDraft'
+import AtsExport from './AtsExport'
 
 const LEVELS: { id: ReviewLevel; label: string }[] = [
   { id: 'intern', label: 'Stagiaire' },
@@ -28,7 +29,7 @@ function errorMessage(failure: unknown) {
   return 'L’analyse a échoué. Réessayez plus tard.'
 }
 
-export default function AtsPanel({ cvs }: { cvs: CV[] }) {
+export default function AtsPanel({ cvs, onSaved }: { cvs: CV[]; onSaved: () => Promise<void> }) {
   const [roles, setRoles] = useState<ReviewRole[]>([])
   const [cvId, setCvId] = useState('')
   const [role, setRole] = useState('')
@@ -82,6 +83,7 @@ export default function AtsPanel({ cvs }: { cvs: CV[] }) {
           })}</ul>}
         </div>
         <AtsDraft key={result.id} analysis={result} onChange={setResult} />
+        <AtsExport key={`export-${result.id}`} analysis={result} onSaved={onSaved} />
       </div>}
     </div>
   </Panel>

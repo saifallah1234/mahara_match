@@ -77,3 +77,8 @@ export const proposeSummary = (analysis: string) =>
   save<Rewrite>(`/cv-analysis-results/${analysis}/summary/`, {}, 'POST')
 export const updateDraft = (analysis: string, change: DraftChange) =>
   save<AtsAnalysis>(`/cv-analysis-results/${analysis}/draft/`, change)
+export type CvFileFormat = 'pdf' | 'docx'
+export const downloadGeneratedCV = (analysis: string, fileFormat: CvFileFormat, fileName: string) =>
+  downloadPath(`/cv-analysis-results/${analysis}/generate/?file_format=${fileFormat}`, fileName)
+export const saveGeneratedCV = (analysis: string, file_format: CvFileFormat) =>
+  save<CV>(`/cv-analysis-results/${analysis}/save-cv/`, { file_format }, 'POST')

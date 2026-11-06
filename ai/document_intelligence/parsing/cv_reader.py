@@ -52,12 +52,14 @@ HEADINGS = {
         "volunteering",
         "references",
         "achievements",
+        "additional information",
     ],
 }
 _HEADING_LOOKUP = {phrase: key for key, phrases in HEADINGS.items() for phrase in phrases}
 SAFE_FONTS = (
     "arial",
     "helvetica",
+    "nimbus",  # URW Helvetica/Times clones, embedded by generated PDFs
     "calibri",
     "cambria",
     "times",

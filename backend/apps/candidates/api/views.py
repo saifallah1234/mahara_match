@@ -1,6 +1,9 @@
+from io import BytesIO
 from typing import Any
 
-from drf_spectacular.utils import extend_schema
+from django.http import FileResponse
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -17,6 +20,7 @@ from backend.apps.candidates.api.serializers import (
     CVAnalysisCreateSerializer,
     CVAnalysisResultSerializer,
     CVDraftUpdateSerializer,
+    CVGenerateSerializer,
     CVRewriteRequestSerializer,
     CVRewriteSerializer,
     CVSerializer,
@@ -237,6 +241,48 @@ class CVAnalysisResultViewSet(GenericViewSet[CVAnalysisResult]):
             active_request_user(request), str(pk), serializer.validated_data
         )
         return Response(self.get_serializer(analysis).data)
+
+    @extend_schema(
+        parameters=[OpenApiParameter("file_format", enum=("pdf", "docx"), default="pdf")],
+        responses={(200, "application/octet-stream"): OpenApiTypes.BINARY},
+        description="Download the CV draft as an ATS-friendly PDF or DOCX; nothing is stored. "
+        "X-CV-Placeholders counts unresolved [X] placeholders (a warning, not a refusal); "
+        "X-CV-Missing-Sections lists sections the level requires that the CV lacks.",
+    )
+    @action(detail=True, methods=("get",))
+    def generate(self, request: Request, pk: str | None = None) -> FileResponse:
+        serializer = CVGenerateSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        file_format = serializer.validated_data["file_format"]
+        generated, file_name = cv_review.generate_file(
+            active_request_user(request), str(pk), file_format
+        )
+        response = FileResponse(
+            BytesIO(generated.content),
+            as_attachment=True,
+            filename=file_name,
+            content_type=cv_review.MIME_TYPES[file_format],
+        )
+        response["Cache-Control"] = "private, no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        response["X-CV-Placeholders"] = str(generated.placeholders)
+        response["X-CV-Missing-Sections"] = ",".join(generated.missing_sections)
+        return response
+
+    @extend_schema(
+        request=CVGenerateSerializer,
+        responses={201: CVSerializer},
+        description="Save the generated file as a new CV version (not primary). The UI asks "
+        "for explicit confirmation first.",
+    )
+    @action(detail=True, methods=("post",), url_path="save-cv")
+    def save_cv(self, request: Request, pk: str | None = None) -> Response:
+        serializer = CVGenerateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        cv = cv_review.save_as_cv(
+            active_request_user(request), str(pk), serializer.validated_data["file_format"]
+        )
+        return Response(CVSerializer(cv).data, status=status.HTTP_201_CREATED)
 
 
 class CVReviewRoleViewSet(GenericViewSet[Any]):

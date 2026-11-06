@@ -16,6 +16,7 @@ from backend.apps.candidates.models import (
     Relocation,
     WorkMode,
 )
+from backend.apps.candidates.services.cv_review import MIME_TYPES
 from backend.apps.documents.models import Document
 from backend.apps.taxonomy.models import Skill
 
@@ -299,3 +300,8 @@ class CVDraftUpdateSerializer(serializers.Serializer[dict[str, Any]]):
             if "\n" in attrs.get(name, "").strip():
                 raise serializers.ValidationError({name: "Must be a single line."})
         return attrs
+
+
+class CVGenerateSerializer(serializers.Serializer[dict[str, Any]]):
+    # Not "format": DRF reserves that query parameter for content negotiation.
+    file_format = serializers.ChoiceField(choices=tuple(MIME_TYPES), default="pdf")

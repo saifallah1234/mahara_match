@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Cache key with the document checksum: bump when the prompt, schema, validation or the
 # cv_reader section/bullet split changes, or cached structures go stale.
-PARSER_VERSION = "llm-1"
+PARSER_VERSION = "llm-2"
 STRUCTURED_SECTIONS = ("experience", "projects", "education")
 FIELDS = ("title", "organisation", "dates")
 MAX_RESPONSE_CHARS = 20000
