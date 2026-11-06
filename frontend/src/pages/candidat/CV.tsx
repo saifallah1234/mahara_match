@@ -4,6 +4,7 @@ import { Badge, Button, ConfirmDialog, EmptyState, Field, Input, Panel } from '.
 import { download } from '../../api/candidate'
 import { useCandidate } from '../../state/candidate'
 import { formatDate } from '../../lib/format'
+import AtsPanel from './AtsPanel'
 
 export default function CandidatCV() {
   const { cvs, documents, uploadCV, setPrimary, deleteCV } = useCandidate()
@@ -31,7 +32,7 @@ export default function CandidatCV() {
     <PageBody className="space-y-5">
       {downloadError && <p role="alert" className="text-coral">{downloadError}</p>}
       <Panel title="Importer un CV"><form onSubmit={(event) => void submit(event)} className="space-y-4 p-5">
-        <Field label="Fichier PDF, JPEG ou PNG" required><Input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required onChange={(event) => { setFile(event.target.files?.[0] ?? null); setRetryDocumentId(undefined) }} /></Field>
+        <Field label="Fichier PDF, DOCX, JPEG ou PNG" required><Input type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required onChange={(event) => { setFile(event.target.files?.[0] ?? null); setRetryDocumentId(undefined) }} /></Field>
         <Field label="Titre du CV"><Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Mon CV" /></Field>
         <Button type="submit" disabled={!file || busy}>{busy ? 'Envoi…' : retryDocumentId ? 'Réessayer la création du CV' : 'Importer'}</Button>
       </form></Panel>
@@ -45,6 +46,7 @@ export default function CandidatCV() {
           </div></li>
         })}</ul>}
       </Panel>
+      <AtsPanel cvs={cvs} />
       {deleting && (
         <ConfirmDialog
           title="Supprimer ce CV ?"

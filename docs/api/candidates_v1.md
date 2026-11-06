@@ -16,14 +16,26 @@ initial migrations. Integration tests cover access, upload, download and deletio
   URI is never returned by the candidate document endpoint.
 - `/api/v1/skills/`, `/languages/`, `/education-levels/`: authenticated read only
   reference catalogs.
-- `/api/v1/cv-analysis-results/`: candidate owned read only ATS results.
+- `/api/v1/cv-review-roles/`: candidate read only list of role profiles (`id`, `label`,
+  `version`) an ATS analysis can target. v1: `data_engineer`, `software_engineer`.
+- `/api/v1/cv-analysis-results/`: candidate owned ATS analyses. `POST` with `cv`,
+  `role_profile_id` and `level` (`intern`, `junior`, `mid`) runs the analysis
+  synchronously and returns 201 with the stored result. The CV must be owned, not
+  deleted and still have its bytes (deleted or another candidate's CV: 404; purged
+  bytes: 400). Unknown role or level, a file other than PDF/DOCX, or a non-English CV
+  return 400 and store nothing. List and retrieve return `role_profile_id`,
+  `role_profile_version`, `level`, `breakdown_json` (six component scores, weights,
+  `ats_readiness`, `role_fit`, `parse_degraded`, counts), `issues_json` (code,
+  severity, component, French message, params) and `cv_draft_json` (empty until the
+  rewrite ticket). `target_offer` stays unused. The analysis never changes the profile.
 
 Candidates need an active global `CANDIDATE` role for candidate records. Another
 candidate's owned record returns 404. Recruiter discovery does not grant access to
 candidate-owned record endpoints. CV creation requires an existing owned document. Its
 version number is allocated per candidate and at most one CV can be primary.
-Scan/parse results, raw parsed JSON, skill validation provenance, completion scores
-and ATS analysis results have no candidate write route. Only candidate confirmed
+Scan/parse results, raw parsed JSON, skill validation provenance and completion
+scores have no candidate write route; ATS analyses are created only by the analysis
+endpoint above. Only candidate confirmed
 information is written to structured records.
 
 Deleting a CV hides it from the candidate CV/document lists and prevents new

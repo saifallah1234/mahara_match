@@ -1,3 +1,5 @@
+from typing import Any
+
 from rest_framework import serializers
 
 from backend.apps.candidates.models import (
@@ -239,7 +241,24 @@ class CVAnalysisResultSerializer(serializers.ModelSerializer[CVAnalysisResult]):
             "issues_json",
             "suggestions_json",
             "analyzed_at",
+            "role_profile_id",
+            "role_profile_version",
+            "level",
+            "breakdown_json",
+            "cv_draft_json",
             "created_at",
             "updated_at",
         )
         read_only_fields = fields
+
+
+class CVAnalysisCreateSerializer(serializers.Serializer[dict[str, Any]]):
+    cv = serializers.UUIDField()
+    role_profile_id = serializers.CharField(max_length=64)
+    level = serializers.CharField(max_length=20)
+
+
+class RoleProfileSerializer(serializers.Serializer[dict[str, Any]]):
+    id = serializers.CharField()
+    label = serializers.CharField()  # type: ignore[assignment]  # role label, not Field.label
+    version = serializers.CharField()

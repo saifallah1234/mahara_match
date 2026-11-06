@@ -48,3 +48,12 @@ export async function downloadPath(path: string, fileName: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 export const download = (documentId: string, fileName: string) => downloadPath(`/documents/${documentId}/download/`, fileName)
+
+export type ReviewRole = { id: string; label: string; version: string }
+export type ReviewLevel = 'intern' | 'junior' | 'mid'
+export type AtsIssue = { code: string; severity: 'high' | 'medium' | 'low'; component: string; message: string }
+export type AtsBreakdown = { components: Record<string, number>; ats_readiness: number; role_fit: number; parse_degraded: boolean }
+export type AtsAnalysis = { id: string; cv: string; overall_score: string; issues_json: AtsIssue[]; role_profile_id: string; role_profile_version: string; level: ReviewLevel; breakdown_json: AtsBreakdown; analyzed_at: string }
+export const reviewRoles = () => request<ReviewRole[]>('/cv-review-roles/')
+export const analyseCV = (cv: string, role_profile_id: string, level: ReviewLevel) =>
+  save<AtsAnalysis>('/cv-analysis-results/', { cv, role_profile_id, level }, 'POST')

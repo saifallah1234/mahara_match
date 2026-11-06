@@ -32,7 +32,7 @@ def _actions(path: str) -> dict[str, str]:
 
 def test_candidate_routes_expose_only_approved_delete() -> None:
     assert _actions("/api/v1/cvs/00000000-0000-0000-0000-000000000001/")["delete"] == ("destroy")
-    assert _actions("/api/v1/cv-analysis-results/") == {"get": "list"}
+    assert _actions("/api/v1/cv-analysis-results/") == {"get": "list", "post": "create"}
     assert _actions("/api/v1/documents/") == {"get": "list", "post": "create"}
 
 

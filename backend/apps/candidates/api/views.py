@@ -14,12 +14,14 @@ from backend.apps.candidates.api.serializers import (
     CandidateProfileSerializer,
     CandidateSkillSerializer,
     CertificationSerializer,
+    CVAnalysisCreateSerializer,
     CVAnalysisResultSerializer,
     CVSerializer,
     EducationSerializer,
     ExperienceSerializer,
     ProjectSerializer,
     RecruiterCandidateSerializer,
+    RoleProfileSerializer,
 )
 from backend.apps.candidates.models import (
     CV,
@@ -33,7 +35,7 @@ from backend.apps.candidates.models import (
     Experience,
     Project,
 )
-from backend.apps.candidates.services import discovery, records
+from backend.apps.candidates.services import cv_review, discovery, records
 from backend.apps.identity.api.common_permissions import active_request_user
 
 
@@ -180,3 +182,26 @@ class CVAnalysisResultViewSet(GenericViewSet[CVAnalysisResult]):
     def retrieve(self, request: Request, pk: str | None = None) -> Response:
         analysis = records.get_cv_analysis(active_request_user(request), str(pk))
         return Response(self.get_serializer(analysis).data)
+
+    @extend_schema(
+        request=CVAnalysisCreateSerializer,
+        responses={201: CVAnalysisResultSerializer},
+        description="Run a synchronous ATS analysis of one owned CV against a role and level.",
+    )
+    def create(self, request: Request) -> Response:
+        serializer = CVAnalysisCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        analysis = cv_review.create_analysis(
+            active_request_user(request), data["cv"], data["role_profile_id"], data["level"]
+        )
+        return Response(self.get_serializer(analysis).data, status=status.HTTP_201_CREATED)
+
+
+class CVReviewRoleViewSet(GenericViewSet[Any]):
+    serializer_class = RoleProfileSerializer
+    pagination_class = None
+
+    def list(self, request: Request) -> Response:
+        roles = cv_review.list_roles(active_request_user(request))
+        return Response(self.get_serializer(roles, many=True).data)

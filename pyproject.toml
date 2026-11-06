@@ -17,7 +17,11 @@ dependencies = [
     "pgvector>=0.5.1",
     "playwright>=1.63.0",
     "psycopg[binary]>=3.2,<4",
+    "pymupdf>=1.26,<2",
+    "python-docx>=1.2.0",
     "python-dotenv>=1.2.4",
+    "pyyaml>=6.0.3",
+    "rapidfuzz>=3.14.6",
     "seleniumbase>=4.55.0",
 ]
 
@@ -32,6 +36,7 @@ dev = [
     "pre-commit",
     "django-stubs[compatible-mypy]>=5.2,<5.3",
     "djangorestframework-stubs>=3.16,<3.17",
+    "types-pyyaml>=6.0.12.20260906",
 ]
 
 [project.optional-dependencies]

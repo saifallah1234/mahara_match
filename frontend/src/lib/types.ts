@@ -222,23 +222,6 @@ export interface ExtractedField {
   correctedValue?: string
 }
 
-export interface ATSCheck {
-  code: string
-  label: string
-  passed: boolean
-  detail: string
-}
-
-export interface CVAnalysisResult {
-  id: UUID
-  cvId: UUID
-  targetOfferId?: UUID
-  overallScore: number
-  checks: ATSCheck[]
-  suggestions: string[]
-  analyzedAt: string
-}
-
 /* ------------------------------------------------------------------ */
 /* E. Offres et recrutement                                            */
 /* ------------------------------------------------------------------ */
