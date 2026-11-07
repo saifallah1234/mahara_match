@@ -211,3 +211,13 @@ def test_candidates_seeded_without_skills_get_them_on_the_next_run(debug_on) -> 
         ("Python (computer programming)", "ADVANCED"),
         ("SQL", "INTERMEDIATE"),
     }
+
+
+def test_seeded_ministry_manager_reads_indicators_across_governorates(debug_on) -> None:
+    seed()
+
+    response = signed_in(f"ministere@{DOMAIN}").get("/api/v1/reporting/indicators/")
+
+    assert response.status_code == 200
+    regions = [row for row in response.json()["regions"] if row["offers"]]
+    assert len(regions) >= 3

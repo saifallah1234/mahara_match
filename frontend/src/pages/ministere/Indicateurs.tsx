@@ -33,6 +33,7 @@ export default function MinistereIndicateurs() {
         {error && <p role="alert" className="text-coral">{error}</p>}
         {loading ? <p className="text-slate">Chargement…</p> : unavailable ? <Unavailable /> : (
           <>
+            <p className="text-[13px] text-slate">Chiffres de démonstration : comptages simples, pas des indicateurs validés.</p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatTile value={sum('offers')} label="Offres" />
               <StatTile value={sum('applications')} label="Candidatures" tone="teal" />

@@ -103,3 +103,13 @@ canonical name = label, category = ESCO skill type, description = ESCO descripti
 `ESCO: <concept URI>`. No schema change, alias table or Arabic/French labels; Q20 stays open.
 Education levels are Tunisian diploma names in French, in this order: Baccalauréat, Licence,
 Diplôme d'ingénieur, Master, Doctorat. Both are demo vocabulary, not an approved reference.
+
+**Ministry indicators are demo counts (2026-11-07):** `GET /api/v1/reporting/indicators/`
+(`.scratch/demo-readiness/issues/04-ministry-indicators.md`) returns all-time counts per
+governorate: published, non-deleted offers; applications to them; those applications HIRED;
+ACTIVE training programs by provider governorate; empty governorates under "Non précisé".
+Skill gaps count counted offers listing a skill against counted programs teaching it
+(prerequisites excluded). Reporting owns no tables; recruitment and training expose the
+aggregate reads. Access is `reporting.indicators.read` (MINISTRY_MANAGER in a verified
+ministry, ADMIN). These are demo counts, not KPIs: Q20's numerator, denominator, time
+window, scope and small-count privacy rule remain open.

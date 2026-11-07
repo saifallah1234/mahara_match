@@ -7,6 +7,7 @@ from backend.apps.imports.services.bootstrap import seed_imports_rbac
 from backend.apps.matching.services.bootstrap import seed_matching_rbac
 from backend.apps.platform.services.bootstrap import seed_platform_rbac
 from backend.apps.recruitment.services.bootstrap import seed_recruitment_rbac
+from backend.apps.reporting.services.bootstrap import seed_reporting_rbac
 from backend.apps.training.services.bootstrap import seed_training_rbac
 
 
@@ -22,4 +23,5 @@ class Command(BaseCommand):
         seed_matching_rbac()
         seed_imports_rbac()
         seed_platform_rbac()
+        seed_reporting_rbac()
         self.stdout.write(self.style.SUCCESS("Application RBAC seeded."))
