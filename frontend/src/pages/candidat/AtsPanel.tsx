@@ -56,7 +56,7 @@ export default function AtsPanel({ cvs, onSaved }: { cvs: CV[]; onSaved: () => P
     finally { setBusy(false) }
   }
 
-  if (!cvs.length) return <Panel title="Analyse ATS"><EmptyState title="Importez un CV pour l’analyser" /></Panel>
+  if (!cvs.length) return <Panel title="Analyse ATS"><EmptyState title="Importez un CV pour l’analyser">Utilisez le formulaire « Importer un CV » de cette page.</EmptyState></Panel>
   const breakdown = result?.breakdown_json
   return <Panel title="Analyse ATS" description="Évalue la lisibilité de votre CV par un ATS (ATS readiness) et son adéquation au poste visé (role fit). Ce n’est pas un score ATS universel : chaque logiciel de recrutement lit les CV à sa manière.">
     <div className="space-y-5 p-5">

@@ -19,7 +19,7 @@ export function SkillChip({ name, variant = 'neutral' }: { name: string; variant
 }
 
 export function SkillChips({ names, variant }: { names: string[]; variant?: keyof typeof CHIP_STYLES }) {
-  return <span className="inline-flex flex-wrap gap-1.5">{names.map((name) => <SkillChip key={name} name={name} variant={variant} />)}</span>
+  return <span className="inline-flex flex-wrap gap-1.5">{names.map((name, i) => <SkillChip key={`${i}-${name}`} name={name} variant={variant} />)}</span>
 }
 
 /* ------------------------------------------------------------------ */
@@ -86,7 +86,7 @@ export function Citations({ items, role }: { items: Array<{ label: string; refer
         return (
           <span key={c.reference}>
             {to ? <Link to={to} className="text-teal hover:underline">{c.label}</Link> : c.label}{' '}
-            <span className="text-slate/70">{c.reference}</span>
+            <span className="text-slate">{c.reference}</span>
           </span>
         )
       })}

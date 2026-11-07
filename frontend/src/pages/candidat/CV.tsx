@@ -37,7 +37,7 @@ export default function CandidatCV() {
         <Button type="submit" disabled={!file || busy}>{busy ? 'Envoi…' : retryDocumentId ? 'Réessayer la création du CV' : 'Importer'}</Button>
       </form></Panel>
       <Panel title="Versions de mon CV">
-        {!cvs.length ? <EmptyState title="Aucun CV importé" /> : <ul className="divide-y divide-line">{[...cvs].sort((a, b) => b.version_number - a.version_number).map((cv) => {
+        {!cvs.length ? <EmptyState title="Aucun CV importé">Importez votre premier CV avec le formulaire « Importer un CV ».</EmptyState> : <ul className="divide-y divide-line">{[...cvs].sort((a, b) => b.version_number - a.version_number).map((cv) => {
           const document = documents.find((item) => item.id === cv.document)
           return <li key={cv.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"><div><p className="font-medium text-navy">v{cv.version_number} — {cv.title} {cv.is_primary && <Badge tone="teal">Principal</Badge>}</p><p className="text-sm text-slate">{document?.file_name ?? 'Document'} · {formatDate(document?.uploaded_at)}</p></div><div className="flex flex-wrap gap-2">
             {document && <Button size="sm" variant="secondaire" disabled={busy} onClick={() => void action(() => download(document.id, document.file_name))}>Télécharger</Button>}

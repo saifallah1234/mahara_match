@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../components/layout'
-import { Badge, Button, Cell, ConfirmDialog, EmptyState, Field, Input, Meter, Panel, Row, Select, StatTile, Table, Textarea } from '../components/ui'
+import { SkillChips } from '../components/domain'
+import { Badge, Button, Cell, ConfirmDialog, EmptyState, Field, Input, Loading, Meter, Panel, Row, Select, StatTile, Table, Textarea } from '../components/ui'
 import { useAuth } from '../state/auth'
 import { useTraining } from '../state/training'
 import { MembersPanel } from '../components/members'
@@ -30,16 +31,16 @@ export function FormationDashboard() {
       <PageHeader title={workspace?.organization?.legal_name ?? 'Espace formation'} />
       <PageBody className="space-y-6">
         {error && <p role="alert" className="text-coral">{error}</p>}
-        {loading && <p className="text-slate">Chargement…</p>}
+        {loading && <Loading />}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile value={programs.filter((p) => p.status === 'ACTIVE').length} label="Programmes actifs" note={`${programs.length} au total`} />
           <StatTile value={sessions.filter((s) => s.status === 'PLANNED').length} label="Sessions planifiées" tone="teal" />
           <StatTile value={sessions.filter((s) => s.status === 'ONGOING').length} label="Sessions en cours" tone="leaf" />
           <StatTile value={enrollments.length} label="Inscriptions" tone="coral" />
         </div>
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Panel title="Prochaines sessions" action={<Link to="/formation/sessions" className="text-[13px] font-medium text-teal">Toutes les sessions</Link>}>
-            {upcoming.length === 0 ? <EmptyState title="Aucune session à venir" /> : (
+            {upcoming.length === 0 ? <EmptyState title="Aucune session à venir" action={<Link to="/formation/sessions"><Button size="sm" variant="secondaire">Planifier une session</Button></Link>} /> : (
               <ul className="divide-y divide-line/70">
                 {upcoming.map((s) => {
                   const taken = seatsTaken(enrollments, s.id)
@@ -59,7 +60,7 @@ export function FormationDashboard() {
             )}
           </Panel>
           <Panel title="Inscriptions récentes" action={<Link to="/formation/sessions" className="text-[13px] font-medium text-teal">Voir les sessions</Link>}>
-            {recent.length === 0 ? <EmptyState title="Aucune inscription" /> : (
+            {recent.length === 0 ? <EmptyState title="Aucune inscription">Les inscriptions des candidats à vos sessions apparaîtront ici.</EmptyState> : (
               <ul className="divide-y divide-line/70">
                 {recent.map((e) => (
                   <li key={e.id}>
@@ -119,6 +120,17 @@ export function FormationProgrammes() {
     setOpen(false); setEditing(null); setF(blankProgram); setChosen([])
   }
 
+  // Editing changes the saved skills at once (existing calls); a new programme collects them until it is created.
+  const formSkills = editing
+    ? skillsOf(editing.id).map((s) => ({ skillId: s.skill_id, level: s.target_level, remove: () => void removeSkill(s.id).catch(() => {}) }))
+    : chosen.map((c) => ({ ...c, remove: () => setChosen(chosen.filter((x) => x.skillId !== c.skillId)) }))
+
+  function addPicked() {
+    if (editing) void addSkill(editing.id, pick.skillId, pick.level).catch(() => {})
+    else setChosen([...chosen, pick])
+    setPick({ ...pick, skillId: '' })
+  }
+
   function edit(p: Program) {
     setEditing(p); setOpen(true)
     setF({ title: p.title, description: p.description, level: p.level, delivery_mode: p.delivery_mode, is_free: p.is_free, price: p.is_free ? '' : p.price })
@@ -156,23 +168,24 @@ export function FormationProgrammes() {
               <Field label="Mode"><Select value={f.delivery_mode} onChange={set('delivery_mode')}>{Object.entries(MODE).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
               <label className="flex items-center gap-2 text-[13.5px]"><input type="checkbox" checked={f.is_free} onChange={(e) => setF({ ...f, is_free: e.target.checked })} /> Gratuit</label>
               {!f.is_free && <Field label="Prix (TND)"><Input type="number" value={f.price} onChange={set('price')} /></Field>}
-              {!editing && (
+              {editing?.status !== 'ARCHIVED' && (
                 <div className="space-y-3 sm:col-span-2">
                   <p className="text-[13.5px] font-medium text-navy">Compétences du programme</p>
                   <div className="flex flex-wrap gap-2">
-                    <Select value={pick.skillId} onChange={(e) => setPick({ ...pick, skillId: e.target.value })}>
+                    <Select aria-label="Compétence" value={pick.skillId} onChange={(e) => setPick({ ...pick, skillId: e.target.value })}>
                       <option value="">Choisir une compétence…</option>
-                      {skillCatalogue.map((s) => <option key={s.id} value={s.id}>{skillLabel(s.canonical_name)}</option>)}
+                      {skillCatalogue.filter((s) => !formSkills.some((c) => c.skillId === s.id)).map((s) => <option key={s.id} value={s.id}>{skillLabel(s.canonical_name)}</option>)}
                     </Select>
-                    <Select value={pick.level} onChange={(e) => setPick({ ...pick, level: e.target.value as ProgramSkill['target_level'] })}>
+                    <Select aria-label="Niveau visé" value={pick.level} onChange={(e) => setPick({ ...pick, level: e.target.value as ProgramSkill['target_level'] })}>
                       {Object.entries(TARGET_LEVEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </Select>
-                    <Button variant="discret" disabled={!pick.skillId || chosen.some((c) => c.skillId === pick.skillId)} onClick={() => { setChosen([...chosen, pick]); setPick({ ...pick, skillId: '' }) }}>Ajouter</Button>
+                    <Button variant="secondaire" disabled={!pick.skillId} onClick={addPicked}>Ajouter</Button>
                   </div>
-                  {chosen.map((c) => (
+                  {formSkills.length === 0 && <p className="text-[12.5px] text-slate">Aucune compétence pour l’instant.</p>}
+                  {formSkills.map((c) => (
                     <div key={c.skillId} className="flex items-center justify-between gap-3 text-[13.5px]">
                       <span>{skillName(c.skillId)} · {TARGET_LEVEL[c.level]}</span>
-                      <Button size="sm" variant="discret" onClick={() => setChosen(chosen.filter((x) => x.skillId !== c.skillId))}>Retirer</Button>
+                      <Button size="sm" variant="discret" onClick={c.remove}>Retirer</Button>
                     </div>
                   ))}
                 </div>
@@ -192,8 +205,8 @@ export function FormationProgrammes() {
           </Panel>
         )}
         <Panel>
-          {loading ? <p className="p-5 text-slate">Chargement…</p> : programs.length === 0 ? (
-            <EmptyState title="Aucun programme">Créez votre premier programme de formation.</EmptyState>
+          {loading ? <Loading /> : programs.length === 0 ? (
+            <EmptyState title="Aucun programme" action={<Button onClick={() => setOpen(true)}>Nouveau programme</Button>}>Créez votre premier programme de formation.</EmptyState>
           ) : (
             <Table head={['Programme', 'Mode', 'Prix', 'Statut', '']}>
               {programs.map((p) => {
@@ -203,19 +216,8 @@ export function FormationProgrammes() {
                     <Cell>
                       <span className="font-medium text-navy">{p.title}</span>
                       <p className="text-[12.5px] text-slate">{LEVEL[p.level]}</p>
-                      <ul className="mt-2 space-y-1">
-                        {own.map((s) => (
-                          <li key={s.id} className="flex items-center gap-2 text-[12.5px]">
-                            <span>{skillName(s.skill_id)} · {TARGET_LEVEL[s.target_level]}</span>
-                            {p.status !== 'ARCHIVED' && <Button size="sm" variant="discret" onClick={() => void removeSkill(s.id).catch(() => {})}>Retirer</Button>}
-                          </li>
-                        ))}
-                      </ul>
-                      {p.status !== 'ARCHIVED' && (
-                        <Select className="mt-2 text-[12.5px]" value="" onChange={(e) => { if (e.target.value) void addSkill(p.id, e.target.value, 'BEGINNER').catch(() => {}) }}>
-                          <option value="">Ajouter une compétence…</option>
-                          {skillCatalogue.filter((s) => !own.some((o) => o.skill_id === s.id)).map((s) => <option key={s.id} value={s.id}>{skillLabel(s.canonical_name)}</option>)}
-                        </Select>
+                      {own.length > 0 && (
+                        <div className="mt-1.5"><SkillChips names={own.map((s) => skillCatalogue.find((c) => c.id === s.skill_id)?.canonical_name ?? 'Compétence')} /></div>
                       )}
                     </Cell>
                     <Cell className="text-[13px]">{MODE[p.delivery_mode]}</Cell>
@@ -343,8 +345,8 @@ export function FormationSessions() {
           </Panel>
         )}
         <Panel>
-          {loading ? <p className="p-5 text-slate">Chargement…</p> : sessions.length === 0 ? (
-            <EmptyState title="Aucune session">Planifiez une session pour un programme actif.</EmptyState>
+          {loading ? <Loading /> : sessions.length === 0 ? (
+            <EmptyState title="Aucune session" action={<Button onClick={() => setOpen(true)}>Planifier une session</Button>}>Planifiez une session pour un programme actif.</EmptyState>
           ) : (
             <Table head={['Programme', 'Dates', 'Inscrits', 'Statut', '']}>
               {sessions.map((s) => (
@@ -375,7 +377,7 @@ export function FormationSessions() {
         {picked && (
           <Panel title={`Inscrits — ${title(picked.program)}`}>
             {enrollments.filter((e) => e.session === picked.id).length === 0 ? (
-              <EmptyState title="Aucune inscription pour cette session." />
+              <EmptyState title="Aucune inscription pour cette session.">Les candidats inscrits apparaîtront ici.</EmptyState>
             ) : (
               <ul className="divide-y divide-line/70">
                 {enrollments.filter((e) => e.session === picked.id).map((e) => (

@@ -114,3 +114,8 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Le teal de marque ne contraste qu'à 3,2:1 sur le marine : l'anneau de focus passe au cyan dans les zones sombres. */
+.bg-navy :focus-visible {
+  outline-color: var(--color-cyan);
+}

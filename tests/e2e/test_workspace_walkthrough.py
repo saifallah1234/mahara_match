@@ -2,8 +2,10 @@
 """One browser walk-through per role over the seed_demo accounts, at 1400×800.
 
 Checks what a user sees: the sidebar sign-out button and the page title stay in view after
-scrolling a long page, no API call fails and no console error occurs on any workspace page,
-and an example question in the candidate assistant gets a reply. Needs `npm --prefix frontend
+scrolling a long page, the active sidebar link carries aria-current, no API call fails and no
+console error occurs on any workspace page (again at 390×844, without sideways scrolling), the
+ministry pages show the chart and the highlighted gaps, recruiter search results are above the
+fold, and an example question in the candidate assistant gets a reply. Needs `npm --prefix frontend
 run build` first and the disposable local database (tests/README.md "Fast local run").
 Screenshots land in the test's tmp_path for the manual check.
 """
@@ -58,7 +60,7 @@ ROLES = {
     ),
     "formation": (
         f"formation@{DEMO}",
-        "/formation/programmes",
+        "/formation",
         ["/formation", "/formation/programmes", "/formation/sessions", "/formation/organisme"],
     ),
     "ministere": (
@@ -80,6 +82,15 @@ ROLES = {
         ],
     ),
 }
+
+
+# The deepest element sticking out past the right edge, or "" when the page fits.
+WIDEST_OVERFLOW = """() => {
+  if (document.documentElement.scrollWidth <= innerWidth) return ''
+  const out = [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > innerWidth + 1)
+  const e = out[out.length - 1]
+  return e ? `${e.tagName}.${e.className} "${(e.textContent || '').slice(0, 60)}"` : 'unknown'
+}"""
 
 
 def _ollama_down(_: str) -> list[float]:
@@ -167,7 +178,36 @@ def test_workspace_walkthrough(role, live_server, frontend, settings, monkeypatc
 
         for path in pages:
             _visit(page, frontend + path, problems)
+            expect(page.locator("aside nav a[aria-current='page']")).to_have_count(1)
             page.screenshot(path=tmp_path / f"{role}{path.replace('/', '_')}.png")
+
+        if role == "ministere":
+            _visit(page, frontend + "/ministere", problems)
+            expect(
+                page.get_by_role("heading", name="Offres et formations par gouvernorat")
+            ).to_be_visible()
+            _visit(page, frontend + "/ministere/competences", problems)
+            gaps = page.locator(
+                "section", has=page.get_by_role("heading", name="Les trois plus grands écarts")
+            )
+            expect(gaps.get_by_role("listitem").first).to_be_visible()
+            expect(page.get_by_text(re.compile("^Chiffres de démonstration"))).to_be_visible()
+        if role == "recruteur":
+            _visit(page, frontend + "/recruteur/candidats", problems)
+            expect(page.locator("a[href*='/recruteur/candidats/']").first).to_be_in_viewport()
+            page.get_by_role("button", name="Plus de filtres").click()
+            expect(page.get_by_text("Mode de travail")).to_be_visible()
+
+        page.set_viewport_size({"width": 390, "height": 844})
+        for path in pages:
+            _visit(page, frontend + path, problems)
+            # The sidebar slides away on phones; wait for it so screenshots do not catch it midway.
+            expect(page.get_by_role("button", name="Se déconnecter")).not_to_be_in_viewport()
+            wide = page.evaluate(WIDEST_OVERFLOW)
+            assert not wide, f"{path} scrolls sideways on a phone: {wide}"
+            page.screenshot(
+                path=tmp_path / f"phone_{role}{path.replace('/', '_')}.png", full_page=True
+            )
 
         # A short window keeps the desktop layout and makes the seeded pages long enough to scroll.
         page.set_viewport_size({"width": 1400, "height": 400})
@@ -194,12 +234,6 @@ def test_workspace_walkthrough(role, live_server, frontend, settings, monkeypatc
             expect(best.get_by_text("À acquérir").first).to_be_visible()
             expect(best.get_by_text("Formation suggérée").first).to_be_visible()
             page.screenshot(path=tmp_path / "candidat_dashboard_matches.png")
-            page.set_viewport_size({"width": 390, "height": 844})
-            for path in ["/candidat", "/candidat/offres", "/candidat/profil"]:
-                _visit(page, frontend + path, problems)
-                page.screenshot(
-                    path=tmp_path / f"phone{path.replace('/', '_')}.png", full_page=True
-                )
             page.set_viewport_size({"width": 1400, "height": 800})
             _visit(page, frontend + "/candidat/assistant", problems)
             page.get_by_role("button", name="Quelles offres d’emploi me correspondent ?").click()

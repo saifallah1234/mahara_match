@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, ConfirmDialog, EmptyState, Panel } from '../../components/ui'
+import { Badge, Button, ConfirmDialog, EmptyState, Loading, Panel } from '../../components/ui'
 import { useRecruiter } from '../../state/recruiter'
 import { candidateLabel, listOfferSkills, type OfferSkill } from '../../api/recruiter'
 import { OFFER_STATUS_LABEL, WORK_MODE_LABEL, contractLabel, experienceLabel, formatDate, labelFor, skillLabel } from '../../lib/format'
@@ -27,7 +27,7 @@ export default function RecruteurOffreDetail() {
     return () => { live = false }
   }, [offerId])
 
-  if (loading && !offer) return <PageBody><p className="text-slate">Chargement…</p></PageBody>
+  if (loading && !offer) return <PageBody><Loading /></PageBody>
   if (!offer) {
     return (
       <PageBody>
@@ -70,7 +70,7 @@ export default function RecruteurOffreDetail() {
         {error && <p role="alert" className="text-coral">{error}</p>}
         {notice && <p role="alert" className="text-coral">{notice}</p>}
         {skillsError && <p role="alert" className="text-coral">{skillsError}</p>}
-        <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
           <Panel title="Description">
             <p className="max-w-[68ch] whitespace-pre-line px-5 py-4 text-[14px] leading-relaxed text-navy">{offer.description}</p>
           </Panel>
@@ -88,7 +88,7 @@ export default function RecruteurOffreDetail() {
 
         <Panel title={`Compétences (${offerSkills.length})`}>
           {offerSkills.length === 0 ? (
-            <EmptyState title="Aucune compétence." />
+            <EmptyState title="Aucune compétence." action={<Link to={`/recruteur/offres/${offer.id}/modifier`}><Button size="sm" variant="secondaire">Ajouter des compétences</Button></Link>}>Les compétences servent à calculer la compatibilité des candidats.</EmptyState>
           ) : (
             <ul className="divide-y divide-line/70">
               {offerSkills.map((s) => (
@@ -106,7 +106,7 @@ export default function RecruteurOffreDetail() {
           action={<Link to={`/recruteur/candidatures?offer=${offer.id}`} className="text-[13px] font-medium text-teal hover:underline">Voir le suivi</Link>}
         >
           {received.length === 0 ? (
-            <EmptyState title="Aucune candidature pour cette offre." />
+            <EmptyState title="Aucune candidature pour cette offre.">Les candidatures apparaîtront ici dès leur dépôt.</EmptyState>
           ) : (
             <ul className="divide-y divide-line/70">
               {received.map((a) => (

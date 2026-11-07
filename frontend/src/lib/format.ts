@@ -81,6 +81,8 @@ export const OFFER_STATUS_LABEL: Record<OfferStatus, string> = {
   ARCHIVED: 'Archivée',
 }
 
+export const OFFER_STATUS_TONE = { PUBLISHED: 'positif', DRAFT: 'neutre', PAUSED: 'attention', CLOSED: 'negatif', ARCHIVED: 'neutre' } as const
+
 export const DELIVERY_LABEL: Record<DeliveryMode, string> = {
   PRESENTIEL: 'Présentiel',
   DISTANCIEL: 'À distance',

@@ -1,6 +1,6 @@
 // Placement: frontend/src/components/members.tsx
 import { useEffect, useState, type ReactNode } from 'react'
-import { Cell, EmptyState, Panel, Row, Table } from './ui'
+import { Cell, EmptyState, Loading, Panel, Row, Table } from './ui'
 import { listMembers, type OrganizationMember } from '../api/organization'
 import { ROLE_LABEL, formatDate, labelFor } from '../lib/format'
 
@@ -37,8 +37,8 @@ export function MembersPanel({
   return (
     <Panel title="Membres de l’organisation" action={action}>
       {error && <p role="alert" className="px-5 py-4 text-coral">{error}</p>}
-      {loading ? <p className="p-5 text-slate">Chargement…</p> : members.length === 0 ? (
-        <EmptyState title="Aucun membre" />
+      {loading ? <Loading /> : members.length === 0 ? (
+        <EmptyState title="Aucun membre">Les comptes rattachés à l’organisation apparaîtront ici.</EmptyState>
       ) : (
         <Table head={head}>
           {members.map((member) => (

@@ -57,7 +57,7 @@ export default function CandidatDashboard() {
         </div>
       </Panel>
       <Panel title="Mes candidatures" action={<Link to="/candidat/candidatures" className="text-teal">Tout voir</Link>}>
-        {active.length ? <ul className="divide-y divide-line">{active.slice(0, 5).map((item) => <li key={item.id} className="px-5 py-3"><p className="font-medium text-navy">{item.offer_title}</p><p className="text-sm text-slate">Déposée le {formatDate(item.applied_at)} · {STATUS_LABEL[item.status as ApplicationStatus] ?? item.status}</p></li>)}</ul> : <EmptyState title="Aucune candidature en cours" />}
+        {active.length ? <ul className="divide-y divide-line">{active.slice(0, 5).map((item) => <li key={item.id} className="px-5 py-3"><p className="font-medium text-navy">{item.offer_title}</p><p className="text-sm text-slate">Déposée le {formatDate(item.applied_at)} · {STATUS_LABEL[item.status as ApplicationStatus] ?? item.status}</p></li>)}</ul> : <EmptyState title="Aucune candidature en cours" action={<Link to="/candidat/offres"><Button size="sm" variant="secondaire">Voir les offres</Button></Link>} />}
       </Panel>
     </PageBody>
   </>

@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { EmptyState, Field, Input, Note, Panel, Select } from '../../components/ui'
+import { SkillChips } from '../../components/domain'
+import { Button, EmptyState, Field, Input, Loading, Note, Panel, Select } from '../../components/ui'
 import { useAuth } from '../../state/auth'
 import { useRecruiter } from '../../state/recruiter'
 import { listCandidates, listEducationLevels, type CandidateCard, type EducationLevel } from '../../api/recruiter'
@@ -16,6 +17,8 @@ export default function RecruteurCandidats() {
   const { skills } = useRecruiter()
   const verified = workspace?.organization?.verification_status === 'VERIFIED'
   const [filters, setFilters] = useState(EMPTY)
+  const [more, setMore] = useState(false)
+  const hiddenActive = [filters.education_level, filters.work_mode, filters.relocation].filter(Boolean).length
   const [levels, setLevels] = useState<EducationLevel[]>([])
   const [levelsError, setLevelsError] = useState<string | null>(null)
   const [cards, setCards] = useState<CandidateCard[] | null>(null)
@@ -52,19 +55,13 @@ export default function RecruteurCandidats() {
         ) : (
           <>
             {levelsError && <p role="alert" className="text-coral">{levelsError}</p>}
-            <Panel title="Filtres">
-              <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
+            <Panel>
+              <div className="grid items-end gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_auto]">
                 <Field label="Recherche"><Input value={filters.search} onChange={set('search')} placeholder="Titre, expérience…" /></Field>
                 <Field label="Compétence">
                   <Select value={filters.skill} onChange={set('skill')}>
                     <option value="">Toutes</option>
                     {skills.map((s) => <option key={s.id} value={s.id}>{skillLabel(s.canonical_name)}</option>)}
-                  </Select>
-                </Field>
-                <Field label="Niveau de formation">
-                  <Select value={filters.education_level} onChange={set('education_level')}>
-                    <option value="">Tous</option>
-                    {levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </Select>
                 </Field>
                 <Field label="Gouvernorat">
@@ -73,37 +70,55 @@ export default function RecruteurCandidats() {
                     {GOUVERNORATS.map((g) => <option key={g}>{g}</option>)}
                   </Select>
                 </Field>
-                <Field label="Mode de travail">
-                  <Select value={filters.work_mode} onChange={set('work_mode')}>
-                    <option value="">Tous</option>
-                    {Object.entries(WORK_MODE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </Select>
-                </Field>
-                <Field label="Mobilité">
-                  <Select value={filters.relocation} onChange={set('relocation')}>
-                    <option value="">Toutes</option>
-                    {Object.entries(RELOCATION_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </Select>
-                </Field>
+                <Button variant="secondaire" aria-expanded={more} aria-controls="more-filters" onClick={() => setMore(!more)}>
+                  {more ? 'Moins de filtres' : 'Plus de filtres'}{hiddenActive > 0 && ` (${hiddenActive})`}
+                </Button>
               </div>
+              {more && (
+                <div id="more-filters" className="grid gap-3 border-t border-line p-4 sm:grid-cols-3">
+                  <Field label="Niveau de formation">
+                    <Select value={filters.education_level} onChange={set('education_level')}>
+                      <option value="">Tous</option>
+                      {levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </Select>
+                  </Field>
+                  <Field label="Mode de travail">
+                    <Select value={filters.work_mode} onChange={set('work_mode')}>
+                      <option value="">Tous</option>
+                      {Object.entries(WORK_MODE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </Select>
+                  </Field>
+                  <Field label="Mobilité">
+                    <Select value={filters.relocation} onChange={set('relocation')}>
+                      <option value="">Toutes</option>
+                      {Object.entries(RELOCATION_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </Select>
+                  </Field>
+                </div>
+              )}
             </Panel>
 
             {loadError && <p role="alert" className="text-coral">{loadError}</p>}
             <Panel title={cards ? `Profils (${cards.length})` : 'Profils'}>
               {!cards ? (
-                <p className="p-5 text-slate">Chargement…</p>
+                <Loading />
               ) : cards.length === 0 ? (
-                <EmptyState title="Aucun profil ne correspond à ces critères." />
+                <EmptyState
+                  title="Aucun profil ne correspond à ces critères."
+                  action={query ? <Button size="sm" variant="secondaire" onClick={() => setFilters(EMPTY)}>Effacer les filtres</Button> : undefined}
+                >
+                  {query ? 'Élargissez la recherche ou retirez un filtre.' : 'Les profils visibles des candidats apparaîtront ici.'}
+                </EmptyState>
               ) : (
                 <ul className="divide-y divide-line/70">
                   {cards.map((c) => (
                     <li key={c.id}>
                       <Link to={`/recruteur/candidats/${c.id}`} className="block px-5 py-4 hover:bg-mist/50">
                         <p className="font-medium text-navy">{c.headline || 'Candidat'}</p>
-                        <p className="text-[12.5px] text-slate">
-                          {c.governorate || 'Gouvernorat non renseigné'}
-                          {c.skills.length > 0 && ` · ${c.skills.slice(0, 4).map((s) => skillLabel(skillName(s.skill) ?? 'Compétence')).join(', ')}`}
-                        </p>
+                        <p className="text-[12.5px] text-slate">{c.governorate || 'Gouvernorat non renseigné'}</p>
+                        {c.skills.length > 0 && (
+                          <div className="mt-1.5"><SkillChips names={c.skills.slice(0, 4).map((s) => skillName(s.skill) ?? 'Compétence')} /></div>
+                        )}
                       </Link>
                     </li>
                   ))}

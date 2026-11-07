@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Button, EmptyState, Field, Input, Note, Panel, Select } from '../../components/ui'
+import { Button, EmptyState, Field, Input, Loading, Note, Panel, Select } from '../../components/ui'
 import { publishedOffers, type Offer } from '../../api/candidate'
 import { filterCandidateOffers } from '../../lib/candidateOffers'
 import { useCandidate } from '../../state/candidate'
@@ -43,10 +43,10 @@ export default function CandidatOffres() {
         <Field label="Contrat"><Select value={contract} onChange={(event) => setContract(event.target.value)}><option value="">Tous</option>{CONTRACT_OPTIONS.map((value) => <option key={value} value={value}>{contractLabel(value)}</option>)}</Select></Field>
         <Field label="Mode de dépôt"><Select value={mode} onChange={(event) => setMode(event.target.value)}><option value="">Tous</option><option value="platform">Sur la plateforme</option><option value="external">Site de l’employeur</option></Select></Field>
       </div></Panel>
-      {loading && <p role="status">Recherche en cours…</p>}
+      {loading && <Panel><Loading /></Panel>}
       {error && <p role="alert" className="text-coral">{error}</p>}
       <p className="text-sm text-slate">{results.length} offre{results.length > 1 ? 's' : ''}</p>
-      {results.length ? <div className="grid gap-3 lg:grid-cols-2">{results.map((offer) => <article key={offer.id} className="rounded-[10px] border border-line bg-white p-5 shadow-panel"><Link to={`/candidat/offres/${offer.id}`} className="font-semibold text-navy hover:text-teal">{offer.title}</Link><p className="text-sm text-slate">{offer.organization_name} · {offer.city || offer.governorate}</p><p className="mt-2 text-sm">{contractLabel(offer.contract_type)} · {labelFor(WORK_MODE_LABEL, offer.work_mode)}</p><p className="text-sm text-slate">{offer.easy_apply ? 'Candidature sur la plateforme' : 'Dépôt externe'}{offer.application_deadline && ` · clôture le ${formatDate(offer.application_deadline)}`}</p><MatchBadge offerId={offer.id} /></article>)}</div> : <Panel><EmptyState title="Aucune offre ne correspond à ces filtres" /></Panel>}
+      {results.length ? <div className="grid gap-3 lg:grid-cols-2">{results.map((offer) => <article key={offer.id} className="rounded-[10px] border border-line bg-white p-5 shadow-panel"><Link to={`/candidat/offres/${offer.id}`} className="font-semibold text-navy hover:text-teal">{offer.title}</Link><p className="text-sm text-slate">{offer.organization_name} · {offer.city || offer.governorate}</p><p className="mt-2 text-sm">{contractLabel(offer.contract_type)} · {labelFor(WORK_MODE_LABEL, offer.work_mode)}</p><p className="text-sm text-slate">{offer.easy_apply ? 'Candidature sur la plateforme' : 'Dépôt externe'}{offer.application_deadline && ` · clôture le ${formatDate(offer.application_deadline)}`}</p><MatchBadge offerId={offer.id} /></article>)}</div> : <Panel><EmptyState title="Aucune offre ne correspond à ces filtres" action={<Button size="sm" variant="secondaire" onClick={() => { setSearch(''); setGovernorate(''); setContract(''); setMode('') }}>Effacer les filtres</Button>} /></Panel>}
     </PageBody>
   </>
 }

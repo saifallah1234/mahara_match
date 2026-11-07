@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, ConfirmDialog, EmptyState, Modal, Panel, Select } from '../../components/ui'
+import { Badge, Button, ConfirmDialog, EmptyState, Loading, Modal, Panel, Select } from '../../components/ui'
 import { useRecruiter } from '../../state/recruiter'
 import { candidateLabel, listStatusHistory, type RecruiterApplication, type StatusHistory } from '../../api/recruiter'
 import { downloadPath } from '../../api/candidate'
@@ -42,7 +42,7 @@ export default function RecruteurCandidatures() {
         {error && <p role="alert" className="mb-3 text-coral">{error}</p>}
 
         {loading ? (
-          <p className="text-slate">Chargement…</p>
+          <Loading />
         ) : applications.length === 0 ? (
           <Panel>
             <EmptyState title="Aucune candidature reçue">
@@ -84,7 +84,7 @@ export default function RecruteurCandidatures() {
                           {status === 'REJECTED' && <Badge tone="negatif">Refusée</Badge>}
                         </div>
                       ))}
-                      {column.length === 0 && <p className="px-2 py-3 text-[12px] text-slate/70">—</p>}
+                      {column.length === 0 && <p className="px-2 py-3 text-[12px] text-slate">—</p>}
                     </div>
                   </section>
                 )
@@ -152,7 +152,7 @@ function ApplicationPanel({ application: a, onClose }: { application: RecruiterA
           {historyError ? (
             <p role="alert" className="text-coral">{historyError}</p>
           ) : history === null ? (
-            <p className="text-slate">Chargement…</p>
+            <Loading />
           ) : history.length === 0 ? (
             <p className="text-slate">Aucun changement de statut.</p>
           ) : (

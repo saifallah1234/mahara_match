@@ -89,9 +89,9 @@ export function AssistantWorkspace({ basePath, role }: { basePath: string; role:
     <>
       <PageHeader title="Assistant" />
       <PageBody className="space-y-4">
-        <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[16rem_1fr]">
           <Panel title="Conversations" action={<Button size="sm" variant="secondaire" onClick={() => navigate(basePath)}>Nouvelle conversation</Button>}>
-            {!conversations.length && <EmptyState title="Aucune conversation" />}
+            {!conversations.length && <EmptyState title="Aucune conversation">Posez une question pour en commencer une.</EmptyState>}
             <ul className="divide-y divide-line">
               {conversations.map((item) => (
                 <li key={item.id} className={`flex items-center justify-between gap-2 px-4 py-3 ${item.id === conversationId ? 'bg-mist' : ''}`}>

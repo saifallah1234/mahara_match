@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Button, Field, Input, Panel, Select, Textarea } from '../../components/ui'
+import { Button, Field, Input, Loading, Panel, Select, Textarea } from '../../components/ui'
 import { useAuth } from '../../state/auth'
 import { useRecruiter } from '../../state/recruiter'
 import { listOfferSkills, type OfferSkill, type RecruiterOffer } from '../../api/recruiter'
@@ -15,7 +15,7 @@ export default function RecruteurNouvelleOffre() {
   const { offers, loading } = useRecruiter()
   if (!offerId) return <OfferForm />
   const offer = offers.find((o) => o.id === offerId)
-  if (!offer) return <PageBody><p className="text-slate">{loading ? 'Chargement…' : 'Cette offre est introuvable.'}</p></PageBody>
+  if (!offer) return <PageBody>{loading ? <Loading /> : <p className="text-slate">Cette offre est introuvable.</p>}</PageBody>
   return <OfferEditor offer={offer} />
 }
 
@@ -30,7 +30,7 @@ function OfferEditor({ offer }: { offer: RecruiterOffer }) {
     return () => { live = false }
   }, [offer.id])
   if (loadError) return <PageBody><p role="alert" className="text-coral">{loadError}</p></PageBody>
-  if (!current) return <PageBody><p className="text-slate">Chargement…</p></PageBody>
+  if (!current) return <PageBody><Loading /></PageBody>
   return <OfferForm offer={offer} current={current} />
 }
 

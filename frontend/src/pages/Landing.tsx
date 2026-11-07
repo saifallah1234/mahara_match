@@ -65,7 +65,7 @@ export default function Landing() {
                 Voir les cinq espaces
               </a>
             </div>
-            <p className="mt-6 text-[12px] text-white/45">
+            <p className="mt-6 text-[12px] text-white/65">
               Faculté des Sciences de Bizerte · 2026–2027
             </p>
           </div>

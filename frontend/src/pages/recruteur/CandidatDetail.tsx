@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { EmptyState, Note, Panel } from '../../components/ui'
+import { EmptyState, Loading, Note, Panel } from '../../components/ui'
 import { useAuth } from '../../state/auth'
 import { useRecruiter } from '../../state/recruiter'
 import { getCandidate, listEducationLevels, type CandidateCard, type EducationLevel } from '../../api/recruiter'
@@ -50,7 +50,7 @@ export default function RecruteurCandidatDetail() {
         {verified && gone && <Note tone="attention">Ce profil n’est plus visible.</Note>}
         {verified && loadError && <p role="alert" className="text-coral">{loadError}</p>}
         {levelsError && <p role="alert" className="text-coral">{levelsError}</p>}
-        {verified && !card && !gone && !loadError && <p className="text-slate">Chargement…</p>}
+        {verified && !card && !gone && !loadError && <Loading />}
         {card && (
           <>
             <Panel title="Compétences">

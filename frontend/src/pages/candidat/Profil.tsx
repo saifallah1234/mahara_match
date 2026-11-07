@@ -104,13 +104,13 @@ export default function CandidatProfil() {
           <Button size="sm" variant="secondaire" onClick={() => begin(kind)}>Ajouter</Button>
         </section>
         : <Panel title={labels[kind]} action={kind !== 'preferences' || !records.preferences.length ? <Button size="sm" variant="secondaire" onClick={() => begin(kind)}>Ajouter</Button> : undefined}>
-        <ul className="divide-y divide-line">{records[kind].map((record) => <li key={record.id} className="flex items-center justify-between gap-3 px-5 py-3"><div className="text-sm text-navy">{fields[kind].map((field) => {
+        <ul className="divide-y divide-line">{records[kind].map((record) => <li key={record.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3"><div className="min-w-0 break-words text-sm text-navy">{fields[kind].map((field) => {
           const value = record[field.name]
           if (value == null || value === '') return null
           const reference = field.catalogue ? references[field.catalogue].find((entry) => entry.id === value) : null
           if (kind === 'skills' && field.name === 'skill' && reference?.canonical_name) return <span key={field.name} className="mr-2"><SkillChip name={reference.canonical_name} /></span>
           return <span key={field.name} className="mr-2">{(reference?.canonical_name && skillLabel(reference.canonical_name)) || reference?.name || reference?.code || optionLabels[String(value)] || String(value)}</span>
-        })}{kind === 'skills' && record.validated === false && <Badge tone="neutre">Déclarée</Badge>}</div><div className="flex gap-2"><Button size="sm" variant="discret" onClick={() => begin(kind, record)}>Modifier</Button><Button size="sm" variant="danger" onClick={() => setDeleting({ kind, record })}>Supprimer</Button></div></li>)}</ul>
+        })}{kind === 'skills' && record.validated === false && <Badge tone="neutre">Déclarée</Badge>}</div><div className="flex shrink-0 gap-2"><Button size="sm" variant="discret" onClick={() => begin(kind, record)}>Modifier</Button><Button size="sm" variant="danger" onClick={() => setDeleting({ kind, record })}>Supprimer</Button></div></li>)}</ul>
         {editing?.kind === kind && <form onSubmit={(event) => void recordSubmit(event)} className="grid gap-3 border-t border-line p-5 sm:grid-cols-2">{fields[kind].map((field) => <Field key={field.name} label={field.label} required={field.required}>
           {field.options || field.catalogue ? <Select required={field.required} value={draft[field.name] ?? ''} onChange={(event) => setDraft({ ...draft, [field.name]: event.target.value })}><option value="">Choisir</option>{field.options?.map((value) => <option key={value} value={value}>{optionLabels[value] ?? value}</option>)}{field.catalogue && references[field.catalogue].map((entry) => <option key={entry.id} value={entry.id}>{(entry.canonical_name && skillLabel(entry.canonical_name)) || entry.name || entry.code}</option>)}</Select>
             : field.name === 'description' ? <Textarea value={draft[field.name] ?? ''} onChange={(event) => setDraft({ ...draft, [field.name]: event.target.value })} />

@@ -112,6 +112,7 @@ export const NAVIGATION: Record<RoleCode, NavItem[]> = {
   ],
   MINISTRY_MANAGER: [
     { to: '/ministere', label: 'Indicateurs', icon: 'stats', end: true },
+    { to: '/ministere/competences', label: 'Compétences', icon: 'referential' },
   ],
   ADMIN: [
     { to: '/admin', label: 'Tableau de bord', icon: 'dashboard', end: true },
@@ -263,7 +264,7 @@ export function PageHeader({
             <h1 className="text-[22px] font-semibold text-navy">{title}</h1>
             {description && <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-slate">{description}</p>}
           </div>
-          {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}
+          {action && <div className="flex min-w-0 flex-wrap gap-2 sm:shrink-0">{action}</div>}
         </div>
       </div>
     </header>
