@@ -90,8 +90,10 @@ uv run --frozen python backend/manage.py seed_rbac
 ```
 
 For a local demo database only (refuses unless `DEBUG` is on), `seed_demo` adds the ESCO
-skills, education levels and one account per actor on `@demo.mahara.test`; it prints the
-target database host and name first, then the accounts:
+skills, education levels and one account per actor on `@demo.mahara.test`, plus a software/data
+scenario (4 published offers and 1 draft, 3 active training programs with one open session each,
+candidate skills). It prints the target database host and name first, then the accounts and the
+next steps (retrieval index, Tanitjobs authorization, one import):
 
 ```bash
 uv run --frozen python backend/manage.py seed_demo --password "<demo password>" --settings=backend.config.settings.development

@@ -1,4 +1,5 @@
 # Placement: tests/integration/identity/test_seed_demo.py
+from datetime import date
 from io import StringIO
 
 import pytest
@@ -8,7 +9,14 @@ from django.core.management import CommandError, call_command
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from ai.llm.providers.embeddings import EmbeddingUnavailable
+from backend.apps.assistant.models import AgentExecution
+from backend.apps.candidates.models import CV, CandidateProfile, CandidateSkill
+from backend.apps.documents.models import Document
 from backend.apps.identity.models import User, UserRole
+from backend.apps.imports.models import DataSource, ImportBatch
+from backend.apps.recruitment.models import Application, JobOffer
+from backend.apps.training.models import TrainingEnrollment, TrainingProgram
 
 pytestmark = pytest.mark.django_db
 
@@ -116,3 +124,90 @@ def test_refuses_to_run_without_debug(settings) -> None:
     with pytest.raises(CommandError, match="DEBUG"):
         seed()
     assert not User.objects.exists()
+
+
+def _ollama_down(_: str) -> list[float]:
+    raise EmbeddingUnavailable("Ollama is not used by integration tests.")
+
+
+def test_main_candidate_gets_seeded_offers_with_skills_and_training(
+    debug_on, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seed()
+    monkeypatch.setattr("ai.tools.job_search.embed_query", _ollama_down)
+    client = signed_in(f"candidat@{DOMAIN}")
+
+    response = client.post(
+        reverse("agent-run"),
+        {"message": "Quelles offres d'emploi me correspondent ?"},
+        format="json",
+    )
+
+    assert response.status_code == 200, response.content
+    execution = AgentExecution.objects.get(id=response.json()["execution_id"])
+    matches = execution.tool_calls.get().output_summary_json["matches"]
+    seeded = set(
+        JobOffer.objects.filter(
+            organization__registration_number="DEMO-COMPANY", status="PUBLISHED"
+        ).values_list("title", flat=True)
+    )
+    explained = [
+        m for m in matches if m["title"] in seeded and m["matched_skills"] and m["missing_skills"]
+    ]
+    assert explained
+    assert any(m["training"] for m in explained)
+    reply = response.json()["reply"]
+    assert "Compétences manquantes" in reply
+    assert "Formations pour les compétences manquantes" in reply
+
+
+def test_recruiter_discovers_both_seeded_candidates(debug_on) -> None:
+    seed()
+    client = signed_in(f"recruteur@{DOMAIN}")
+
+    profiles = client.get(reverse("candidate-profile-list")).json()["results"]
+
+    seeded = CandidateProfile.objects.filter(
+        user__email__in=[f"candidat@{DOMAIN}", f"candidat2@{DOMAIN}"]
+    ).values_list("id", flat=True)
+    assert {str(profile_id) for profile_id in seeded} <= {p["id"] for p in profiles}
+    assert len(seeded) == 2
+
+
+def test_scenario_offers_programs_and_sessions(debug_on) -> None:
+    output = seed()
+
+    offers = JobOffer.objects.filter(organization__registration_number="DEMO-COMPANY")
+    published = offers.filter(status="PUBLISHED")
+    assert published.count() == 4
+    assert offers.filter(status="DRAFT").count() == 1
+    assert len(set(published.values_list("governorate", flat=True))) >= 3
+    for offer in published:
+        assert offer.easy_apply
+        assert offer.application_deadline > date(2026, 11, 8)
+        flags = set(offer.offer_skills.values_list("is_mandatory", flat=True))
+        assert flags == {True, False}
+    programs = TrainingProgram.objects.filter(organization__registration_number="DEMO-TRAINING")
+    assert 2 <= programs.filter(status="ACTIVE").count() <= 3
+    for program in programs:
+        session = program.sessions.get()
+        assert session.registration_deadline.date() > date(2026, 11, 8)
+        assert session.start_date.date() > date(2026, 11, 8)
+    for model in (Application, CV, Document, TrainingEnrollment, ImportBatch):
+        assert not model.objects.exists()
+    assert not DataSource.objects.filter(is_authorized=True).exists()
+    assert "index_retrieval --schema public" in output
+    assert "Tanitjobs" in output
+
+
+def test_candidates_seeded_without_skills_get_them_on_the_next_run(debug_on) -> None:
+    seed()
+    CandidateSkill.objects.all().delete()
+
+    seed()
+
+    main = CandidateSkill.objects.filter(candidate__user__email=f"candidat@{DOMAIN}")
+    assert set(main.values_list("skill__canonical_name", "level")) >= {
+        ("Python (computer programming)", "ADVANCED"),
+        ("SQL", "INTERMEDIATE"),
+    }
