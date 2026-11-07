@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Button, EmptyState, Field, Input, Panel, Select } from '../../components/ui'
+import { Button, EmptyState, Field, Input, Note, Panel, Select } from '../../components/ui'
 import { publishedOffers, type Offer } from '../../api/candidate'
 import { filterCandidateOffers } from '../../lib/candidateOffers'
 import { useCandidate } from '../../state/candidate'
 import { CONTRACT_OPTIONS, GOUVERNORATS, WORK_MODE_LABEL, contractLabel, formatDate, labelFor } from '../../lib/format'
-import { MatchBadge } from '../../components/insights'
+import { MatchBadge, useAutoMatches } from '../../components/insights'
 
 export default function CandidatOffres() {
-  const { offers: initial, records, calculating, scoresStale, calculateMatches } = useCandidate()
+  const { offers: initial, records, matches, loading: profileLoading, calculating, scoresStale, calculateMatches } = useCandidate()
+  useAutoMatches()
   const [search, setSearch] = useState('')
   const [governorate, setGovernorate] = useState('')
   const [contract, setContract] = useState('')
@@ -29,12 +30,13 @@ export default function CandidatOffres() {
   }, [search, governorate])
   const results = filterCandidateOffers(offers, contract, mode)
   return <>
-    <PageHeader title="Offres d’emploi" action={records.skills.length > 0 && (
+    <PageHeader title="Offres d’emploi" action={records.skills.length > 0 && (scoresStale || !matches.length) && (
       <Button variant="secondaire" disabled={calculating} onClick={() => void calculateMatches().catch(() => {})}>
         {scoresStale ? 'Recalculer ma compatibilité' : 'Calculer ma compatibilité'}
       </Button>
     )} />
     <PageBody className="space-y-5">
+      {!profileLoading && !records.skills.length && <Note>Ajoutez vos compétences pour voir votre compatibilité avec chaque offre. <Link to="/candidat/profil?section=skills" className="font-medium text-teal">Ajouter des compétences</Link></Note>}
       <Panel><div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Mots-clés"><Input type="search" value={search} onChange={(event) => setSearch(event.target.value)} /></Field>
         <Field label="Gouvernorat"><Select value={governorate} onChange={(event) => setGovernorate(event.target.value)}><option value="">Tous</option>{GOUVERNORATS.map((value) => <option key={value}>{value}</option>)}</Select></Field>

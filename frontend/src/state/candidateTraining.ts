@@ -46,3 +46,25 @@ export function useCandidateTraining() {
     cancelEnrollment: (id: string) => act(() => api.remove(`/training/enrollments/${id}/`)),
   }
 }
+
+/** For each offer, one active programme teaching a skill of that offer the candidate lacks (same rule as the baseline match). */
+export function useSuggestedTraining(offerIds: string[], ownSkillIds: string[]): Record<string, api.Program> {
+  const [suggestions, setSuggestions] = useState<Record<string, api.Program>>({})
+  const key = `${offerIds.join()}|${ownSkillIds.join()}`
+  useEffect(() => {
+    let live = true
+    const own = new Set(ownSkillIds)
+    void Promise.all(offerIds.map(async (offerId) => {
+      const skills = await api.list<{ skill_id: string }>(`/offer-skills/?offer_id=${offerId}`)
+      for (const skill of skills.filter((item) => !own.has(item.skill_id))) {
+        const [program] = await api.list<api.Program>(`/training/programs/?skill_id=${skill.skill_id}&status=ACTIVE`)
+        if (program) return [offerId, program] as const
+      }
+      return null
+    })).then((pairs) => { if (live) setSuggestions(Object.fromEntries(pairs.filter((pair) => pair !== null))) })
+      // Suggestions are optional: the dashboard still shows the matches without them.
+      .catch(() => {})
+    return () => { live = false }
+  }, [key])
+  return suggestions
+}

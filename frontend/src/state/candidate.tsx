@@ -1,8 +1,9 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from './auth'
 import { request } from '../api/client'
 import * as api from '../api/candidate'
 import * as matching from '../api/matching'
+import { shouldAutoCalculate } from '../lib/candidateOffers'
 
 type Data = {
   profile: api.Profile | null; records: Record<api.RecordKind, api.OwnedRecord[]>;
@@ -33,6 +34,8 @@ type CandidateState = Data & {
   apply: (offerId: string, cvId: string, coverLetter: string) => Promise<void>;
   withdraw: (applicationId: string) => Promise<void>;
   calculateMatches: () => Promise<void>;
+  /** Runs the calculate action once per session when skills exist and scores are missing or stale. */
+  autoCalculateMatches: () => void;
 }
 const Context = createContext<CandidateState | null>(null)
 
@@ -75,6 +78,9 @@ export function CandidateProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [calculating, setCalculating] = useState(false)
+  const autoTried = useRef(false)
+  // Bumped when the signed-in user changes, so a calculation still in flight cannot land on the next user.
+  const generation = useRef(0)
   const active = auth.status === 'authenticated' && auth.workspace?.role_code === 'CANDIDATE'
 
   async function refresh(parts: Part[], profileId = data.profile?.id) {
@@ -99,7 +105,7 @@ export function CandidateProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let live = true
-    setData(empty()); setMessage(null); setError(null); setLoading(active)
+    setData(empty()); setMessage(null); setError(null); setLoading(active); autoTried.current = false; generation.current++
     if (active) void loadAll().then((next) => { if (live) setData(next) })
       .catch((failure) => { if (live) setError(failure instanceof Error ? failure.message : 'Chargement impossible.') })
       .finally(() => { if (live) setLoading(false) })
@@ -114,17 +120,24 @@ export function CandidateProvider({ children }: { children: ReactNode }) {
 
   async function calculateMatches() {
     setCalculating(true)
+    const started = generation.current
     try {
       const matches = await matching.calculateOfferMatches()
-      setData((current) => ({ ...current, matches }))
+      if (started === generation.current) setData((current) => ({ ...current, matches }))
     } finally { setCalculating(false) }
   }
 
   const latestOffer = newest(data.offers.map((offer) => offer.published_at))
   const latestScore = newest(data.matches.map((match) => match.calculated_at))
+  const scoresStale = !!latestOffer && (!latestScore || latestOffer > latestScore)
   const value: CandidateState = {
-    ...data, loading, error, message, calculating, clearMessage: () => setMessage(null), reload,
-    scoresStale: !!latestOffer && (!latestScore || latestOffer > latestScore),
+    ...data, loading, error, message, calculating, clearMessage: () => setMessage(null), reload, scoresStale,
+    autoCalculateMatches: () => {
+      if (loading || !shouldAutoCalculate({ hasSkills: data.records.skills.length > 0, hasMatches: data.matches.length > 0, stale: scoresStale, alreadyTried: autoTried.current })) return
+      autoTried.current = true
+      // A failure leaves the « Calculer ma compatibilité » button as the fallback.
+      void calculateMatches().catch(() => {})
+    },
     saveIdentity: (user, profile) => confirmed(async () => {
       await api.save('/users/me/', user)
       await api.save('/candidate-profiles/me/', profile)

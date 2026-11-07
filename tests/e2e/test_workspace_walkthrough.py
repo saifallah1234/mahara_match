@@ -182,6 +182,25 @@ def test_workspace_walkthrough(role, live_server, frontend, settings, monkeypatc
 
         if role == "candidat":
             page.set_viewport_size({"width": 1400, "height": 800})
+            # Scores are calculated automatically on the first visit; no button is pressed.
+            _visit(page, frontend + "/candidat/offres", problems)
+            expect(
+                page.locator("article").get_by_text(re.compile(r"^Compatibilité \d+ %$")).first
+            ).to_be_visible(timeout=15000)
+            _visit(page, frontend + "/candidat", problems)
+            best = page.locator(
+                "section", has=page.get_by_role("heading", name="Mes meilleures correspondances")
+            )
+            expect(best.get_by_text("À acquérir").first).to_be_visible()
+            expect(best.get_by_text("Formation suggérée").first).to_be_visible()
+            page.screenshot(path=tmp_path / "candidat_dashboard_matches.png")
+            page.set_viewport_size({"width": 390, "height": 844})
+            for path in ["/candidat", "/candidat/offres", "/candidat/profil"]:
+                _visit(page, frontend + path, problems)
+                page.screenshot(
+                    path=tmp_path / f"phone{path.replace('/', '_')}.png", full_page=True
+                )
+            page.set_viewport_size({"width": 1400, "height": 800})
             _visit(page, frontend + "/candidat/assistant", problems)
             page.get_by_role("button", name="Quelles offres d’emploi me correspondent ?").click()
             expect(page.get_by_text(re.compile(r"^1\. .+ chez "))).to_be_visible(timeout=30000)
