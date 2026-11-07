@@ -38,6 +38,6 @@ def ministry_indicators(actor: User) -> dict[str, list[dict[str, Any]]]:
         ),
         "skill_gaps": [
             {"skill": skill, "offer_demand": demand[skill], "training_supply": supply[skill]}
-            for skill in sorted(demand.keys() | supply.keys())
+            for skill in sorted(demand.keys() | supply.keys(), key=str.casefold)
         ],
     }
