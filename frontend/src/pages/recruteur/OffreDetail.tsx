@@ -4,7 +4,7 @@ import { PageBody, PageHeader } from '../../components/layout'
 import { Badge, Button, ConfirmDialog, EmptyState, Panel } from '../../components/ui'
 import { useRecruiter } from '../../state/recruiter'
 import { candidateLabel, listOfferSkills, type OfferSkill } from '../../api/recruiter'
-import { OFFER_STATUS_LABEL, WORK_MODE_LABEL, contractLabel, experienceLabel, formatDate, labelFor } from '../../lib/format'
+import { OFFER_STATUS_LABEL, WORK_MODE_LABEL, contractLabel, experienceLabel, formatDate, labelFor, skillLabel } from '../../lib/format'
 import { STATUS_LABEL } from '../../lib/statusMachine'
 import { offerActions, type OfferAction } from '../../lib/offerLifecycle'
 import type { WorkMode } from '../../lib/types'
@@ -40,7 +40,7 @@ export default function RecruteurOffreDetail() {
   const salary = offer.min_salary || offer.max_salary
     ? `${offer.min_salary ?? '…'} – ${offer.max_salary ?? '…'} TND`
     : 'Non renseigné'
-  const skillName = (id: string) => skills.find((s) => s.id === id)?.canonical_name ?? 'Compétence'
+  const skillName = (id: string) => skillLabel(skills.find((s) => s.id === id)?.canonical_name ?? 'Compétence')
 
   return (
     <>

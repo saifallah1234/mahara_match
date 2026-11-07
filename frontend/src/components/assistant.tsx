@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageBody, PageHeader } from './layout'
-import { Button, ConfirmDialog, EmptyState, Input, Panel } from './ui'
+import { Button, ConfirmDialog, EmptyState, Panel, Textarea } from './ui'
 import { Citations } from './domain'
 import * as api from '../api/assistant'
 import { sortByActivity } from '../lib/assistantConversations'
@@ -11,6 +11,12 @@ import { formatDate } from '../lib/format'
 const EMPTY_HINT: Record<'CANDIDATE' | 'RECRUITER', string> = {
   CANDIDATE: 'Posez une question sur les offres, votre profil ou les formations.',
   RECRUITER: 'Demandez par exemple « candidats pour <offre> » ou une recherche libre de profils.',
+}
+
+// Static starters: clicking one only sends its text through the normal agent run.
+const EXAMPLES: Record<'CANDIDATE' | 'RECRUITER', string[]> = {
+  CANDIDATE: ['Quelles offres d’emploi me correspondent ?', 'Quelles formations pour mes compétences manquantes ?'],
+  RECRUITER: ['Trouve des candidats en Python et SQL', 'Mes offres en Python'],
 }
 
 /** Assistant chat with its conversation list. basePath is the route prefix; the selected conversation id is the last segment. */
@@ -52,8 +58,8 @@ export function AssistantWorkspace({ basePath, role }: { basePath: string; role:
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [messages, thinking])
 
-  async function send() {
-    const text = input.trim()
+  async function send(example?: string) {
+    const text = (example ?? input).trim()
     if (!text || thinking) return
     const sentFrom = conversationId
     setInput(''); setError(null); setThinking(true)
@@ -98,11 +104,19 @@ export function AssistantWorkspace({ basePath, role }: { basePath: string; role:
               ))}
             </ul>
           </Panel>
-          <div className="space-y-4">
-            <Panel>
-              <div className="max-h-[60vh] min-h-64 space-y-3 overflow-y-auto p-5">
+          {/* Fills the screen below the page header; only the thread scrolls, the input stays at the bottom. */}
+          <div className="flex h-[calc(100dvh-8rem)] min-h-[26rem] flex-col gap-3">
+            <Panel className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
                 {messages.length === 0 && !thinking && (
-                  <p className="text-[13.5px] text-slate">{EMPTY_HINT[role]}</p>
+                  <div className="space-y-3">
+                    <p className="text-[13.5px] text-slate">{EMPTY_HINT[role]}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {EXAMPLES[role].map((example) => (
+                        <Button key={example} size="sm" variant="secondaire" onClick={() => void send(example)}>{example}</Button>
+                      ))}
+                    </div>
+                  </div>
                 )}
                 {messages.map((m) => {
                   const mine = m.sender_type === 'USER'
@@ -120,8 +134,16 @@ export function AssistantWorkspace({ basePath, role }: { basePath: string; role:
               </div>
             </Panel>
             {error && <p role="alert" className="text-[13px] text-coral">{error}</p>}
-            <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void send() }}>
-              <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Votre question…" />
+            <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); void send() }}>
+              <Textarea
+                aria-label="Votre question"
+                rows={2}
+                className="min-h-0! resize-none!"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send() } }}
+                placeholder="Votre question… (Maj+Entrée pour aller à la ligne)"
+              />
               <Button type="submit" disabled={thinking || !input.trim()}>Envoyer</Button>
             </form>
           </div>

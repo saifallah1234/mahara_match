@@ -5,13 +5,12 @@ import { Badge, Button, Cell, ConfirmDialog, EmptyState, Field, Input, Meter, Pa
 import { useAuth } from '../state/auth'
 import { useTraining } from '../state/training'
 import { MembersPanel } from '../components/members'
-import { ENROLLMENT_STATUS_LABEL, PROGRAM_STATUS_LABEL, SESSION_STATUS_LABEL, formatDate, formatDateTime, labelFor, toDateTimeInput } from '../lib/format'
+import { ENROLLMENT_STATUS_LABEL, PROGRAM_STATUS_LABEL, SESSION_STATUS_LABEL, formatDate, formatDateTime, formatPrice, labelFor, skillLabel, toDateTimeInput } from '../lib/format'
 import type { Enrollment, Program, ProgramSkill, Session } from '../api/training'
 
 const MODE = { ONLINE: 'En ligne', PRESENTIAL: 'Présentiel', HYBRID: 'Hybride' } as const
 const LEVEL = { BEGINNER: 'Débutant', INTERMEDIATE: 'Intermédiaire', ADVANCED: 'Avancé' } as const
 const TARGET_LEVEL = { BEGINNER: 'Débutant', INTERMEDIATE: 'Intermédiaire', ADVANCED: 'Avancé', EXPERT: 'Expert' } as const
-const price = (p: Program) => (p.is_free ? 'Gratuit' : `${p.price} TND`)
 const blankProgram = { title: '', description: '', level: 'BEGINNER', delivery_mode: 'ONLINE', is_free: true, price: '' }
 const blankSession = { program_id: '', start_date: '', end_date: '', registration_deadline: '', capacity: '20', location_or_url: '' }
 
@@ -113,7 +112,7 @@ export function FormationProgrammes() {
   const orgId = workspace?.organization?.id
   const [archiving, setArchiving] = useState<Program | null>(null)
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
-  const skillName = (id: string) => skillCatalogue.find((s) => s.id === id)?.canonical_name ?? id
+  const skillName = (id: string) => skillLabel(skillCatalogue.find((s) => s.id === id)?.canonical_name ?? id)
   const skillsOf = (programId: string) => skills.filter((s) => s.program === programId)
 
   function close() {
@@ -163,7 +162,7 @@ export function FormationProgrammes() {
                   <div className="flex flex-wrap gap-2">
                     <Select value={pick.skillId} onChange={(e) => setPick({ ...pick, skillId: e.target.value })}>
                       <option value="">Choisir une compétence…</option>
-                      {skillCatalogue.map((s) => <option key={s.id} value={s.id}>{s.canonical_name}</option>)}
+                      {skillCatalogue.map((s) => <option key={s.id} value={s.id}>{skillLabel(s.canonical_name)}</option>)}
                     </Select>
                     <Select value={pick.level} onChange={(e) => setPick({ ...pick, level: e.target.value as ProgramSkill['target_level'] })}>
                       {Object.entries(TARGET_LEVEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -215,12 +214,12 @@ export function FormationProgrammes() {
                       {p.status !== 'ARCHIVED' && (
                         <Select className="mt-2 text-[12.5px]" value="" onChange={(e) => { if (e.target.value) void addSkill(p.id, e.target.value, 'BEGINNER').catch(() => {}) }}>
                           <option value="">Ajouter une compétence…</option>
-                          {skillCatalogue.filter((s) => !own.some((o) => o.skill_id === s.id)).map((s) => <option key={s.id} value={s.id}>{s.canonical_name}</option>)}
+                          {skillCatalogue.filter((s) => !own.some((o) => o.skill_id === s.id)).map((s) => <option key={s.id} value={s.id}>{skillLabel(s.canonical_name)}</option>)}
                         </Select>
                       )}
                     </Cell>
                     <Cell className="text-[13px]">{MODE[p.delivery_mode]}</Cell>
-                    <Cell className="text-[13px]">{price(p)}</Cell>
+                    <Cell className="text-[13px]">{formatPrice(p.price)}</Cell>
                     <Cell><Badge tone={p.status === 'ACTIVE' ? 'positif' : 'neutre'}>{labelFor(PROGRAM_STATUS_LABEL, p.status)}</Badge></Cell>
                     <Cell className="text-right">
                       <Button size="sm" variant="discret" onClick={() => edit(p)}>Modifier</Button>{' '}

@@ -256,6 +256,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat('fr-TN', {
   year: 'numeric',
   hour: '2-digit',
   minute: '2-digit',
+  hourCycle: 'h23',
 })
 
 export function formatDate(iso?: string): string {
@@ -300,15 +301,22 @@ export function formatMonthYear(iso?: string): string {
 /** Les montants absents sont signalés, jamais devinés. */
 export function formatSalary(min?: number, max?: number): string {
   if (min == null && max == null) return 'Non renseigné'
-  if (min != null && max != null) return `${min.toLocaleString('fr-FR')} – ${max.toLocaleString('fr-FR')} DT / mois`
+  if (min != null && max != null) return `${min.toLocaleString('fr-FR')} – ${max.toLocaleString('fr-FR')} TND / mois`
   const single = (min ?? max) as number
-  return `${single.toLocaleString('fr-FR')} DT / mois`
+  return `${single.toLocaleString('fr-FR')} TND / mois`
 }
 
-export function formatPrice(price?: number): string {
-  if (price == null) return 'Non renseigné'
-  if (price === 0) return 'Gratuit'
-  return `${price.toLocaleString('fr-FR')} DT`
+/** A zero price means free (the training_programs check constraint ties price 0 to is_free). */
+export function formatPrice(price?: number | string | null): string {
+  if (price == null || price === '') return 'Non renseigné'
+  const amount = Number(price)
+  if (amount === 0) return 'Gratuit'
+  return `${amount.toLocaleString('fr-FR')} TND`
+}
+
+/** Display-only: ESCO labels are stored lowercase and stay verbatim in the database. */
+export function skillLabel(name: string): string {
+  return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
 export function formatBytes(bytes: number): string {

@@ -6,7 +6,7 @@ import { EmptyState, Field, Input, Note, Panel, Select } from '../../components/
 import { useAuth } from '../../state/auth'
 import { useRecruiter } from '../../state/recruiter'
 import { listCandidates, listEducationLevels, type CandidateCard, type EducationLevel } from '../../api/recruiter'
-import { GOUVERNORATS, WORK_MODE_LABEL } from '../../lib/format'
+import { GOUVERNORATS, WORK_MODE_LABEL, skillLabel } from '../../lib/format'
 import { RELOCATION_LABEL, UNVERIFIED_MESSAGE } from '../../lib/recruiterCandidates'
 
 const EMPTY = { skill: '', education_level: '', governorate: '', work_mode: '', relocation: '', search: '' }
@@ -58,7 +58,7 @@ export default function RecruteurCandidats() {
                 <Field label="Compétence">
                   <Select value={filters.skill} onChange={set('skill')}>
                     <option value="">Toutes</option>
-                    {skills.map((s) => <option key={s.id} value={s.id}>{s.canonical_name}</option>)}
+                    {skills.map((s) => <option key={s.id} value={s.id}>{skillLabel(s.canonical_name)}</option>)}
                   </Select>
                 </Field>
                 <Field label="Niveau de formation">
@@ -102,7 +102,7 @@ export default function RecruteurCandidats() {
                         <p className="font-medium text-navy">{c.headline || 'Candidat'}</p>
                         <p className="text-[12.5px] text-slate">
                           {c.governorate || 'Gouvernorat non renseigné'}
-                          {c.skills.length > 0 && ` · ${c.skills.slice(0, 4).map((s) => skillName(s.skill) ?? 'Compétence').join(', ')}`}
+                          {c.skills.length > 0 && ` · ${c.skills.slice(0, 4).map((s) => skillLabel(skillName(s.skill) ?? 'Compétence')).join(', ')}`}
                         </p>
                       </Link>
                     </li>

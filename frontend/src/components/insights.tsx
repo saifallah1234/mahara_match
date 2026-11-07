@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Button, Panel } from './ui'
 import { ScoreDial } from './domain'
 import { useCandidate } from '../state/candidate'
-import { formatDate } from '../lib/format'
+import { formatDate, skillLabel } from '../lib/format'
 
 /** Petit badge pour une carte d'offre ; rien n'est affiché si aucun score n'existe. */
 export function MatchBadge({ offerId }: { offerId: string }) {
@@ -41,8 +41,8 @@ export function MatchPanel({ offerId }: { offerId: string }) {
       <div className="flex flex-wrap items-start gap-6 p-5">
         <ScoreDial score={Math.round(Number(match.overall_score))} available size={72} />
         <div className="space-y-3 text-[13.5px]">
-          {matched.length > 0 && <p><span className="font-medium text-navy">Compétences en commun : </span>{matched.join(', ')}</p>}
-          {missing.length > 0 && <p><span className="font-medium text-navy">Compétences à acquérir : </span>{missing.join(', ')}</p>}
+          {matched.length > 0 && <p><span className="font-medium text-navy">Compétences en commun : </span>{matched.map(skillLabel).join(', ')}</p>}
+          {missing.length > 0 && <p><span className="font-medium text-navy">Compétences à acquérir : </span>{missing.map(skillLabel).join(', ')}</p>}
           <p className="text-[12px] text-slate">Calculé le {formatDate(match.calculated_at)}</p>
           {scoresStale && hasSkills && <Button size="sm" variant="secondaire" disabled={calculating} onClick={() => void calculateMatches().catch(() => {})}>Recalculer</Button>}
         </div>

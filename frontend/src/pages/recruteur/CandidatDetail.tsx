@@ -7,7 +7,7 @@ import { useAuth } from '../../state/auth'
 import { useRecruiter } from '../../state/recruiter'
 import { getCandidate, listEducationLevels, type CandidateCard, type EducationLevel } from '../../api/recruiter'
 import { ApiError } from '../../api/client'
-import { SKILL_LEVEL_LABEL, WORK_MODE_LABEL, formatMonthYear, labelFor } from '../../lib/format'
+import { SKILL_LEVEL_LABEL, WORK_MODE_LABEL, formatMonthYear, labelFor, skillLabel } from '../../lib/format'
 import { RELOCATION_LABEL, UNVERIFIED_MESSAGE } from '../../lib/recruiterCandidates'
 
 /** Read-only limited profile. No contact action: contact is not part of the MVP (D14). */
@@ -39,7 +39,7 @@ export default function RecruteurCandidatDetail() {
     return () => { live = false }
   }, [candidateId, verified])
 
-  const skillName = (id: string) => skills.find((s) => s.id === id)?.canonical_name ?? 'Compétence'
+  const skillName = (id: string) => skillLabel(skills.find((s) => s.id === id)?.canonical_name ?? 'Compétence')
   const levelName = (id: string) => levels.find((l) => l.id === id)?.name ?? 'Formation'
 
   return (

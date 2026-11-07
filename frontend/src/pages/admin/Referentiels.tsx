@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { PageBody, PageHeader } from '../../components/layout'
 import { Input, Panel } from '../../components/ui'
 import { useSkillCatalog } from '../../state/adminData'
+import { skillLabel } from '../../lib/format'
 
 export default function AdminReferentiels() {
   const { data: skills, loading, error } = useSkillCatalog()
@@ -18,7 +19,7 @@ export default function AdminReferentiels() {
           <Panel key={g} title={g}>
             <div className="flex flex-wrap gap-2 p-5">
               {shown.filter((s) => (s.category || 'Sans catégorie') === g).map((s) => (
-                <span key={s.id} className="rounded-full border border-line bg-white px-3 py-1 text-[13px] text-navy">{s.canonical_name}</span>
+                <span key={s.id} className="rounded-full border border-line bg-white px-3 py-1 text-[13px] text-navy">{skillLabel(s.canonical_name)}</span>
               ))}
             </div>
           </Panel>

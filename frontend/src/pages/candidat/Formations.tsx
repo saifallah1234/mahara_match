@@ -24,7 +24,7 @@ export default function CandidatFormations() {
       {tab === 'catalogue' && <><Panel><div className="max-w-xs p-5"><Field label="Modalité"><Select value={mode} onChange={(event) => setMode(event.target.value)}><option value="">Toutes</option>{Object.entries(delivery).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></Field></div></Panel>
         {!catalogue.length && <Panel><EmptyState title="Aucune formation publiée" /></Panel>}
         {catalogue.map((program) => <Panel key={program.id} title={program.title} description={`${program.organization_name} · ${delivery[program.delivery_mode] ?? program.delivery_mode} · ${level[program.level] ?? program.level}`}>
-          <div className="space-y-3 p-5 text-sm"><p className="text-navy">{program.description}</p><p className="text-slate">{program.is_free ? 'Gratuit' : formatPrice(Number(program.price))}</p></div>
+          <div className="space-y-3 p-5 text-sm"><p className="text-navy">{program.description}</p><p className="text-slate">{formatPrice(program.price)}</p></div>
           <ul className="divide-y divide-line">{sessions.filter((session) => session.program === program.id).map((session) => {
             const existing = enrollments.find((item) => item.session === session.id)
             const open = ['PLANNED', 'ONGOING'].includes(session.status) && new Date(session.registration_deadline) >= new Date()
