@@ -95,3 +95,11 @@ In-app notifications (ticket 25, D12) are written by the owning services in the 
 transaction as the change, to the recipients listed in D12 and never to the actor.
 Tickets 10 and 26 remain blocked until Q26 and the approved KPIs are settled. Tickets:
 `.scratch/frontend-wiring/spec.md`.
+
+**Demo reference vocabulary (2026-11-07):** for the demo seed (`seed_demo`,
+`.scratch/demo-readiness/spec.md`), skills come from ESCO v1.2 with their English preferred
+labels only (user decision), listed in `backend/apps/taxonomy/data/esco_skills.json`:
+canonical name = label, category = ESCO skill type, description = ESCO description plus
+`ESCO: <concept URI>`. No schema change, alias table or Arabic/French labels; Q20 stays open.
+Education levels are Tunisian diploma names in French, in this order: Baccalauréat, Licence,
+Diplôme d'ingénieur, Master, Doctorat. Both are demo vocabulary, not an approved reference.

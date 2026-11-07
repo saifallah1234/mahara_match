@@ -89,6 +89,14 @@ uv run --frozen python backend/manage.py migrate --noinput
 uv run --frozen python backend/manage.py seed_rbac
 ```
 
+For a local demo database only (refuses unless `DEBUG` is on), `seed_demo` adds the ESCO
+skills, education levels and one account per actor on `@demo.mahara.test`; it prints the
+target database host and name first, then the accounts:
+
+```bash
+uv run --frozen python backend/manage.py seed_demo --password "<demo password>" --settings=backend.config.settings.development
+```
+
 When working in a Git checkout, install hooks with:
 
 ```bash
