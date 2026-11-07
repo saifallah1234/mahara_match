@@ -152,7 +152,7 @@ def test_french_request_gets_a_french_template_without_the_llm(
     )
     monkeypatch.setattr("ai.tools.job_search.embed_query", _ollama_down)
     monkeypatch.setattr(
-        "ai.agents.anetai.get_chat_model", lambda: pytest.fail("French replies are templates.")
+        "ai.agents.anetai.get_chat_model", lambda **_: pytest.fail("French replies are templates.")
     )
     client = APIClient()
     client.force_authenticate(user)
@@ -168,6 +168,39 @@ def test_french_request_gets_a_french_template_without_the_llm(
         "1. Backend Engineer chez Backend Engineer Ltd. Compétences correspondantes : Django. "
         "Compétences manquantes : Python."
     )
+
+
+def test_english_run_succeeds_with_the_template_when_the_model_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user = candidate()
+    _, django, _ = published_offer(user)
+    CandidateSkill.objects.create(
+        candidate=user.candidate_profile, skill=django, level=SkillLevel.INTERMEDIATE
+    )
+    monkeypatch.setattr("ai.tools.job_search.embed_query", _ollama_down)
+
+    def unreachable_model(**_: object) -> object:
+        raise ConnectionError("Ollama is unreachable.")
+
+    monkeypatch.setattr("ai.agents.anetai.get_chat_model", unreachable_model)
+    client = APIClient()
+    client.force_authenticate(user)
+
+    response = client.post(
+        reverse("agent-run"), {"message": "What jobs match my profile?"}, format="json"
+    )
+
+    assert response.status_code == 200
+    expected = (
+        "1. Backend Engineer at Backend Engineer Ltd. Matched skills: Django. "
+        "Missing skills: Python."
+    )
+    assert response.json()["reply"] == expected
+    execution = AgentExecution.objects.get(id=response.json()["execution_id"])
+    assert execution.status == "SUCCEEDED"
+    assert execution.error_code == ""
+    assert execution.response_message.content == expected
 
 
 def test_baseline_route_remains_selectable(monkeypatch: pytest.MonkeyPatch) -> None:
