@@ -151,6 +151,12 @@ def test_browser_interview_journey(request, live_server, followup, monkeypatch, 
             page.get_by_role("button", name="Commencer", exact=True).click()
             expect(page.get_by_text("État : Introduction", exact=True)).to_be_visible()
             expect(page.get_by_text("Question 1/3", exact=True)).not_to_be_visible()
+            interviewer = page.get_by_role("region", name="Recruteur virtuel").locator("video")
+            expect(interviewer).to_be_visible()
+            frame = interviewer.bounding_box()
+            camera = page.get_by_role("region", name="Vous").get_by_text("Votre caméra s’activera")
+            assert frame and frame["width"] > 280 and frame["height"] > 500
+            assert abs(frame["height"] - (camera.bounding_box() or {"height": 0})["height"]) < 2
             page.get_by_role("button", name="Lire", exact=True).click()
             for position in [1, "followup", 2, 3] if followup else [1, 2, 3]:
                 expect(page.get_by_text("État : Question", exact=True)).to_be_visible()

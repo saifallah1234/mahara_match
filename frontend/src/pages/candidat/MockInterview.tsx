@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { answerInterview, createInterview, getInterview, getInterviewFeedback, interviewAction, interviewHistory, type InterviewFeedback, type InterviewSession } from '../../api/mockInterviews'
 import { AvatarPlayer } from '../../components/interview/AvatarPlayer'
 import { AnswerRecorder } from '../../components/interview/AnswerRecorder'
-import { ActionBar, CameraIdle, INTERVIEWER_FRAME, InterviewStage } from '../../components/interview/InterviewStage'
+import { ActionBar, CameraIdle, INTERVIEWER_COLUMN, INTERVIEWER_FRAME, InterviewStage } from '../../components/interview/InterviewStage'
 import { PageBody, PageHeader } from '../../components/layout'
 import { Button, ConfirmDialog, Field, Panel, Select } from '../../components/ui'
 import { interviewDisplayState, type InterviewDisplayState } from '../../lib/mockInterviewMachine'
@@ -113,7 +113,7 @@ export default function MockInterview() {
             {cancel}
           </ActionBar>}
         {display === 'COMPLETED' && <>
-          {session.playback.closing_audio && <AvatarPlayer className={INTERVIEWER_FRAME} playback={{ audio: session.playback.closing_audio, avatar: session.playback.neutral_avatar }} />}
+          {session.playback.closing_audio && <div className={INTERVIEWER_COLUMN}><AvatarPlayer className={INTERVIEWER_FRAME} playback={{ audio: session.playback.closing_audio, avatar: session.playback.neutral_avatar }} /></div>}
           {feedback && <Panel title="Votre retour"><div className="space-y-4 p-5"><p>{feedback.summary}</p>{feedback.questions.map((row, index) => <section key={row.turn_id}><h2 className="font-semibold">Réponse {index + 1}</h2><p>Points forts : {row.strengths.join(' ')}</p><p>À approfondir : {row.gaps.join(' ')}</p>{row.excerpts.map((quote) => <blockquote key={quote}>« {quote} »</blockquote>)}<p>Pour progresser : {row.improvements.join(' ')}</p></section>)}</div></Panel>}
         </>}
       </> : <p role="status">Chargement…</p>}
