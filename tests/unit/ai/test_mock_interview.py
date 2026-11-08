@@ -56,3 +56,29 @@ def test_feedback_rejects_invented_excerpts_and_hiring_scores():
     output["questions"][0]["excerpts"] = ["invented"]
     with pytest.raises(ValueError):
         validate_feedback(output, answers)
+
+
+@pytest.mark.parametrize(
+    ("chosen", "mains", "expected"),
+    [("evaluate", 1, "next"), ("evaluate", 2, "next"), ("next", 3, "evaluate")],
+)
+def test_answer_count_decides_between_next_and_feedback(chosen, mains, expected):
+    # Observed 2026-11-08: the real model chose "evaluate" after one main answer.
+    class Model(MockInterviewModel):
+        def decide(self, state):
+            return {"next_action": chosen, "followup": ""}
+
+    answers = [{"turn_id": str(i), "kind": "MAIN", "text": "Réponse"} for i in range(mains)]
+    state = {"operation": "answer", "answers": answers, "current_kind": "MAIN"}
+    assert build_interview_graph(Model()).invoke(state)["next_action"] == expected
+
+
+@pytest.mark.parametrize("followup", ["", "   ", None, "x" * 2001])
+def test_unusable_followup_moves_on_instead_of_failing(followup):
+    class Model(MockInterviewModel):
+        def decide(self, state):
+            return {"next_action": "followup", "followup": followup}
+
+    answers = [{"turn_id": "1", "kind": "MAIN", "text": "Réponse"}]
+    state = {"operation": "answer", "answers": answers, "current_kind": "MAIN"}
+    assert build_interview_graph(Model()).invoke(state)["next_action"] == "next"
