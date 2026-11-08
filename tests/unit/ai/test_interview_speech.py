@@ -43,26 +43,40 @@ def test_piper_explicit_french_model(tmp_path, monkeypatch):
 
 
 def test_whisper_local_only(tmp_path, monkeypatch):
+    numpy = pytest.importorskip("numpy")
     from ai.speech import faster_whisper
 
     for name in ("model.bin", "config.json", "tokenizer.json"):
         (tmp_path / name).touch()
     calls = []
+    heard = []
+
+    def transcribe(audio, **kwargs):
+        heard.append(audio)
+        return iter([SimpleNamespace(text=" Bonjour ")]), SimpleNamespace(language="fr")
 
     def model(path, **options):
         calls.append(options)
-        return SimpleNamespace(
-            transcribe=lambda *args, **kwargs: (
-                iter([SimpleNamespace(text=" Bonjour ")]),
-                SimpleNamespace(language="fr"),
-            )
-        )
+        return SimpleNamespace(transcribe=transcribe)
 
+    real_import = faster_whisper.import_module
     monkeypatch.setattr(
-        faster_whisper, "import_module", lambda name: SimpleNamespace(WhisperModel=model)
+        faster_whisper,
+        "import_module",
+        lambda name: (
+            SimpleNamespace(WhisperModel=model) if name == "faster_whisper" else real_import(name)
+        ),
     )
-    result = stt_provider("faster-whisper", whisper_model=str(tmp_path)).transcribe(b"audio", "fr")
+    # The job hands over the 16 kHz mono WAV produced by FFmpeg (decode_audio).
+    wav = MockTTS().synthesize("test", "fr", "test").content
+    result = stt_provider("faster-whisper", whisper_model=str(tmp_path)).transcribe(wav, "fr")
     assert result.text == "Bonjour" and calls[0]["local_files_only"] is True
+    # Samples, not a file: faster-whisper's own PyAV decoder fails with PyAV 19.
+    samples = heard[0]
+    assert isinstance(samples, numpy.ndarray) and samples.dtype == numpy.float32
+    assert samples.shape == (16000,) and 0 < abs(samples).max() <= 1
+    with pytest.raises(ValueError, match="16 kHz mono"):
+        stt_provider("faster-whisper", whisper_model=str(tmp_path)).transcribe(b"audio", "fr")
 
 
 @pytest.mark.parametrize("missing", ("model.bin", "config.json", "tokenizer.json"))
