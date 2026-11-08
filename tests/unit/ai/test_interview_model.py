@@ -41,3 +41,28 @@ def test_interview_model_uses_json_and_quotes_untrusted_evidence(monkeypatch):
     )
     with pytest.raises(ValueError):
         interview.OllamaInterviewModel().evaluate([])
+
+
+def test_routing_constrains_keys_and_drops_copied_question_numbers(monkeypatch):
+    calls = []
+
+    def invoke(messages, **options):
+        calls.append(options)
+        # Observed from the configured Ollama model on 2026-11-08: the main questions' "Q1:" numbering leaks in.
+        return SimpleNamespace(
+            content=json.dumps(
+                {"next_action": "followup", "followup": "Q2: Pouvez-vous détailler votre rôle ?"}
+            )
+        )
+
+    monkeypatch.setattr(
+        interview,
+        "get_chat_model",
+        lambda: SimpleNamespace(bind=lambda **kwargs: SimpleNamespace(invoke=invoke)),
+    )
+    result = interview.OllamaInterviewModel().decide({"answers": []})
+    assert result == {"next_action": "followup", "followup": "Pouvez-vous détailler votre rôle ?"}
+    schema = calls[0]["format"]
+    assert schema["required"] == ["next_action", "followup"]
+    assert schema["properties"]["next_action"]["enum"] == ["followup", "next", "evaluate"]
+    assert schema["additionalProperties"] is False

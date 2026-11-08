@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any
 
 from ai.llm.prompts.mock_interview import SYSTEM_PROMPT
@@ -16,6 +17,17 @@ PREPARATION_SCHEMA = {
         },
     },
     "required": ["introduction", "questions"],
+    "additionalProperties": False,
+}
+
+# Without a schema the model returned a "followup: " key and copied the placeholder text (2026-11-08).
+DECISION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "next_action": {"type": "string", "enum": ["followup", "next", "evaluate"]},
+        "followup": {"type": "string"},
+    },
+    "required": ["next_action", "followup"],
     "additionalProperties": False,
 }
 
@@ -51,10 +63,18 @@ class OllamaInterviewModel:
         )
 
     def decide(self, state: dict[str, Any]) -> dict[str, Any]:
-        return self.ask(
-            '{"next_action": "followup|next|evaluate", "followup": "contextual French question when requested"}',
+        output = self.ask(
+            '{"next_action": "followup" | "next" | "evaluate", "followup": string}. Choose "followup" '
+            'only when the latest answer is vague or incomplete; then write in "followup" one short '
+            "question in French, addressed to the candidate, about that answer. Otherwise leave "
+            '"followup" empty.',
             state,
+            schema=DECISION_SCHEMA,
         )
+        # The model copies the main questions' "Q1:" numbering into the follow-up.
+        if isinstance(output.get("followup"), str):
+            output["followup"] = re.sub(r"^\s*Q\d+\s*[:.)-]\s*", "", output["followup"])
+        return output
 
     def evaluate(self, answers: list[dict[str, Any]]) -> dict[str, Any]:
         return self.ask(
