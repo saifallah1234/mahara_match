@@ -215,9 +215,18 @@ export const MOCK_JOB_STATUS_LABEL: Record<string, string> = {
   QUEUED: 'En file',
   RUNNING: 'En cours',
   SUCCEEDED: 'Réussi',
+  RETRY_WAIT: 'Nouvel essai prévu',
   FAILED: 'Échec',
   CANCELLED: 'Annulé',
 }
+
+/** Codes d'erreur des traitements, traduits pour le candidat (jamais le code brut). */
+export const MOCK_ERROR_LABEL: Record<string, string> = {
+  stage_failed: 'le traitement a échoué. Vous pouvez réessayer.',
+  worker_attempts_exhausted: 'la génération de la vidéo a échoué après plusieurs essais.',
+}
+
+export const MOCK_ERROR_FALLBACK = 'une erreur inattendue est survenue.'
 
 export const GOUVERNORATS = [
   'Ariana',

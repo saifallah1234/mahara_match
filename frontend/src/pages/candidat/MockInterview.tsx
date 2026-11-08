@@ -6,7 +6,7 @@ import { AnswerRecorder } from '../../components/interview/AnswerRecorder'
 import { PageBody, PageHeader } from '../../components/layout'
 import { Button, ConfirmDialog, Field, Panel, Select } from '../../components/ui'
 import { interviewDisplayState, type InterviewDisplayState } from '../../lib/mockInterviewMachine'
-import { MOCK_INTERVIEW_LABEL, MOCK_JOB_STAGE_LABEL, MOCK_JOB_STATUS_LABEL, formatDateTime, labelFor } from '../../lib/format'
+import { MOCK_ERROR_FALLBACK, MOCK_ERROR_LABEL, MOCK_INTERVIEW_LABEL, MOCK_JOB_STAGE_LABEL, MOCK_JOB_STATUS_LABEL, formatDateTime, labelFor } from '../../lib/format'
 import { useCandidate } from '../../state/candidate'
 
 export default function MockInterview() {
@@ -93,7 +93,7 @@ export default function MockInterview() {
       </> : session ? <>
         {session.availability.simulated && <p role="status" className="rounded-lg bg-amber/10 p-3">Mode simulé : tonalités audio, transcription prédéfinie et vidéos sans lip-sync réel.</p>}
         <p role="status">État : {MOCK_INTERVIEW_LABEL[display]}</p>
-        {['PREPARING', 'THINKING', 'FAILED'].includes(display) && <Panel title="Traitements"><ul className="p-5">{session.jobs.map((job) => <li key={job.id}>{labelFor(MOCK_JOB_STAGE_LABEL, job.stage)} : {labelFor(MOCK_JOB_STATUS_LABEL, job.status)}{job.error_code && ` (${job.error_code})`}</li>)}</ul></Panel>}
+        {['PREPARING', 'THINKING', 'FAILED'].includes(display) && <Panel title="Traitements"><ul className="p-5">{session.jobs.map((job) => <li key={job.id}>{labelFor(MOCK_JOB_STAGE_LABEL, job.stage)} : {labelFor(MOCK_JOB_STATUS_LABEL, job.status)}{job.status === 'FAILED' && job.error_code && ` — ${labelFor(MOCK_ERROR_LABEL, job.error_code, MOCK_ERROR_FALLBACK)}`}</li>)}</ul></Panel>}
         {display === 'READY' && <Button disabled={busy} onClick={() => void action('start')}>Commencer</Button>}
         {display === 'INTRO' && <AvatarPlayer playback={{ video: session.playback.introduction }} onDone={() => setDisplay('SPEAKING')} />}
         {turn && <Panel title={turn.kind === 'FOLLOWUP' ? 'Relance' : `Question ${turn.position}/3`}><p className="p-5">{turn.question}</p></Panel>}

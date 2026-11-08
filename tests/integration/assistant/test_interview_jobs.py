@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import pytest
+from django.core.management import CommandError, call_command
 from django.utils import timezone
 
 from ai.speech.providers import MockTTS, Transcript
@@ -316,3 +317,25 @@ def test_tts_restart_after_upload_skips_provider(interview, local_media, monkeyp
     result = jobs.compute_job(resumed)
     assert result["document"].pk == output["document"].pk
     assert jobs.commit_job(resumed, result)
+
+
+def test_task_runner_refuses_to_start_when_speech_provider_cannot_be_built(
+    interview, local_media, settings
+):
+    settings.STT_PROVIDER = "faster-whisper"
+    settings.FASTER_WHISPER_MODEL_PATH = ""
+    session = services.create_session(
+        interview["candidate"], offer_id=interview["offer"].pk, language="fr", key="startup"
+    )
+    before = list(session.jobs.values_list("status", "attempts"))
+    with pytest.raises(CommandError, match="faster-whisper.*model directory"):
+        call_command("run_interview_tasks", "--once")
+    assert list(session.jobs.values_list("status", "attempts")) == before
+
+
+def test_task_runner_starts_and_processes_jobs_with_mock_backend(interview, local_media):
+    session = services.create_session(
+        interview["candidate"], offer_id=interview["offer"].pk, language="fr", key="startup-mock"
+    )
+    call_command("run_interview_tasks", "--once")
+    assert session.jobs.get(stage="PREPARE").status == "SUCCEEDED"

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   CONTRACT_OPTIONS,
+  MOCK_ERROR_LABEL,
+  MOCK_ERROR_FALLBACK,
   EXPERIENCE_OPTIONS,
   apiErrorMessage,
   contractLabel,
@@ -9,6 +11,7 @@ import {
   formatDateTime,
   formatPrice,
   formatTunisDateTime,
+  labelFor,
   skillLabel,
 } from '../src/lib/format.ts'
 
@@ -69,4 +72,12 @@ test('skill labels get a capital first letter only', () => {
   assert.equal(skillLabel('SQL'), 'SQL')
   assert.equal(skillLabel('écrire du code'), 'Écrire du code')
   assert.equal(skillLabel(''), '')
+})
+
+test('mock interview failures read in French and never show the raw code', () => {
+  const stageFailed = labelFor(MOCK_ERROR_LABEL, 'stage_failed', MOCK_ERROR_FALLBACK)
+  assert.match(stageFailed, /réessayer/i)
+  assert.doesNotMatch(stageFailed, /stage_failed/)
+  assert.equal(labelFor(MOCK_ERROR_LABEL, 'boom_unknown', MOCK_ERROR_FALLBACK), MOCK_ERROR_FALLBACK)
+  assert.doesNotMatch(MOCK_ERROR_FALLBACK, /_/)
 })

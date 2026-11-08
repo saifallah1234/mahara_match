@@ -131,15 +131,15 @@ def test_browser_interview_journey(request, live_server, followup, monkeypatch, 
                 )
             except Exception as exc:
                 raise AssertionError((page.locator("body").inner_text(), errors)) from exc
-            expect(page.get_by_text("État : PREPARING", exact=True)).to_be_visible()
+            expect(page.get_by_text("État : Préparation", exact=True)).to_be_visible()
             for _ in range(20):
                 if not tasks.submit(run_task).result():
                     break
             page.get_by_role("button", name="Commencer", exact=True).click()
-            expect(page.get_by_text("État : INTRO", exact=True)).to_be_visible()
+            expect(page.get_by_text("État : Introduction", exact=True)).to_be_visible()
             page.get_by_role("button", name="Lire", exact=True).click()
             for position in [1, "followup", 2, 3] if followup else [1, 2, 3]:
-                expect(page.get_by_text("État : SPEAKING", exact=True)).to_be_visible()
+                expect(page.get_by_text("État : Question", exact=True)).to_be_visible()
                 expect(
                     page.get_by_text(
                         "Relance" if position == "followup" else f"Question {position}/3",
@@ -158,7 +158,7 @@ def test_browser_interview_journey(request, live_server, followup, monkeypatch, 
                 page.wait_for_timeout(1100)
                 page.get_by_role("button", name="Arrêter l’enregistrement", exact=True).click()
                 page.get_by_role("button", name="Envoyer la réponse", exact=True).click()
-                expect(page.get_by_text("État : THINKING", exact=True)).to_be_visible()
+                expect(page.get_by_text("État : Analyse", exact=True)).to_be_visible()
                 for _ in range(20):
                     if not tasks.submit(run_task).result():
                         break
