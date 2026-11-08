@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from ai.llm.providers import interview
+from ai.workflows.mock_interview import validate_feedback
 
 
 def test_interview_model_uses_json_and_quotes_untrusted_evidence(monkeypatch):
@@ -66,3 +67,43 @@ def test_routing_constrains_keys_and_drops_copied_question_numbers(monkeypatch):
     assert schema["required"] == ["next_action", "followup"]
     assert schema["properties"]["next_action"]["enum"] == ["followup", "next", "evaluate"]
     assert schema["additionalProperties"] is False
+
+
+def test_feedback_assesses_each_answer_on_its_own(monkeypatch):
+    seen = []
+
+    def invoke(messages, **options):
+        data = json.loads(messages[1][1])["untrusted_data"]
+        seen.append(data)
+        if "answers" in data:
+            return SimpleNamespace(content=json.dumps({"summary": "Bon entretien."}))
+        return SimpleNamespace(
+            content=json.dumps(
+                {
+                    "strengths": ["Clair"],
+                    "gaps": [],
+                    "excerpts": [data["text"].split(",")[0]],
+                    "improvements": ["Chiffrez le résultat."],
+                }
+            )
+        )
+
+    monkeypatch.setattr(
+        interview,
+        "get_chat_model",
+        lambda: SimpleNamespace(bind=lambda **kwargs: SimpleNamespace(invoke=invoke)),
+    )
+    answers = [
+        {"turn_id": "t1", "kind": "MAIN", "question": "Q?", "text": "J'ai codé, puis testé."},
+        {"turn_id": "t2", "kind": "MAIN", "question": "R?", "text": "En équipe, avec la finance."},
+    ]
+    result = interview.OllamaInterviewModel().evaluate(answers)
+    # One call per answer sees only that answer, so excerpts cannot drift to another answer.
+    assert seen[:2] == [
+        {"question": "Q?", "text": "J'ai codé, puis testé."},
+        {"question": "R?", "text": "En équipe, avec la finance."},
+    ]
+    assert [row["turn_id"] for row in result["questions"]] == ["t1", "t2"]
+    assert [row["excerpts"] for row in result["questions"]] == [["J'ai codé"], ["En équipe"]]
+    assert result["summary"] == "Bon entretien."
+    validate_feedback(result, answers)

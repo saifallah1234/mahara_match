@@ -31,6 +31,25 @@ DECISION_SCHEMA = {
     "additionalProperties": False,
 }
 
+_ENTRIES = {"type": "array", "items": {"type": "string"}, "maxItems": 10}
+FEEDBACK_ROW_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "strengths": _ENTRIES,
+        "gaps": _ENTRIES,
+        "excerpts": _ENTRIES | {"minItems": 1},
+        "improvements": _ENTRIES,
+    },
+    "required": ["strengths", "gaps", "excerpts", "improvements"],
+    "additionalProperties": False,
+}
+SUMMARY_SCHEMA = {
+    "type": "object",
+    "properties": {"summary": {"type": "string"}},
+    "required": ["summary"],
+    "additionalProperties": False,
+}
+
 
 class OllamaInterviewModel:
     def __init__(self):
@@ -77,7 +96,22 @@ class OllamaInterviewModel:
         return output
 
     def evaluate(self, answers: list[dict[str, Any]]) -> dict[str, Any]:
-        return self.ask(
-            '{"summary": "French coaching summary", "questions": [{"turn_id": "exact input ID, same order", "strengths": ["..."], "gaps": ["..."], "excerpts": ["exact nonempty substring from answer"], "improvements": ["..."]}]}',
-            answers,
+        # One call per answer: given every answer at once, the model attached excerpts to the
+        # wrong answers (2026-11-08), which breaks the grounded-excerpt rule.
+        rows = [
+            {"turn_id": answer["turn_id"]}
+            | self.ask(
+                "Write all coaching text in French. Assess this one answer to its question. "
+                '"excerpts" are short passages copied word for word from the answer "text".',
+                {"question": answer["question"], "text": answer["text"]},
+                schema=FEEDBACK_ROW_SCHEMA,
+            )
+            for answer in answers
+        ]
+        summary = self.ask(
+            "Write in French a short coaching summary of the whole mock interview, addressed "
+            'directly to the candidate as "vous".',
+            {"answers": [{"question": a["question"], "text": a["text"]} for a in answers]},
+            schema=SUMMARY_SCHEMA,
         )
+        return {"summary": summary.get("summary"), "questions": rows}
