@@ -107,8 +107,9 @@ export function AnswerRecorder({ onSubmit, busy, interviewer, cancel }: { onSubm
   const showPreview = (phase === 'preview' || phase === 'recording') && !audioOnly
   const candidate = <>
     <div className="relative">
-      {answer?.hasVideo ? <video src={answer.replayUrl} aria-label="Revoir votre réponse" className={`${STAGE_FRAME} w-full object-contain`} controls playsInline />
-        : showPreview ? <video ref={(element) => { if (element && element.srcObject !== stream.current) element.srcObject = stream.current }} aria-label="Aperçu de votre caméra" className={`${STAGE_FRAME} w-full -scale-x-100`} autoPlay muted playsInline />
+      {/* Distinct keys: a reused preview element keeps the stopped camera as srcObject, which wins over src and shows black. */}
+      {answer?.hasVideo ? <video key="replay" src={answer.replayUrl} aria-label="Revoir votre réponse" className={`${STAGE_FRAME} w-full object-contain`} controls playsInline />
+        : showPreview ? <video key="preview" ref={(element) => { if (element && element.srcObject !== stream.current) element.srcObject = stream.current }} aria-label="Aperçu de votre caméra" className={`${STAGE_FRAME} w-full -scale-x-100`} autoPlay muted playsInline />
         : <CameraIdle>{audioOnly ? 'Réponse en audio seulement' : 'Caméra inactive'}</CameraIdle>}
       {phase === 'recording' && <p className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-coral px-3 py-1 text-sm font-medium text-white">
         <span aria-hidden="true" className="h-2 w-2 rounded-full bg-white" />Enregistrement <span role="timer" aria-label={`Temps restant ${formatCountdown(remaining)}`}>{formatCountdown(remaining)}</span>

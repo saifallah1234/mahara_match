@@ -185,6 +185,20 @@ def test_browser_interview_journey(request, live_server, followup, monkeypatch, 
                 expect(page.get_by_label("Revoir votre réponse")).to_be_visible()
                 expect(page.get_by_role("button", name="Réenregistrer", exact=True)).to_be_visible()
                 if position == 1:
+                    # The replay shows camera frames, not a black picture (fake camera is not black).
+                    brightness = page.get_by_label("Revoir votre réponse").evaluate(
+                        """async video => {
+                            video.muted = true; await video.play()
+                            await new Promise(done => setTimeout(done, 500))
+                            const canvas = document.createElement('canvas')
+                            canvas.width = video.videoWidth; canvas.height = video.videoHeight
+                            const context = canvas.getContext('2d'); context.drawImage(video, 0, 0)
+                            const data = context.getImageData(0, 0, canvas.width, canvas.height).data
+                            let sum = 0; for (let i = 0; i < data.length; i += 4) sum += data[i] + data[i + 1] + data[i + 2]
+                            video.pause(); return sum / (data.length / 4) / 3
+                        }"""
+                    )
+                    assert brightness > 10, brightness
                     page.get_by_role("button", name="Réenregistrer", exact=True).click()
                     page.wait_for_timeout(1100)
                     page.get_by_role("button", name="Arrêter l’enregistrement", exact=True).click()
