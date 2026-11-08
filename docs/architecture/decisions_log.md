@@ -113,3 +113,13 @@ Skill gaps count counted offers listing a skill against counted programs teachin
 aggregate reads. Access is `reporting.indicators.read` (MINISTRY_MANAGER in a verified
 ministry, ADMIN). These are demo counts, not KPIs: Q20's numerator, denominator, time
 window, scope and small-count privacy rule remain open.
+
+**Mock interview answer video stays on the device (2026-11-08):** during a mock interview
+the candidate's camera is used only for a local preview and a local replay of the answer
+(`.scratch/mock-interview-hirevue/issues/02-hirevue-style-interview-stage.md`). The browser
+records an audio-only stream for upload and a separate camera-plus-microphone recording held
+only in memory; the video is never uploaded or stored and is released after sending,
+re-recording or leaving the turn. Only the audio is uploaded and retained under the existing
+recording-retention rule (`INTERVIEW_RECORDING_RETENTION_HOURS`). Candidates without a camera,
+or who refuse it, answer with audio only. Analysing or sharing answer video needs a separate
+privacy decision.

@@ -3,7 +3,7 @@ import { requestBlob } from '../../api/client'
 import type { Playback } from '../../api/mockInterviews'
 import { Button } from '../ui'
 
-export function AvatarPlayer({ playback, onDone, loop = false }: { playback: Playback; onDone?: () => void; loop?: boolean }) {
+export function AvatarPlayer({ playback, onDone, loop = false, className = 'max-h-80 w-full rounded-lg bg-navy' }: { playback: Playback; onDone?: () => void; loop?: boolean; className?: string }) {
   const [urls, setUrls] = useState<{ video: string; audio?: string; generated: boolean } | null>(null)
   const [fallback, setFallback] = useState(false)
   const [error, setError] = useState('')
@@ -51,7 +51,7 @@ export function AvatarPlayer({ playback, onDone, loop = false }: { playback: Pla
   }
   return <div className="space-y-2">
     {urls ? <>
-      <video ref={video} src={urls.video} className="max-h-80 w-full rounded-lg bg-navy" muted={!urls.generated} playsInline loop={loop && !reducedMotion} controls={urls.generated} onEnded={urls.generated ? onDone : undefined} onError={() => setError('Vidéo indisponible')} />
+      <video ref={video} src={urls.video} className={className} muted={!urls.generated} playsInline loop={loop && !reducedMotion} controls={urls.generated} onEnded={urls.generated ? onDone : undefined} onError={() => setError('Vidéo indisponible')} />
       {urls.audio && <audio ref={audio} src={urls.audio} controls onEnded={() => { video.current?.pause(); onDone?.() }} onError={() => setError('Audio indisponible')} />}
       <Button onClick={() => void play()}>Lire</Button>
     </> : <p role="status">Chargement de la vidéo…</p>}
