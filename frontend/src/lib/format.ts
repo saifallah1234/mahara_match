@@ -93,10 +93,11 @@ export function labelFor(labels: Record<string, string>, code: string | null | u
   return labels[code] ?? fallback
 }
 
-export const IMPORT_SOURCE_TYPE_LABEL: Record<string, string> = { API: 'API', CSV: 'Fichier CSV', MANUAL_FILE: 'Fichier saisi à la main' }
+export const IMPORT_SOURCE_TYPE_LABEL: Record<string, string> = { API: 'API', CSV: 'Fichier CSV', MANUAL_FILE: 'Fichier saisi à la main', WEB_SCRAPING: 'Collecte sur site web' }
 
 export const IMPORT_BATCH_STATUS_LABEL: Record<string, string> = {
   STARTED: 'En cours',
+  RUNNING: 'En cours',
   COMPLETED: 'Terminé',
   FAILED: 'Échoué',
 }

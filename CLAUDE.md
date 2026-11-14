@@ -38,7 +38,8 @@ tanitjobs.py (browser) -> ScrapedOffer -> offer_adapter.py -> services -> job_of
 | `pipelines/ingestion/language_detection.py` | `lingua` restricted to fr/en/ar; returns a code or `None`. |
 | `pipelines/ingestion/offer_adapter.py` | The only place that knows `job_offers` columns. Pure Python. |
 | `pipelines/ingestion/offer_import.py` | Entry point (`python -m ...`). Never imports Django models. |
-| `backend/apps/imports/services/batch_processing.py` | Source authorization, batch and row bookkeeping. |
+| `backend/apps/imports/services/batch_processing.py` | Source authorization, batch and row bookkeeping, launch guard (`prepare_import`). |
+| `backend/apps/imports/services/import_launcher.py` | Admin "Lancer l’import": creates the RUNNING batch, starts `offer_import --batch-id` as its own process. |
 | `backend/apps/recruitment/services/import_reconciliation.py` | Add / update / unchanged per (source, external_id). |
 | `backend/apps/taxonomy/management/commands/seed_languages.py` | Idempotent seed of fr/en/ar. |
 
@@ -63,6 +64,8 @@ Do not re-litigate them without asking.
   Do not `goto` the same URL again right after it.
 - Calling `.first` / `inner_text()` on a Playwright locator that does not exist waits for the timeout.
   Check `count()` first for optional elements.
+- The admin launch runs the scrape in a separate process (never inside the request or the Django process).
+  Its output is in `logs/imports/<batch id>.log`. One RUNNING batch per source; one older than 3 h counts as crashed.
 - `--refresh` revisits stored offers and updates them. It never changes `status`, organization or
   creator, and it skips soft-deleted offers.
 
@@ -72,6 +75,7 @@ Do not re-litigate them without asking.
 uv run python backend/manage.py seed_languages --settings=backend.config.settings.development
 uv run python -m pipelines.ingestion.offer_import tanitjobs "python" --max-pages 1
 uv run python -m pipelines.ingestion.offer_import tanitjobs "python" --max-pages 1 --refresh
+uv run python -m pipelines.ingestion.offer_import tanitjobs --headless   # configured keywords (default: empty search, 2 pages)
 uv run python backend/manage.py publish_imported_offers --dry-run --settings=backend.config.settings.development
 uv run python backend/manage.py makemigrations --check --dry-run --settings=backend.config.settings.development
 ```

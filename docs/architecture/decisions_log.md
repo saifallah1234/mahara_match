@@ -115,3 +115,10 @@ answering ("tenant/user not found"). Development now uses a local Docker Postgre
 schema matched the code (no pending migrations). Tests use the separate `mahara_match`
 database. The storage export was empty. Data written locally since then is not shared
 with teammates. Setup and restore script: [infrastructure/postgres](../../infrastructure/postgres/README.md).
+
+**Admin-launched imports (2026-11-14):** an administrator starts a Tanitjobs import from the
+Imports page. The request only creates a RUNNING batch (one per source at a time; older than
+3 h counts as crashed) and starts `offer_import --batch-id` as a separate process, the same
+command a scheduler will use. Without a keyword a run uses the source configuration, else an
+empty search over 2 pages, which brings offers of every field (chosen over a keyword list).
+The scheduled run is the next step. Details: [offer import](offer_import.md).

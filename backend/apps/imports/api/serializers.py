@@ -27,7 +27,7 @@ class SourceReadSerializer(serializers.ModelSerializer[DataSource]):
 
 class SourceWriteSerializer(serializers.Serializer[dict[str, Any]]):
     name = serializers.CharField(max_length=200)
-    type = serializers.ChoiceField(choices=("API", "CSV", "MANUAL_FILE"))
+    type = serializers.ChoiceField(choices=("API", "CSV", "MANUAL_FILE", "WEB_SCRAPING"))
     base_url = serializers.URLField(max_length=500, required=False, allow_null=True)
     configuration_json = serializers.JSONField(required=False)
 

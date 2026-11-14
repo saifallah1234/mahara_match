@@ -13,3 +13,6 @@ export function sourcePayload(form: SourceForm): { ok: true; body: SourceBody } 
   }
   return { ok: true, body }
 }
+
+/** Seules les sources de collecte web autorisées se lancent depuis la page des imports (le navigateur tourne côté serveur). */
+export const canLaunch = (source: { type: string; is_authorized: boolean }) => source.type === 'WEB_SCRAPING' && source.is_authorized

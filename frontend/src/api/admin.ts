@@ -45,7 +45,7 @@ export type AuditLog = {
   entity_type: string; entity_id: string | null; ip_address: string | null; created_at: string
 }
 export type DataSource = {
-  id: string; name: string; type: 'API' | 'CSV' | 'MANUAL_FILE'; base_url: string | null; configuration_json: unknown
+  id: string; name: string; type: 'API' | 'CSV' | 'MANUAL_FILE' | 'WEB_SCRAPING'; base_url: string | null; configuration_json: unknown
   is_authorized: boolean; acquisition_method: string | null; expires_at: string | null
 }
 export type ImportBatch = {
@@ -69,3 +69,5 @@ export const listBatchRowPage = (batchId: string, status: string, page: number) 
 export const authorizeSource = (id: string, body: { acquisition_method: string; permission_evidence: string; expires_at: string }) =>
   post<DataSource>(`/data-sources/${id}/authorize/`, body)
 export const revokeSource = (id: string) => post<DataSource>(`/data-sources/${id}/revoke/`)
+/** Lance l’import en arrière-plan ; le lot renvoyé est « RUNNING » jusqu’à la fin. */
+export const runImport = (id: string) => post<ImportBatch>(`/data-sources/${id}/run-import/`)

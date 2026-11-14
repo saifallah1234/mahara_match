@@ -17,7 +17,7 @@ from backend.apps.imports.api.serializers import (
     SourceWriteSerializer,
 )
 from backend.apps.imports.models import DataSource, ImportBatch, ImportRow
-from backend.apps.imports.services import records
+from backend.apps.imports.services import import_launcher, records
 
 
 class SourceViewSet(GenericViewSet[DataSource]):
@@ -56,6 +56,13 @@ class SourceViewSet(GenericViewSet[DataSource]):
             active_request_user(request), pk, **serializer.validated_data
         )
         return Response(SourceReadSerializer(source).data)
+
+    @extend_schema(request=None, responses={202: BatchReadSerializer})
+    @action(detail=True, methods=["post"], url_path="run-import")
+    def run_import(self, request: Request, pk: UUID) -> Response:
+        """Start an import of this source in the background; poll the returned batch."""
+        batch = import_launcher.launch_import(active_request_user(request), pk)
+        return Response(BatchReadSerializer(batch).data, status=status.HTTP_202_ACCEPTED)
 
     @extend_schema(request=None, responses=SourceReadSerializer)
     @action(detail=True, methods=["post"])

@@ -12,6 +12,13 @@ stay in [CLAUDE.md](../../CLAUDE.md). Do not re-litigate the decisions below wit
   earlier runs.
 - The placeholder organization is `VERIFIED` (candidates only see offers of verified organizations).
   A `PENDING` placeholder is promoted on the next run; `REJECTED` is kept and hides every imported offer.
+- Automatic runs (admin button, later the scheduler) use the source's `configuration_json`
+  (`{"keywords": [...], "max_pages": N}`), else an empty search over 2 pages: every field, not only IT
+  (decision 2026-11-14). Tanitjobs does not list strictly newest first, so a short run can miss some new
+  offers; known offers are skipped, so later runs catch up. One run is one batch, whatever the keywords.
+  Editing the configuration revokes the source's authorization (existing rule), so it must be re-authorized.
+- An admin starts a run from Imports ("Lancer l’import", `POST /api/v1/data-sources/{id}/run-import/`) for an
+  authorized `WEB_SCRAPING` source. The scrape runs as a separate process (`offer_import --batch-id`).
 - Expired offers (deadline before today) are hidden from candidates at read time for every offer,
   imported or not; nothing closes them. A fresh import is what brings current offers.
 - The real employer is shown from `company_name`: the offer API returns it and the offer pages display it
