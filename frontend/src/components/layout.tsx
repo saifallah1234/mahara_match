@@ -198,6 +198,10 @@ export function AppShell() {
             <Icon name="logout" />
             Se déconnecter
           </button>
+          {/* Licence ESCO (décision 2011/833/UE) : mention obligatoire. */}
+          <p className="mt-2 px-3 text-[10.5px] leading-snug text-white/40">
+            Ce service utilise la classification <a className="underline hover:text-white/70" href="https://ec.europa.eu/esco" target="_blank" rel="noreferrer">ESCO</a> de la Commission européenne.
+          </p>
         </div>
       </aside>
 

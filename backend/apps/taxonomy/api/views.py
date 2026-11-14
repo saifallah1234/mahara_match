@@ -21,7 +21,7 @@ class LanguageSerializer(serializers.ModelSerializer[Language]):
 class SkillSerializer(serializers.ModelSerializer[Skill]):
     class Meta:
         model = Skill
-        fields = ("id", "canonical_name", "category", "description")
+        fields = ("id", "canonical_name", "category", "description", "esco_uri", "is_digital")
 
 
 class EducationLevelViewSet(ReadOnlyModelViewSet[EducationLevel]):
@@ -45,4 +45,6 @@ class SkillViewSet(ReadOnlyModelViewSet[Skill]):
     serializer_class = SkillSerializer
 
     def get_queryset(self) -> QuerySet[Skill]:
-        return catalog.skills()
+        """?search=<text> searches every skill, ESCO included; otherwise the working catalogue."""
+        text = self.request.query_params.get("search", "").strip()
+        return catalog.search_skills(text) if text else catalog.skills()

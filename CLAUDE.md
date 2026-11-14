@@ -78,6 +78,7 @@ uv run python -m pipelines.ingestion.offer_import tanitjobs "python" --max-pages
 uv run python -m pipelines.ingestion.offer_import tanitjobs --headless   # configured keywords (default: empty search, 2 pages)
 uv run python -m pipelines.ingestion.offer_import tanitjobs --scheduled --headless   # scheduler mode (infrastructure/scheduler)
 uv run python backend/manage.py publish_imported_offers --dry-run --settings=backend.config.settings.development
+uv run python backend/manage.py load_esco_skills --settings=backend.config.settings.development   # after migrate; idempotent
 uv run python backend/manage.py makemigrations --check --dry-run --settings=backend.config.settings.development
 ```
 

@@ -1,18 +1,20 @@
 # Placement: backend/apps/taxonomy/services/skills.py
-"""Skill name normalization and lookup for free-text skills (CV extraction).
+"""Skill name normalization and lookup for free-text skills (CV extraction, offers).
 
-One canonical Skill row per real skill: "JS", "javascript" and "Java Script" all
-resolve to "JavaScript". Known aliases come from SKILL_ALIASES (same display names
-as the evaluation vocabulary); any other name is matched case- and
-accent-insensitively against existing canonical names before a new row is made.
+Tier 1 matching (decision 2026-11-14): a free-text skill links to an existing Skill when,
+once normalized (case, accents, spacing), it equals an ESCO preferred label (fr/en/ar,
+also without its "(qualifier)") or a local skill's name. SKILL_ALIASES first maps common
+variants ("JS" -> "JavaScript"). Fuzzy matching is never used; anything else becomes a
+local skill. ESCO itself is loaded by `load_esco_skills` (services/esco.py).
 """
 
 import re
 import unicodedata
+from typing import Any
 
 from django.db import IntegrityError, transaction
 
-from backend.apps.taxonomy.models import Skill
+from backend.apps.taxonomy.models import Skill, SkillLabel, SkillLabelKind
 
 SKILL_ALIASES: dict[str, tuple[str, ...]] = {
     "Python": ("python", "python3", "python 3", "py"),
@@ -63,10 +65,15 @@ SKILL_ALIASES: dict[str, tuple[str, ...]] = {
 
 
 def skill_key(name: str) -> str:
-    """Comparison key: case, accents and spacing do not matter."""
+    """Comparison key: case, accents, spacing and edge punctuation do not matter."""
     decomposed = unicodedata.normalize("NFKD", name.casefold())
     unaccented = "".join(char for char in decomposed if not unicodedata.combining(char))
-    return re.sub(r"\s+", " ", unaccented).strip(" .,;:-")
+    return re.sub(r"\s+", " ", unaccented).strip(" .,;:-")[:255]
+
+
+def without_qualifier(label: str) -> str:
+    """'Python (programmation informatique)' -> 'Python' (ESCO disambiguation qualifiers)."""
+    return re.sub(r"\s*\([^)]*\)\s*", " ", label).strip()
 
 
 _ALIAS_TO_CANONICAL = {
@@ -74,6 +81,10 @@ _ALIAS_TO_CANONICAL = {
     for canonical, aliases in SKILL_ALIASES.items()
     for alias in (*aliases, canonical)
 }
+
+# Labels that link free text to a skill on their own (tier 1). ESCO alternative labels
+# are excluded: some are narrower examples ("Git" under a broad configuration-tools skill).
+LINKING_KINDS = (SkillLabelKind.PREFERRED, SkillLabelKind.LOCAL)
 
 
 def canonical_skill_name(name: str) -> str:
@@ -83,18 +94,35 @@ def canonical_skill_name(name: str) -> str:
 
 
 def find_skill(name: str) -> Skill | None:
-    """The existing Skill for a free-text name (alias- and case-insensitive), if any."""
+    """Tier 1: the Skill whose ESCO preferred label or local name equals `name` once
+    normalized (aliases applied first). Ambiguous names link to nothing."""
     wanted = skill_key(canonical_skill_name(name))
     if not wanted:
         return None
-    for skill in Skill.objects.only("id", "canonical_name"):
+    labelled = (
+        SkillLabel.objects.filter(key=wanted, kind__in=LINKING_KINDS)
+        .values_list("skill_id", "kind")
+        .distinct()
+    )
+    by_skill: dict[Any, set[str]] = {}
+    for skill_id, kind in labelled:
+        by_skill.setdefault(skill_id, set()).add(kind)
+    if len(by_skill) > 1:  # prefer a skill known locally under this exact name
+        local = [skill_id for skill_id, kinds in by_skill.items() if SkillLabelKind.LOCAL in kinds]
+        by_skill = {local[0]: {SkillLabelKind.LOCAL}} if len(local) == 1 else {}
+    if len(by_skill) == 1:
+        return Skill.objects.get(pk=next(iter(by_skill)))
+    if labelled:
+        return None  # ambiguous: several ESCO skills share this name
+    # Skills created outside this service (admin, evaluation data) may have no label yet.
+    for skill in Skill.objects.filter(esco_uri__isnull=True).only("id", "canonical_name"):
         if skill_key(skill.canonical_name) == wanted:
             return skill
     return None
 
 
 def get_or_create_skill(name: str, category: str = "") -> Skill:
-    """Find the canonical Skill for `name` or create it (CV extraction, after confirmation)."""
+    """Find the Skill for `name` (tier 1) or create a local one (CV extraction, after confirmation)."""
     existing = find_skill(name)
     if existing is not None:
         return existing
@@ -103,6 +131,19 @@ def get_or_create_skill(name: str, category: str = "") -> Skill:
         raise ValueError("A skill needs a name.")
     try:
         with transaction.atomic():
-            return Skill.objects.create(canonical_name=canonical, category=category[:100])
-    except IntegrityError:  # created concurrently with the same name
+            skill = Skill.objects.create(canonical_name=canonical, category=category[:100])
+            add_local_label(skill)
+            return skill
+    except IntegrityError:  # created concurrently, or the name is taken by an ESCO skill
         return Skill.objects.get(canonical_name=canonical)
+
+
+def add_local_label(skill: Skill) -> None:
+    key = skill_key(skill.canonical_name)
+    if key:
+        SkillLabel.objects.get_or_create(
+            skill=skill,
+            key=key,
+            kind=SkillLabelKind.LOCAL,
+            defaults={"label": skill.canonical_name[:255]},
+        )

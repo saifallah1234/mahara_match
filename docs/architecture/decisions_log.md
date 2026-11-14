@@ -143,3 +143,13 @@ education scale with EQF reference is seeded. Details: [CV extraction](cv_extrac
 `pgsty/minio`, a community rebuild of the same open-source server, approved by the CV/import
 owner. Same command, ports and credentials; a bucket must still be created once (see
 [CV extraction](cv_extraction.md)). Revisit if an official free image returns.
+
+**ESCO skills (2026-11-14):** the `skills` table is backed by ESCO v1.2.1 (13,939 skills, labels
+in fr/en/ar), loaded from a trimmed extract committed in `data/reference/esco/` (1.7 MB, allowed
+by the ESCO licence with attribution and a modification notice; the attribution is shown in the
+landing footer and the workspace sidebar). Migration `taxonomy.0002` adds `esco_uri` and ESCO
+metadata to `skills` and a `skill_labels` table: every developer runs `migrate` then
+`load_esco_skills`. Tier 1 matching only: exact on normalized ESCO preferred labels or local names,
+never fuzzy, alternative labels never auto-link. Skills ESCO lacks stay local. Lists and the
+retrieval index use local + in-use skills; `?search=` reaches all. Meaning-based suggestions are
+deferred. Details: [CV extraction](cv_extraction.md#skills).
