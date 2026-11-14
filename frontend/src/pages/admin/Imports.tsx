@@ -190,7 +190,7 @@ function SourceDialog({ source, onClose, onSaved }: { source?: api.DataSource; o
         <Field label="URL de base" hint="Laisser vide pour une source sans adresse.">
           <Input value={form.base_url} onChange={set('base_url')} placeholder="https://" />
         </Field>
-        <Field label="Configuration (JSON)" hint={'Facultatif. Collecte web : {"keywords": [""], "max_pages": 2} (mot-clé vide = toutes les offres). Modifier la configuration retire l’autorisation.'}>
+        <Field label="Configuration (JSON)" hint={'Facultatif. Collecte web : {"keywords": [""], "max_pages": 2} (mot-clé vide = toutes les offres). Changer keywords ou max_pages garde l’autorisation ; toute autre clé la retire.'}>
           <Textarea value={form.configuration} onChange={set('configuration')} className="font-mono text-[12.5px]" />
         </Field>
       </div>

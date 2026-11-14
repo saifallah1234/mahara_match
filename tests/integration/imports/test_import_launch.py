@@ -213,3 +213,68 @@ def test_cli_fails_the_batch_when_the_source_was_revoked_after_the_click(
 
     assert offer_import.main(["--batch-id", batch_id]) == 1
     assert ImportBatch.objects.get(pk=batch_id).status == "FAILED"
+
+
+# -- editing run settings, scheduled runs -------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("patch", "still_authorized"),
+    [
+        ({"configuration_json": {"keywords": ["informatique"], "max_pages": 1}}, True),
+        ({"configuration_json": {}}, True),
+        ({"name": "Tanitjobs.com"}, True),
+        ({"configuration_json": {"keywords": [""], "proxy": "x"}}, False),
+        ({"base_url": "https://example.tn/"}, False),
+        ({"type": "CSV"}, False),
+        # What the admin form sends: every field, only the keywords changed.
+        (
+            {
+                "name": "Tanitjobs",
+                "type": "WEB_SCRAPING",
+                "base_url": "https://www.tanitjobs.com/",
+                "configuration_json": {"keywords": ["informatique"]},
+            },
+            True,
+        ),
+    ],
+)
+def test_only_run_settings_keep_the_authorization(
+    phase3: dict[str, Any], tanitjobs: DataSource, patch: dict[str, Any], still_authorized: bool
+) -> None:
+    DataSource.objects.filter(pk=tanitjobs.pk).update(configuration_json={"keywords": [""]})
+
+    response = _client(phase3["admin"]).patch(
+        f"/api/v1/data-sources/{tanitjobs.pk}/", patch, format="json"
+    )
+
+    assert response.status_code == 200, response.content
+    tanitjobs.refresh_from_db()
+    assert tanitjobs.is_authorized is still_authorized
+
+
+def test_scheduled_run_creates_a_system_batch(tanitjobs: DataSource) -> None:
+    from backend.apps.imports.services import batch_processing
+    from backend.apps.platform.models import AuditLog
+
+    batch = batch_processing.prepare_scheduled_import("Tanitjobs")
+
+    assert batch is not None and batch.status == "RUNNING"
+    audit = AuditLog.objects.get(entity_id=batch.pk)
+    assert (audit.actor_type, audit.action) == ("SYSTEM", "imports.batch.schedule")
+
+
+def test_scheduled_run_is_skipped_while_an_admin_run_is_going(
+    phase3: dict[str, Any], tanitjobs: DataSource, spawned: list[UUID]
+) -> None:
+    assert _launch(phase3["admin"], tanitjobs).status_code == 202
+
+    assert offer_import.main(["tanitjobs", "--scheduled", "--headless"]) == 0
+    assert ImportBatch.objects.filter(source=tanitjobs).count() == 1
+
+
+def test_scheduled_run_of_an_unauthorized_source_is_refused(tanitjobs: DataSource) -> None:
+    DataSource.objects.filter(pk=tanitjobs.pk).update(is_authorized=False)
+
+    assert offer_import.main(["tanitjobs", "--scheduled", "--headless"]) == 1
+    assert not ImportBatch.objects.exists()

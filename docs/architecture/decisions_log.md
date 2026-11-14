@@ -122,3 +122,10 @@ Imports page. The request only creates a RUNNING batch (one per source at a time
 command a scheduler will use. Without a keyword a run uses the source configuration, else an
 empty search over 2 pages, which brings offers of every field (chosen over a keyword list).
 The scheduled run is the next step. Details: [offer import](offer_import.md).
+
+**Scheduled imports and run settings (2026-11-14):** changing a source's `keywords` or
+`max_pages` no longer revokes its authorization; other configuration keys, the type and the
+base URL still do. A daily scheduled import (`offer_import tanitjobs --scheduled`) shares the
+admin button's one-run-at-a-time guard and is audited as `SYSTEM`. For now it is a per-machine
+Windows scheduled task (or cron) writing to that machine's local database; a shared schedule
+waits for a shared database. Setup: [infrastructure/scheduler](../../infrastructure/scheduler/README.md).

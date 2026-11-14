@@ -6,6 +6,7 @@ Run from the repository root:
     uv run python -m pipelines.ingestion.offer_import tanitjobs "python" --max-pages 1
     uv run python -m pipelines.ingestion.offer_import tanitjobs      # configured keywords
     uv run python -m pipelines.ingestion.offer_import --batch-id <id> --headless  # admin launch
+    uv run python -m pipelines.ingestion.offer_import tanitjobs --scheduled --headless  # scheduler
 
 Django models are never imported here. The services are imported lazily, after
 Django is configured, so this module also loads without a Django environment.
@@ -195,9 +196,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--refresh", action="store_true", help="revisit offers already stored")
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--batch-id", help="run a batch prepared by the admin launcher")
+    parser.add_argument(
+        "--scheduled",
+        action="store_true",
+        help="scheduler mode: skip (exit 0) when a run of this source is already going",
+    )
     args = parser.parse_args(argv)
     if args.source is None and args.batch_id is None:
         parser.error("give a source (e.g. tanitjobs) or --batch-id")
+    if args.scheduled and (args.source is None or args.batch_id is not None):
+        parser.error("--scheduled needs a source and no --batch-id")
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.config.settings.development")
     import django
@@ -208,6 +216,19 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     from backend.apps.imports.services import batch_processing as imports
+    from backend.common.exceptions.domain import DomainError
+
+    if args.scheduled:
+        # Same guard as the admin button: one run per source at a time.
+        try:
+            batch = imports.prepare_scheduled_import(SOURCES[args.source].name)
+        except DomainError as exc:
+            print(f"Scheduled import refused: {exc.message} {exc.details}", file=sys.stderr)
+            return 1
+        if batch is None:
+            print(f"An import of {args.source} is already running; this scheduled run is skipped.")
+            return 0
+        args.batch_id = str(batch.id)
 
     source_key = args.source
     if source_key is None:

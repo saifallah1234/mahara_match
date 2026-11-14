@@ -16,7 +16,10 @@ stay in [CLAUDE.md](../../CLAUDE.md). Do not re-litigate the decisions below wit
   (`{"keywords": [...], "max_pages": N}`), else an empty search over 2 pages: every field, not only IT
   (decision 2026-11-14). Tanitjobs does not list strictly newest first, so a short run can miss some new
   offers; known offers are skipped, so later runs catch up. One run is one batch, whatever the keywords.
-  Editing the configuration revokes the source's authorization (existing rule), so it must be re-authorized.
+  Changing only `keywords` / `max_pages` keeps the source's authorization; any other configuration key,
+  the type or the base URL still revokes it (decision 2026-11-14).
+- A daily scheduled run (`offer_import tanitjobs --scheduled`) uses the same plan and the same one-run-at-a-time
+  guard as the button; it is skipped while another run is going. Setup: [infrastructure/scheduler](../../infrastructure/scheduler/README.md).
 - An admin starts a run from Imports ("Lancer l’import", `POST /api/v1/data-sources/{id}/run-import/`) for an
   authorized `WEB_SCRAPING` source. The scrape runs as a separate process (`offer_import --batch-id`).
 - Expired offers (deadline before today) are hidden from candidates at read time for every offer,

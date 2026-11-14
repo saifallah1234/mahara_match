@@ -47,15 +47,37 @@ def create_source(actor: User, data: Mapping[str, Any]) -> DataSource:
     return source
 
 
+# Configuration keys that only tune what an authorized scraper searches. Changing them
+# does not need a new authorization (decision 2026-11-14); any other key still does.
+RUN_SETTING_KEYS = frozenset({"keywords", "max_pages"})
+
+
+def _without_run_settings(configuration: Any) -> Any:
+    if configuration is None:
+        return {}
+    if isinstance(configuration, Mapping):
+        return {k: v for k, v in configuration.items() if k not in RUN_SETTING_KEYS}
+    return configuration
+
+
 @transaction.atomic
 def update_source(actor: User, source_id: UUID | str, data: Mapping[str, Any]) -> DataSource:
     source = get_source(actor, source_id)
     was_authorized = source.is_authorized
+    # The admin form always sends every field, so compare values instead of presence.
+    reauthorize = any(
+        field in data and (data[field] or None) != (getattr(source, field) or None)
+        for field in ("type", "base_url")
+    ) or (
+        "configuration_json" in data
+        and _without_run_settings(data["configuration_json"])
+        != _without_run_settings(source.configuration_json)
+    )
     for field in ("name", "type", "base_url", "configuration_json"):
         if field in data:
             setattr(source, field, data[field])
     update_fields = [*data.keys(), "updated_at"]
-    if any(field in data for field in ("type", "base_url", "configuration_json")):
+    if reauthorize:
         source.is_authorized = False
         update_fields.append("is_authorized")
     source.save(update_fields=update_fields)

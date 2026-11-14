@@ -225,15 +225,31 @@ def reject_row(
 
 
 def prepare_import(actor: User, source_id: UUID | str) -> ImportBatch:
-    """Create the RUNNING batch of an admin-launched run (the scrape starts afterwards).
+    """Create the RUNNING batch of an admin-launched run (the scrape starts afterwards)."""
+    require_permission(actor, ImportsPermissionCode.MANAGE_SOURCES)
+    return _prepare_batch({"pk": source_id}, actor=actor)
 
-    Only authorized WEB_SCRAPING sources can be launched, one run at a time per source.
+
+def prepare_scheduled_import(source_name: str) -> ImportBatch | None:
+    """Create the RUNNING batch of a scheduled run, or None when a run is already going.
+
+    Same checks as an admin launch, so a scheduled run and a click never scrape the
+    same source at once. Recorded in the audit log as a SYSTEM action.
+    """
+    try:
+        return _prepare_batch({"name": source_name}, actor=None)
+    except ImportAlreadyRunning:
+        return None
+
+
+def _prepare_batch(lookup: dict[str, Any], *, actor: User | None) -> ImportBatch:
+    """Only authorized WEB_SCRAPING sources run, one run at a time per source.
+
     A RUNNING batch older than STALE_RUN_AFTER is treated as a crashed run and marked
     FAILED, so a dead process cannot block the source forever.
     """
-    require_permission(actor, ImportsPermissionCode.MANAGE_SOURCES)
     with transaction.atomic():
-        source = DataSource.objects.select_for_update().filter(pk=source_id).first()
+        source = DataSource.objects.select_for_update().filter(**lookup).first()
         if source is None:
             raise DomainNotFoundError("Data source not found.")
         if source.type != WEB_SCRAPING:
@@ -257,9 +273,9 @@ def prepare_import(actor: User, source_id: UUID | str) -> ImportBatch:
             source=source, checksum="", status=BatchStatus.RUNNING, started_at=now
         )
         append_audit(
-            actor_type="USER",
+            actor_type="USER" if actor is not None else "SYSTEM",
             actor_user=actor,
-            action="imports.batch.launch",
+            action="imports.batch.launch" if actor is not None else "imports.batch.schedule",
             entity_type="import_batches",
             entity_id=batch.id,
             after={"source_id": str(source.id)},
