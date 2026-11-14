@@ -17,7 +17,11 @@ from django.db.models import Count
 from django.utils import timezone
 
 from backend.apps.identity.models import User, UserStatus
-from backend.apps.identity.models.organizations import Organization, OrganizationType
+from backend.apps.identity.models.organizations import (
+    Organization,
+    OrganizationType,
+    VerificationStatus,
+)
 from backend.apps.imports.models.records import DataSource, ImportBatch, ImportRow
 from backend.apps.recruitment.services import import_reconciliation as reconciliation
 
@@ -68,15 +72,43 @@ def get_or_create_source(
 
 
 def _get_placeholder_organization() -> Organization:
+    """Created VERIFIED: candidates only see offers of verified organizations.
+
+    A placeholder left PENDING by earlier runs is promoted. REJECTED is an
+    administrator's explicit choice and is kept, which hides the imported offers again.
+    """
     organization, _ = Organization.objects.get_or_create(
         matricule_fiscal=PLACEHOLDER_ORG_MATRICULE,
         defaults={
             "type": OrganizationType.COMPANY,
             "legal_name": PLACEHOLDER_ORG_NAME,
             "description": "Placeholder owner of offers imported from external sources. Not a real company.",
+            "verification_status": VerificationStatus.VERIFIED,
         },
     )
+    if organization.verification_status == VerificationStatus.PENDING:
+        organization.verification_status = VerificationStatus.VERIFIED
+        organization.save(update_fields=["verification_status", "updated_at"])
     return organization
+
+
+def publish_previous_imports() -> int:
+    """Publish DRAFT offers stored by imports made before 2026-11-14; returns the count."""
+    with transaction.atomic():
+        return reconciliation.publish_imported_drafts(
+            organization=_get_placeholder_organization(), created_by=_get_import_user()
+        )
+
+
+def count_previous_import_drafts() -> int:
+    """How many offers publish_previous_imports() would publish (read-only)."""
+    organization = Organization.objects.filter(matricule_fiscal=PLACEHOLDER_ORG_MATRICULE).first()
+    user = User.objects.filter(email__iexact=IMPORT_USER_EMAIL).first()
+    if organization is None or user is None:
+        return 0
+    return reconciliation.publishable_imported_drafts(
+        organization=organization, created_by=user
+    ).count()
 
 
 def _get_import_user() -> User:

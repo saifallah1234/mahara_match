@@ -5,6 +5,7 @@ from uuid import UUID
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Q, QuerySet
+from django.utils import timezone
 
 from backend.apps.identity.models import Organization, RoleCode, User, UserRole
 from backend.apps.identity.services.access import require_permission
@@ -115,15 +116,29 @@ def list_job_offers(actor: User) -> QuerySet[JobOffer]:
         raise DomainPermissionError()
     visibility = Q(organization_id__in=scope)
     if candidate:
-        visibility |= Q(status="PUBLISHED", organization__verification_status="VERIFIED")
+        visibility |= (
+            Q(status="PUBLISHED", organization__verification_status="VERIFIED")
+            & _accepting_applications()
+        )
     queryset = queryset.filter(visibility)
     return queryset.order_by("created_at", "id")
 
 
+def _accepting_applications() -> Q:
+    """Offers whose application deadline has not passed (no deadline counts as open).
+
+    Same rule as applying (application_lifecycle) and publishing (offer_lifecycle):
+    the deadline day itself is still open. Candidates do not see expired offers;
+    the owning organization still does.
+    """
+    return Q(application_deadline__isnull=True) | Q(application_deadline__gte=timezone.localdate())
+
+
 def list_indexable_job_offers() -> QuerySet[JobOffer]:
-    """Return published offers visible to public retrieval without deleted owners."""
+    """Return published, unexpired offers visible to public retrieval without deleted owners."""
     return (
         JobOffer.objects.filter(
+            _accepting_applications(),
             status=JobOfferStatus.PUBLISHED,
             deleted_at__isnull=True,
             organization__deleted_at__isnull=True,

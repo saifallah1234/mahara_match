@@ -5,7 +5,17 @@ stay in [CLAUDE.md](../../CLAUDE.md). Do not re-litigate the decisions below wit
 
 ## Decisions already made
 
-- Scraped offers are saved as `DRAFT` with `easy_apply = False` (candidates apply on the original site).
+- Scraped offers are saved as `PUBLISHED` (with `published_at` = import time) and `easy_apply = False`
+  (candidates apply on the original site). Changed from `DRAFT` on 2026-11-14 by the import owner, see the
+  [decisions log](decisions_log.md). A later import never changes the status, so closing or unpublishing
+  an offer by hand sticks. `publish_imported_offers` (`--dry-run` first) publishes the drafts left by
+  earlier runs.
+- The placeholder organization is `VERIFIED` (candidates only see offers of verified organizations).
+  A `PENDING` placeholder is promoted on the next run; `REJECTED` is kept and hides every imported offer.
+- Expired offers (deadline before today) are hidden from candidates at read time for every offer,
+  imported or not; nothing closes them. A fresh import is what brings current offers.
+- The real employer is shown from `company_name`: the offer API returns it and the offer pages display it
+  instead of the placeholder's name.
 - Imported offers belong to one placeholder organization and a disabled import user
   (`import-bot@mahara-match.invalid`, unusable password).
 - The company name is stored in `job_offers.company_name` (added column); `organization` stays required.

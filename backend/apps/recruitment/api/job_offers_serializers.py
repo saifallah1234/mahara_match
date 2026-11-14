@@ -20,6 +20,7 @@ class JobOfferReadSerializer(serializers.ModelSerializer[JobOffer]):
             "id",
             "organization_id",
             "organization_name",
+            "company_name",
             "created_by_id",
             "source_id",
             "external_id",

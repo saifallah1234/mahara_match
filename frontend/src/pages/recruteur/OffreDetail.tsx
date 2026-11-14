@@ -47,7 +47,7 @@ export default function RecruteurOffreDetail() {
       <PageHeader
         back={{ to: '/recruteur/offres', label: 'Mes offres' }}
         title={offer.title}
-        description={`${offer.organization_name} · ${offer.city || offer.governorate}`}
+        description={`${offer.company_name || offer.organization_name} · ${offer.city || offer.governorate}`}
         action={
           <>
             <Badge tone={offer.status === 'PUBLISHED' ? 'positif' : 'neutre'}>{OFFER_STATUS_LABEL[offer.status]}</Badge>

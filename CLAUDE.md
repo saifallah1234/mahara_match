@@ -13,8 +13,12 @@ with this file, say so instead of picking one.
 - Run every command from the repository root (the folder with `pyproject.toml`), using `uv run`.
 - The developer works on Windows (PowerShell). Use PowerShell-friendly commands.
 - Django settings: `--settings=backend.config.settings.development`.
-- The database is Supabase PostgreSQL, reached through `POSTGRES_SESSION_POOLER` in `.env`.
-  It is a shared, real database: every `migrate` and every import writes to it for real.
+- The database is a local Docker PostgreSQL (container `mahara-postgres`, port 5434), reached
+  through `DATABASE_URL` in `.env` (it overrides the old Supabase `POSTGRES_SESSION_POOLER`).
+  `mahara_match_backup` holds the data restored from the 2026-10-29 Supabase backup; tests use the
+  `mahara_match` database (`TEST_DATABASE_URL`). Docker Desktop must be running. Setup and restore:
+  [infrastructure/postgres/README.md](infrastructure/postgres/README.md). It is the developer's real
+  working data: every `migrate` and every import writes to it for real.
   Never print, log or paste `.env` values.
 - Every new file starts with a comment naming its placement (`# Placement: path/to/file.py`).
 - New dependencies need a one-line justification (see `AGENT.md`); add them with `uv add`.
@@ -23,7 +27,7 @@ with this file, say so instead of picking one.
 ## Import pipeline: structure
 
 ```
-tanitjobs.py (browser) -> ScrapedOffer -> offer_adapter.py -> services -> job_offers (DRAFT)
+tanitjobs.py (browser) -> ScrapedOffer -> offer_adapter.py -> services -> job_offers (PUBLISHED)
 ```
 
 | File | Role |
@@ -68,6 +72,7 @@ Do not re-litigate them without asking.
 uv run python backend/manage.py seed_languages --settings=backend.config.settings.development
 uv run python -m pipelines.ingestion.offer_import tanitjobs "python" --max-pages 1
 uv run python -m pipelines.ingestion.offer_import tanitjobs "python" --max-pages 1 --refresh
+uv run python backend/manage.py publish_imported_offers --dry-run --settings=backend.config.settings.development
 uv run python backend/manage.py makemigrations --check --dry-run --settings=backend.config.settings.development
 ```
 

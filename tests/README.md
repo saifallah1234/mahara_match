@@ -18,6 +18,10 @@ with `uv run --frozen pytest --cov --cov-report=term-missing` once tests exist.
 
 ## PostgreSQL integration tests
 
+With the local Docker database ([infrastructure/postgres](../infrastructure/postgres/README.md)),
+`TEST_DATABASE_URL` in `.env` points at the scratch `mahara_match` database, so a plain
+`uv run pytest` works and never touches the restored data in `mahara_match_backup`.
+
 Set `TEST_DATABASE_URL` (preferred), `DATABASE_URL` or `POSTGRES_SESSION_POOLER`
 to a PostgreSQL connection URL to run integration tests against an external database
 such as Supabase. The project `.env` is loaded by the settings, so its

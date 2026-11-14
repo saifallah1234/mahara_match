@@ -58,6 +58,9 @@ line-ending = "auto"
 
 [tool.mypy]
 python_version = "3.12"
+# Code is deployed on Linux (the interview worker uses fcntl/os.killpg); check as Linux
+# so results are the same on Windows developer machines.
+platform = "linux"
 plugins = ["mypy_django_plugin.main"]
 check_untyped_defs = true
 warn_unused_ignores = true

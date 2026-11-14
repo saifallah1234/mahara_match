@@ -63,7 +63,7 @@ export default function RecruteurOffres() {
                         <Link to={`/recruteur/offres/${o.id}`} className="font-medium text-navy hover:text-teal">{o.title}</Link>
                         <p className="text-[12.5px] text-slate">{contractLabel(o.contract_type)} · {o.city || o.governorate}</p>
                       </Cell>
-                      <Cell className="text-[13px] text-slate">{o.organization_name}</Cell>
+                      <Cell className="text-[13px] text-slate">{o.company_name || o.organization_name}</Cell>
                       <Cell className="tnum text-[13px] text-navy">
                         {applications.filter((a) => a.offer_id === o.id).length}
                       </Cell>

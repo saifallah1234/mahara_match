@@ -80,8 +80,10 @@ dependencies and the development tools.
   [frontend README](frontend/README.md) for the current scope and limitations.
 
 Django reads nonempty values from the local `.env` file, while process environment
-variables take precedence. If `POSTGRES_SESSION_POOLER` is set to a PostgreSQL URL,
-it takes precedence over the separate `POSTGRES_*` connection fields and uses TLS.
+variables take precedence. `DATABASE_URL` wins over `POSTGRES_SESSION_POOLER`, which wins
+over the separate `POSTGRES_*` connection fields; URLs use TLS unless they set `sslmode`.
+Since 2026-11-14 development uses a local Docker PostgreSQL restored from the Supabase
+backup; see [infrastructure/postgres](infrastructure/postgres/README.md).
 For a new database, run:
 
 ```bash

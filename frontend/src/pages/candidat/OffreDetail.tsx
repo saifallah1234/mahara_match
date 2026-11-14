@@ -25,7 +25,7 @@ export default function CandidatOffreDetail() {
     finally { setBusy(false) }
   }
   return <>
-    <PageHeader back={{ to: '/candidat/offres', label: 'Toutes les offres' }} title={offer.title} description={`${offer.organization_name} · ${offer.city || offer.governorate}`} />
+    <PageHeader back={{ to: '/candidat/offres', label: 'Toutes les offres' }} title={offer.title} description={`${offer.company_name || offer.organization_name} · ${offer.city || offer.governorate}`} />
     <PageBody className="space-y-5">
       <Link className="text-teal underline" to={`/candidat/entretiens-blancs?offer=${offer.id}`}>Préparer un entretien blanc</Link>
       <Panel title="Description"><p className="whitespace-pre-wrap p-5 text-sm text-navy">{offer.description}</p></Panel>

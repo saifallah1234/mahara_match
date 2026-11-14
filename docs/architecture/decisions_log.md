@@ -95,3 +95,23 @@ In-app notifications (ticket 25, D12) are written by the owning services in the 
 transaction as the change, to the recipients listed in D12 and never to the actor.
 Tickets 10 and 26 remain blocked until Q26 and the approved KPIs are settled. Tickets:
 `.scratch/frontend-wiring/spec.md`.
+
+**Imported offers are published (2026-11-14):** the import owner decided, without a
+team reply, that scraped offers are saved as `PUBLISHED` instead of `DRAFT`, so
+candidates see them. The import placeholder organization is `VERIFIED` (an admin's
+`REJECTED` is kept and hides them again), the API exposes `company_name`, and the
+offer pages show it. Earlier drafts are published with `publish_imported_offers`.
+G08/Q16 (final organization rule for imported offers) stays open. Details:
+[offer import](offer_import.md).
+Same day: candidates (catalogue, matching, agent retrieval) no longer see offers whose
+`application_deadline` has passed; the deadline day is still open and offers without a
+deadline stay visible. This reuses the existing apply/publish rule. The status is not
+changed, and the owning organization still sees its expired offers.
+
+**Local development database (2026-11-14):** the shared Supabase project stopped
+answering ("tenant/user not found"). Development now uses a local Docker PostgreSQL
+(`mahara-postgres`, pgvector, PostgreSQL 17, port 5434). `mahara_match_backup` holds the
+`public` and `eval_graphrag` schemas restored from the 2026-10-29 Supabase backup; its
+schema matched the code (no pending migrations). Tests use the separate `mahara_match`
+database. The storage export was empty. Data written locally since then is not shared
+with teammates. Setup and restore script: [infrastructure/postgres](../../infrastructure/postgres/README.md).
