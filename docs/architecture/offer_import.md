@@ -44,8 +44,9 @@ stay in [CLAUDE.md](../../CLAUDE.md). Do not re-litigate the decisions below wit
 ## Open items
 
 - Q24: the contract-type vocabulary is provisional; confirm with the team.
-- `EducationLevel` table is empty: the team is deciding the levels (proposal: Bac+N scale with EQF
-  reference; "Ingénieur" sits with Bac+5). The raw "Niveau d'étude" text is already saved in the payload.
+- Education levels: the Bac+N scale was seeded on 2026-11-14 (`seed_education_levels`, see
+  [CV extraction](cv_extraction.md)). Imported offers do not map "Niveau d'étude" to it yet; the raw
+  text is saved in the payload.
 - Required-languages column on `job_offers` does not exist yet.
 - Q17: a source needs `is_authorized = True` plus `permission_evidence` before an import runs. Set by a person.
 - G08/Q16: the final rule for organizations of imported offers is not settled.

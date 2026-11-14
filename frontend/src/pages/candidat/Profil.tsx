@@ -5,6 +5,8 @@ import { useCandidate } from '../../state/candidate'
 import { useAuth } from '../../state/auth'
 import { list, type OwnedRecord, type RecordKind } from '../../api/candidate'
 import { GOUVERNORATS } from '../../lib/format'
+import CvImport from './CvImport'
+import type { ProposedIdentity } from '../../api/candidate'
 
 type FieldSpec = { name: string; label: string; type?: string; required?: boolean; options?: string[]; catalogue?: 'skills' | 'languages' | 'education' }
 const levels = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT']
@@ -26,7 +28,7 @@ type Reference = { id: string; canonical_name?: string; name?: string; code?: st
 
 export default function CandidatProfil() {
   const { user } = useAuth()
-  const { profile, records, saveIdentity, saveRecord, deleteRecord } = useCandidate()
+  const { profile, records, cvs, reload, saveIdentity, saveRecord, deleteRecord } = useCandidate()
   const [identity, setIdentity] = useState({ first_name: '', last_name: '', phone: '', birth_date: '', country_code: '', governorate: '', city: '', headline: '', summary: '', employment_status: '', desired_job_title: '', availability_date: '', profile_visibility: 'PRIVATE' })
   const [editing, setEditing] = useState<{ kind: RecordKind; id?: string } | null>(null)
   const [deleting, setDeleting] = useState<{ kind: RecordKind; record: OwnedRecord } | null>(null)
@@ -38,6 +40,17 @@ export default function CandidatProfil() {
   useEffect(() => { if (user && profile) setIdentity({ first_name: user.first_name, last_name: user.last_name, phone: user.phone ?? '', birth_date: profile.birth_date ?? '', country_code: profile.country_code, governorate: profile.governorate, city: profile.city, headline: profile.headline, summary: profile.summary, employment_status: profile.employment_status, desired_job_title: profile.desired_job_title, availability_date: profile.availability_date ?? '', profile_visibility: profile.profile_visibility }) }, [user?.id, profile?.id])
   useEffect(() => { let live = true; void Promise.all([list<Reference>('/skills/'), list<Reference>('/languages/'), list<Reference>('/education-levels/')]).then(([skills, languages, education]) => { if (live) setReferences({ skills, languages, education }) }).catch(() => { if (live) setReferenceError('Référentiels indisponibles.') }); return () => { live = false } }, [])
   if (!profile) return <PageBody><Panel className="p-5">Profil indisponible.</Panel></PageBody>
+  // Reprend l’identité proposée par l’analyse du CV dans les champs encore vides du formulaire.
+  function takeProposedIdentity(proposed: ProposedIdentity) {
+    setIdentity((current) => {
+      const next = { ...current }
+      for (const key of ['first_name', 'last_name', 'phone', 'country_code', 'city', 'headline', 'summary'] as const) {
+        if (!next[key].trim() && proposed[key]) next[key] = proposed[key]
+      }
+      if (!next.governorate && GOUVERNORATS.includes(proposed.governorate)) next.governorate = proposed.governorate
+      return next
+    })
+  }
   async function identitySubmit(event: FormEvent) {
     event.preventDefault(); setBusy(true)
     try { await saveIdentity({ first_name: identity.first_name, last_name: identity.last_name, phone: identity.phone }, { birth_date: identity.birth_date || null, country_code: identity.country_code, governorate: identity.governorate, city: identity.city, headline: identity.headline, summary: identity.summary, employment_status: identity.employment_status, desired_job_title: identity.desired_job_title, availability_date: identity.availability_date || null, profile_visibility: identity.profile_visibility as 'PRIVATE' | 'RECRUITERS' | 'PUBLIC' }) }
@@ -64,6 +77,7 @@ export default function CandidatProfil() {
     <PageHeader title="Mon profil" />
     <PageBody className="space-y-5">
       {referenceError && <p role="alert" className="text-coral">{referenceError}</p>}
+      <CvImport cvs={cvs} educationLevels={references.education} onUseIdentity={takeProposedIdentity} onApplied={reload} />
       <Panel title="Identité et présentation"><form onSubmit={(event) => void identitySubmit(event)} className="grid gap-4 p-5 sm:grid-cols-2">
         <Field label="Prénom" required><Input required value={identity.first_name} onChange={(event) => setIdentity({ ...identity, first_name: event.target.value })} /></Field>
         <Field label="Nom" required><Input required value={identity.last_name} onChange={(event) => setIdentity({ ...identity, last_name: event.target.value })} /></Field>

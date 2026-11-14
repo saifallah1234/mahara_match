@@ -1,3 +1,5 @@
+from typing import Any
+
 from rest_framework import serializers
 
 from backend.apps.candidates.models import (
@@ -10,8 +12,10 @@ from backend.apps.candidates.models import (
     CVAnalysisResult,
     Education,
     Experience,
+    LanguageLevel,
     Project,
     Relocation,
+    SkillLevel,
     WorkMode,
 )
 from backend.apps.documents.models import Document
@@ -243,3 +247,65 @@ class CVAnalysisResultSerializer(serializers.ModelSerializer[CVAnalysisResult]):
             "updated_at",
         )
         read_only_fields = fields
+
+
+# -- CV analysis: what the candidate confirms from the proposal ---------------------
+
+
+class _ProposedExperienceSerializer(serializers.Serializer[dict[str, Any]]):
+    job_title = serializers.CharField(max_length=150)
+    organization_name = serializers.CharField(max_length=200)
+    start_date = serializers.DateField()
+    end_date = serializers.DateField(required=False, allow_null=True)
+    description = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class _ProposedEducationSerializer(serializers.Serializer[dict[str, Any]]):
+    education_level = serializers.UUIDField()
+    institution = serializers.CharField(max_length=200)
+    field_of_study = serializers.CharField(
+        max_length=150, required=False, allow_blank=True, default=""
+    )
+    start_year = serializers.IntegerField(min_value=1900, max_value=2100)
+    end_year = serializers.IntegerField(
+        min_value=1900, max_value=2100, required=False, allow_null=True
+    )
+    description = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class _ProposedSkillSerializer(serializers.Serializer[dict[str, Any]]):
+    name = serializers.CharField(max_length=150)
+    category = serializers.CharField(max_length=100, required=False, allow_blank=True, default="")
+    level = serializers.ChoiceField(choices=SkillLevel.choices)
+
+
+class _ProposedLanguageSerializer(serializers.Serializer[dict[str, Any]]):
+    language_id = serializers.UUIDField()
+    level = serializers.ChoiceField(choices=LanguageLevel.choices)
+
+
+class _ProposedCertificationSerializer(serializers.Serializer[dict[str, Any]]):
+    name = serializers.CharField(max_length=200)
+    certification_organization = serializers.CharField(max_length=200)
+    issue_date = serializers.DateField()
+    description = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class _ProposedProjectSerializer(serializers.Serializer[dict[str, Any]]):
+    name = serializers.CharField(max_length=200)
+    description = serializers.CharField(required=False, allow_blank=True, default="")
+    repository_url = serializers.URLField(
+        max_length=500, required=False, allow_blank=True, default=""
+    )
+    technologies = serializers.ListField(
+        child=serializers.CharField(max_length=150), required=False, default=list, max_length=50
+    )
+
+
+class CVProposalApplySerializer(serializers.Serializer[dict[str, Any]]):
+    experiences = _ProposedExperienceSerializer(many=True, required=False, default=list)
+    educations = _ProposedEducationSerializer(many=True, required=False, default=list)
+    skills = _ProposedSkillSerializer(many=True, required=False, default=list)
+    languages = _ProposedLanguageSerializer(many=True, required=False, default=list)
+    certifications = _ProposedCertificationSerializer(many=True, required=False, default=list)
+    projects = _ProposedProjectSerializer(many=True, required=False, default=list)

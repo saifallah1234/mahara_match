@@ -14,18 +14,13 @@ logs/imports/<batch id>.log under the repository root.
 """
 
 import logging
-import os
-import subprocess
-import sys
 from pathlib import Path
-from typing import Any
 from uuid import UUID
-
-from django.conf import settings
 
 from backend.apps.identity.models import User
 from backend.apps.imports.models.records import ImportBatch
 from backend.apps.imports.services import batch_processing
+from backend.common import background
 from backend.common.exceptions.domain import DomainError
 
 logger = logging.getLogger(__name__)
@@ -52,34 +47,10 @@ def launch_import(actor: User, source_id: UUID | str) -> ImportBatch:
 
 
 def log_path(batch_id: UUID | str) -> Path:
-    return Path(settings.BASE_DIR) / "logs" / "imports" / f"{batch_id}.log"
+    return background.logs_dir("imports") / f"{batch_id}.log"
 
 
 def _spawn(batch_id: UUID) -> None:
-    log_file = log_path(batch_id)
-    log_file.parent.mkdir(parents=True, exist_ok=True)
-    command = [sys.executable, "-m", PIPELINE_MODULE, "--batch-id", str(batch_id), "--headless"]
-    environment = {
-        **os.environ,
-        "DJANGO_SETTINGS_MODULE": settings.SETTINGS_MODULE,
-        "PYTHONIOENCODING": "utf-8",
-    }
-    options: dict[str, Any] = {}
-    if os.name == "nt":
-        # Own process group, no console window; it outlives a runserver reload.
-        options["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(
-            subprocess, "CREATE_NO_WINDOW", 0
-        )
-    else:
-        options["start_new_session"] = True
-    with log_file.open("ab") as log:
-        subprocess.Popen(  # noqa: S603 - fixed command, no user input
-            command,
-            cwd=settings.BASE_DIR,
-            env=environment,
-            stdin=subprocess.DEVNULL,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-            close_fds=True,
-            **options,
-        )
+    background.start_module(
+        PIPELINE_MODULE, ["--batch-id", str(batch_id), "--headless"], log_path(batch_id)
+    )

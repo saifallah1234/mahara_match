@@ -129,3 +129,17 @@ base URL still do. A daily scheduled import (`offer_import tanitjobs --scheduled
 admin button's one-run-at-a-time guard and is audited as `SYSTEM`. For now it is a per-machine
 Windows scheduled task (or cron) writing to that machine's local database; a shared schedule
 waits for a shared database. Setup: [infrastructure/scheduler](../../infrastructure/scheduler/README.md).
+
+**CV extraction (2026-11-14):** candidates can pre-fill their profile from an uploaded CV
+(ported from the OneTech agent project). The analysis runs in the background; the raw result
+stays on the CV (G05) and only rows the candidate confirms are added. Decided by the CV/import
+owner without a team reply: the LLM chain is Gemini, then Groq, then local Ollama, so with API
+keys configured the CV text is sent to Google or Groq (without keys nothing leaves the machine);
+confirmed skills missing from the shared list are created (normalized names); the Bac+N
+education scale with EQF reference is seeded. Details: [CV extraction](cv_extraction.md).
+
+**MinIO image (2026-11-14):** `minio/minio` can no longer be pulled from Docker Hub (and
+`quay.io/minio/minio` refuses anonymous pulls), so `docker-compose.yml` now uses
+`pgsty/minio`, a community rebuild of the same open-source server, approved by the CV/import
+owner. Same command, ports and credentials; a bucket must still be created once (see
+[CV extraction](cv_extraction.md)). Revisit if an official free image returns.

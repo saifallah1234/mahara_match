@@ -56,7 +56,7 @@ docker run -d --name mahara-test-pg -p 127.0.0.1:55439:5432 \
   --tmpfs /var/lib/postgresql/data pgvector/pgvector:pg16
 docker run -d --name mahara-test-minio -p 127.0.0.1:59000:9000 \
   -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
-  --tmpfs /data minio/minio:RELEASE.2024-10-13T13-34-11Z server /data
+  --tmpfs /data pgsty/minio:latest server /data
 
 INTERVIEW_TEST_DB_NAME=test_interview_local \
 INTERVIEW_TEST_DB_HOST=127.0.0.1 INTERVIEW_TEST_DB_PORT=55439 \
