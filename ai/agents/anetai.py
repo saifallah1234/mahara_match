@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from ai.agents.intents import (
+    CANDIDATE_CV_ADVICE,
     CANDIDATE_JOB_SEARCH,
     RECRUITER_CANDIDATE_SEARCH,
     RECRUITER_OFFER_SEARCH,
@@ -20,6 +21,7 @@ from ai.agents.intents import (
 )
 from ai.agents.templates import (
     candidate_search_reply,
+    cv_advice_reply,
     job_search_reply,
     own_offer_search_reply,
     unsupported_reply,
@@ -31,6 +33,8 @@ from ai.tools.candidate_search import (
     search_candidates,
     search_own_offers,
 )
+from ai.tools.cv_advice import TOOL_NAME as CV_ADVICE_TOOL
+from ai.tools.cv_advice import get_cv_advice
 from ai.tools.job_matches import get_candidate_job_matches
 from ai.tools.job_search import TOOL_NAME as JOB_SEARCH_TOOL
 from ai.tools.job_search import search_jobs_for_candidate
@@ -294,6 +298,11 @@ def _routes() -> dict[str, RouteSpec]:
                 prompt, evidence, language
             ),
             tool_input=lambda prompt: {"question": prompt},
+        ),
+        CANDIDATE_CV_ADVICE: RouteSpec(
+            tool_name=CV_ADVICE_TOOL,
+            tool=lambda actor, prompt: get_cv_advice(actor),
+            explain=lambda prompt, evidence, language: cv_advice_reply(evidence, language),
         ),
         RECRUITER_CANDIDATE_SEARCH: RouteSpec(
             tool_name=CANDIDATE_TOOL_NAME,

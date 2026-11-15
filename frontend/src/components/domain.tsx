@@ -85,8 +85,7 @@ export function Citations({ items, role }: { items: Array<{ label: string; refer
         const to = citationPath(c.reference, role)
         return (
           <span key={c.reference}>
-            {to ? <Link to={to} className="text-teal hover:underline">{c.label}</Link> : c.label}{' '}
-            <span className="text-slate">{c.reference}</span>
+            {to ? <Link to={to} className="text-teal hover:underline">{c.label}</Link> : c.label}
           </span>
         )
       })}

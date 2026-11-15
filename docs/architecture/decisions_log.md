@@ -96,6 +96,30 @@ transaction as the change, to the recipients listed in D12 and never to the acto
 Tickets 10 and 26 remain blocked until Q26 and the approved KPIs are settled. Tickets:
 `.scratch/frontend-wiring/spec.md`.
 
+**ATS CV review and generation (2026-11-06):** user-agreed scope for the spec in
+`.scratch/ATS-implementation/DOC.md`. The score is deterministic code; the 3B model
+(`qwen2.5:3b` via Ollama) only extracts one section or rewrites one bullet per call,
+and code validates every output (no invented numbers, tools or companies).
+- Target: a role profile only (YAML in `ai/document_intelligence/ats/roles/`, versioned).
+  v1 roles: Data Engineer and Software Engineer. Level selector (intern/junior/mid) is in
+  v1; role-fit comparison across roles and pasted job descriptions are not.
+- Language: English CVs only for now; other languages are rejected with a clear result.
+- Input: an existing `CV` row only. No throwaway upload; `Document` retention follows Q19.
+  Parsing runs inside the analyze request and is cached by `Document.checksum`.
+- Output: `CVAnalysisResult` is extended (role id and version, level, breakdown); its
+  `target_offer` stays unused. Numbers are named ATS readiness and role fit.
+- Rewrites and confirmed extra skills are kept in a CV draft and appear only in the
+  generated ATS-friendly CV (DOCX and PDF). The candidate profile is not edited; a
+  generated file becomes a new CV version only on candidate confirmation.
+- Parsing the CV into the profile with candidate confirmation (Q08) is a separate later
+  ticket. REST and UI only: no ANETI agent tool yet.
+- Execution: scoring is synchronous; GPU Ollama, target of about 15 s per analysis.
+- Reuses the existing Ollama provider and `bge-m3` embeddings; no FastAPI, Celery or
+  sentence-transformers. Scoring weights (20/10/30/20/15/5; skill credit 0.5 listed,
+  1.0 with evidence) are the v1 formula for Q26, to be revised after evaluation on a
+  synthetic English CV set.
+
+
 **Demo reference vocabulary (2026-11-07):** for the demo seed (`seed_demo`,
 `.scratch/demo-readiness/spec.md`), skills come from ESCO v1.2 with their English preferred
 labels only (user decision), listed in `backend/apps/taxonomy/data/esco_skills.json`:

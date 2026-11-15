@@ -15,7 +15,7 @@ const EMPTY_HINT: Record<'CANDIDATE' | 'RECRUITER', string> = {
 
 // Static starters: clicking one only sends its text through the normal agent run.
 const EXAMPLES: Record<'CANDIDATE' | 'RECRUITER', string[]> = {
-  CANDIDATE: ['Quelles offres d’emploi me correspondent ?', 'Quelles formations pour mes compétences manquantes ?'],
+  CANDIDATE: ['Quelles offres d’emploi me correspondent ?', 'Quelles formations pour mes compétences manquantes ?', 'Comment améliorer mon CV ?'],
   RECRUITER: ['Trouve des candidats en Python et SQL', 'Mes offres en Python'],
 }
 

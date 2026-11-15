@@ -71,8 +71,10 @@ def test_recruiter_finds_only_opted_in_profiles_and_trace_holds_ids_and_skills(
     body = response.json()
     visible_id = str(world["candidate_profile"].id)
     hidden_id = str(world["other_candidate_profile"].id)
-    assert visible_id in body["reply"]
-    assert hidden_id not in body["reply"]
+    assert body["reply"].startswith("Profile 1. Matched skills: Kotlin.")
+    citations = ConversationMessage.objects.get(id=body["message_id"]).citations_json
+    assert citations == [{"label": "Profil n°1", "reference": f"candidate_profile:{visible_id}"}]
+    assert hidden_id not in json.dumps(citations)
     execution = AgentExecution.objects.get(id=body["execution_id"])
     assert execution.route == "recruiter_candidate_search"
     tool_call = execution.tool_calls.get()

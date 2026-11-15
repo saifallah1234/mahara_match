@@ -219,3 +219,28 @@ def _missing_core_skills(analysis: CVAnalysisResult) -> list[str]:
         for row in analysis.breakdown_json.get("skills", [])
         if row["tier"] == "core" and not row["evidence"]
     ]
+
+
+_SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
+CV_ADVICE_POINTS = 4
+
+
+def latest_cv_advice(actor: User) -> dict[str, Any]:
+    """Assistant evidence: the top issues of the candidate's latest ATS analysis, read-only."""
+    analysis = list_cv_analyses(actor).select_related("cv").first()
+    if analysis is None:
+        return {"reason": "no_cv_analysis", "matches": []}
+    role = roles().get(analysis.role_profile_id)
+    issues = sorted(
+        analysis.issues_json, key=lambda issue: _SEVERITY_ORDER.get(issue.get("severity"), 3)
+    )
+    return {
+        "reason": "analysis_found",
+        "matches": [],
+        "analysis_id": str(analysis.id),
+        "cv_title": analysis.cv.title,
+        "cv_version": analysis.cv.version_number,
+        "role": role.label if role else analysis.role_profile_id,
+        "score": round(analysis.overall_score),
+        "points": [issue["message"] for issue in issues[:CV_ADVICE_POINTS]],
+    }
