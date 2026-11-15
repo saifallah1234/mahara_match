@@ -2,11 +2,19 @@ from decimal import Decimal
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from ai.llm.providers.embeddings import EmbeddingUnavailable
 from backend.apps.assistant.models import AgentExecution, Conversation, ConversationMessage
-from backend.apps.candidates.models import CandidateProfile, CandidateSkill, SkillLevel
+from backend.apps.candidates.models import (
+    CV,
+    CandidateProfile,
+    CandidateSkill,
+    CVAnalysisResult,
+    SkillLevel,
+)
+from backend.apps.documents.models import Document
 from backend.apps.identity.models import Organization, Role, RoleCode, User, UserRole, UserStatus
 from backend.apps.matching.models import OfferMatch
 from backend.apps.matching.services.baseline import calculate_candidate_matches
@@ -152,7 +160,7 @@ def test_french_request_gets_a_french_template_without_the_llm(
     )
     monkeypatch.setattr("ai.tools.job_search.embed_query", _ollama_down)
     monkeypatch.setattr(
-        "ai.agents.anetai.get_chat_model", lambda: pytest.fail("French replies are templates.")
+        "ai.agents.anetai.get_chat_model", lambda **_: pytest.fail("French replies are templates.")
     )
     client = APIClient()
     client.force_authenticate(user)
@@ -168,6 +176,39 @@ def test_french_request_gets_a_french_template_without_the_llm(
         "1. Backend Engineer chez Backend Engineer Ltd. Compétences correspondantes : Django. "
         "Compétences manquantes : Python."
     )
+
+
+def test_english_run_succeeds_with_the_template_when_the_model_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user = candidate()
+    _, django, _ = published_offer(user)
+    CandidateSkill.objects.create(
+        candidate=user.candidate_profile, skill=django, level=SkillLevel.INTERMEDIATE
+    )
+    monkeypatch.setattr("ai.tools.job_search.embed_query", _ollama_down)
+
+    def unreachable_model(**_: object) -> object:
+        raise ConnectionError("Ollama is unreachable.")
+
+    monkeypatch.setattr("ai.agents.anetai.get_chat_model", unreachable_model)
+    client = APIClient()
+    client.force_authenticate(user)
+
+    response = client.post(
+        reverse("agent-run"), {"message": "What jobs match my profile?"}, format="json"
+    )
+
+    assert response.status_code == 200
+    expected = (
+        "1. Backend Engineer at Backend Engineer Ltd. Matched skills: Django. "
+        "Missing skills: Python."
+    )
+    assert response.json()["reply"] == expected
+    execution = AgentExecution.objects.get(id=response.json()["execution_id"])
+    assert execution.status == "SUCCEEDED"
+    assert execution.error_code == ""
+    assert execution.response_message.content == expected
 
 
 def test_baseline_route_remains_selectable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -262,7 +303,7 @@ def test_unsupported_request_is_persisted_without_calling_matching(
     client.force_authenticate(user)
 
     response = client.post(
-        reverse("agent-run"), {"message": "Can you improve my CV?"}, format="json"
+        reverse("agent-run"), {"message": "Help me apply for a job"}, format="json"
     )
 
     assert response.status_code == 200
@@ -273,3 +314,52 @@ def test_unsupported_request_is_persisted_without_calling_matching(
     assert execution.tool_calls.count() == 0
     assert "not supported yet" in body["reply"]
     assert ConversationMessage.objects.filter(conversation_id=body["conversation_id"]).count() == 2
+
+
+def test_cv_advice_quotes_the_latest_analysis_of_a_live_cv() -> None:
+    user = candidate()
+    client = APIClient()
+    client.force_authenticate(user)
+    ask = {"message": "Comment améliorer mon CV ?"}
+
+    body = client.post(reverse("agent-run"), ask, format="json").json()
+    assert "Lancez une analyse ATS" in body["reply"]
+
+    profile = user.candidate_profile
+    document = Document.objects.create(
+        owner_user=user,
+        type="CV",
+        storage_uri=f"private/{profile.id}/cv",
+        file_name="cv.pdf",
+        mime_type="application/pdf",
+        size_bytes=1,
+        uploaded_at=timezone.now(),
+    )
+    cv = CV.objects.create(candidate=profile, document=document, title="CV Test", version_number=1)
+    issue = {"severity": "low", "message": "Ajoutez un lien GitHub."}
+    urgent = {"severity": "high", "message": "Compétence clé manquante : Testing."}
+    analysis = CVAnalysisResult.objects.create(
+        cv=cv,
+        overall_score=Decimal("52.74"),
+        issues_json=[issue, urgent],
+        analyzed_at=timezone.now(),
+        role_profile_id="software_engineer",
+    )
+
+    body = client.post(reverse("agent-run"), ask, format="json").json()
+
+    assert body["reply"].startswith(
+        "Votre dernière analyse ATS (CV Test v1, Software Engineer) donne 53/100."
+    )
+    assert body["reply"].index("Testing") < body["reply"].index("GitHub")
+    execution = AgentExecution.objects.get(id=body["execution_id"])
+    assert execution.route == "candidate_cv_advice"
+    message = ConversationMessage.objects.get(id=body["message_id"])
+    assert message.citations_json == [
+        {"label": "Analyse ATS : CV Test v1", "reference": f"cv_analysis:{analysis.id}"}
+    ]
+
+    cv.deleted_at = timezone.now()
+    cv.save()
+    body = client.post(reverse("agent-run"), ask, format="json").json()
+    assert "Lancez une analyse ATS" in body["reply"]

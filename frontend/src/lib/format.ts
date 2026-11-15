@@ -81,6 +81,8 @@ export const OFFER_STATUS_LABEL: Record<OfferStatus, string> = {
   ARCHIVED: 'Archivée',
 }
 
+export const OFFER_STATUS_TONE = { PUBLISHED: 'positif', DRAFT: 'neutre', PAUSED: 'attention', CLOSED: 'negatif', ARCHIVED: 'neutre' } as const
+
 export const DELIVERY_LABEL: Record<DeliveryMode, string> = {
   PRESENTIEL: 'Présentiel',
   DISTANCIEL: 'À distance',
@@ -93,7 +95,7 @@ export function labelFor(labels: Record<string, string>, code: string | null | u
   return labels[code] ?? fallback
 }
 
-export const IMPORT_SOURCE_TYPE_LABEL: Record<string, string> = { API: 'API', CSV: 'Fichier CSV', MANUAL_FILE: 'Fichier saisi à la main' }
+export const IMPORT_SOURCE_TYPE_LABEL: Record<string, string> = { API: 'API', CSV: 'Fichier CSV', MANUAL_FILE: 'Fichier saisi à la main', WEB_SCRAPING: 'Collecte web' }
 
 export const IMPORT_BATCH_STATUS_LABEL: Record<string, string> = {
   STARTED: 'En cours',
@@ -213,9 +215,18 @@ export const MOCK_JOB_STATUS_LABEL: Record<string, string> = {
   QUEUED: 'En file',
   RUNNING: 'En cours',
   SUCCEEDED: 'Réussi',
+  RETRY_WAIT: 'Nouvel essai prévu',
   FAILED: 'Échec',
   CANCELLED: 'Annulé',
 }
+
+/** Codes d'erreur des traitements, traduits pour le candidat (jamais le code brut). */
+export const MOCK_ERROR_LABEL: Record<string, string> = {
+  stage_failed: 'le traitement a échoué. Vous pouvez réessayer.',
+  worker_attempts_exhausted: 'la génération de la vidéo a échoué après plusieurs essais.',
+}
+
+export const MOCK_ERROR_FALLBACK = 'une erreur inattendue est survenue.'
 
 export const GOUVERNORATS = [
   'Ariana',
@@ -256,6 +267,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat('fr-TN', {
   year: 'numeric',
   hour: '2-digit',
   minute: '2-digit',
+  hourCycle: 'h23',
 })
 
 export function formatDate(iso?: string): string {
@@ -300,15 +312,22 @@ export function formatMonthYear(iso?: string): string {
 /** Les montants absents sont signalés, jamais devinés. */
 export function formatSalary(min?: number, max?: number): string {
   if (min == null && max == null) return 'Non renseigné'
-  if (min != null && max != null) return `${min.toLocaleString('fr-FR')} – ${max.toLocaleString('fr-FR')} DT / mois`
+  if (min != null && max != null) return `${min.toLocaleString('fr-FR')} – ${max.toLocaleString('fr-FR')} TND / mois`
   const single = (min ?? max) as number
-  return `${single.toLocaleString('fr-FR')} DT / mois`
+  return `${single.toLocaleString('fr-FR')} TND / mois`
 }
 
-export function formatPrice(price?: number): string {
-  if (price == null) return 'Non renseigné'
-  if (price === 0) return 'Gratuit'
-  return `${price.toLocaleString('fr-FR')} DT`
+/** A zero price means free (the training_programs check constraint ties price 0 to is_free). */
+export function formatPrice(price?: number | string | null): string {
+  if (price == null || price === '') return 'Non renseigné'
+  const amount = Number(price)
+  if (amount === 0) return 'Gratuit'
+  return `${amount.toLocaleString('fr-FR')} TND`
+}
+
+/** Display-only: ESCO labels are stored lowercase and stay verbatim in the database. */
+export function skillLabel(name: string): string {
+  return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
 export function formatBytes(bytes: number): string {

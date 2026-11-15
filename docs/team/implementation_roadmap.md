@@ -309,7 +309,7 @@ indicators or build raw personal-data exports as an aggregation shortcut.
 | P09-5 — P5 | backend/apps/training/services/indicators.py; gated backend/apps/reporting/services/aggregates.py, api/reports_views.py; UI_ROOT provider/ministry dashboard | Q04/Q20 KPI and Q19 privacy contracts; authoritative domain services | Provider indicators; ministry aggregates/exports only for approved definitions and privacy scope | tests/integration/training/test_indicators.py; gated tests/integration/reporting/test_aggregates.py | P1, P3 | 1 contract; 2 implementation |
 
 **Coordination:** metric definitions and access contracts merge first, domain summaries
-next, combined UI/E2E last. Reporting remains README-only until its gate opens;
+next, combined UI/E2E last. Reporting serves demo counts only (2026-11-07, decisions log) until its gate opens;
 adding a service does not imply new persisted reporting tables. Main conflicts:
 UI routing, shared metric definitions and cross-domain query contracts.
 

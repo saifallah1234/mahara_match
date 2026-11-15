@@ -112,6 +112,7 @@ export const NAVIGATION: Record<RoleCode, NavItem[]> = {
   ],
   MINISTRY_MANAGER: [
     { to: '/ministere', label: 'Indicateurs', icon: 'stats', end: true },
+    { to: '/ministere/competences', label: 'Compétences', icon: 'referential' },
   ],
   ADMIN: [
     { to: '/admin', label: 'Tableau de bord', icon: 'dashboard', end: true },
@@ -144,7 +145,7 @@ export function AppShell() {
           une même vérité. C'est la puce qui identifie l'espace. */}
       <aside
         className={cx(
-          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-navy transition-transform lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-navy transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
           menuOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -210,7 +211,7 @@ export function AppShell() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-line bg-white px-4 py-3 lg:hidden">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-white px-4 py-3 lg:hidden">
           <button
             onClick={() => setMenuOpen(true)}
             aria-label="Ouvrir le menu"
@@ -246,8 +247,9 @@ export function PageHeader({
   action?: ReactNode
   back?: { to: string; label: string }
 }) {
+  // Sticky on desktop only: on phones the menu bar above already sticks and space is short.
   return (
-    <header className="border-b border-line bg-white px-5 py-5 sm:px-8">
+    <header className="z-10 border-b border-line bg-white px-5 py-5 sm:px-8 lg:sticky lg:top-0">
       <div className="mx-auto max-w-6xl">
         {back && (
           <Link to={back.to} className="mb-2 inline-flex items-center gap-1.5 text-[13px] text-slate hover:text-teal">
@@ -262,7 +264,7 @@ export function PageHeader({
             <h1 className="text-[22px] font-semibold text-navy">{title}</h1>
             {description && <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-slate">{description}</p>}
           </div>
-          {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}
+          {action && <div className="flex min-w-0 flex-wrap gap-2 sm:shrink-0">{action}</div>}
         </div>
       </div>
     </header>

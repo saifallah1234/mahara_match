@@ -1,3 +1,5 @@
+from typing import Any
+
 from rest_framework import serializers
 
 from backend.apps.candidates.models import (
@@ -14,6 +16,7 @@ from backend.apps.candidates.models import (
     Relocation,
     WorkMode,
 )
+from backend.apps.candidates.services.cv_review import MIME_TYPES
 from backend.apps.documents.models import Document
 from backend.apps.taxonomy.models import Skill
 
@@ -239,7 +242,66 @@ class CVAnalysisResultSerializer(serializers.ModelSerializer[CVAnalysisResult]):
             "issues_json",
             "suggestions_json",
             "analyzed_at",
+            "role_profile_id",
+            "role_profile_version",
+            "level",
+            "breakdown_json",
+            "cv_draft_json",
             "created_at",
             "updated_at",
         )
         read_only_fields = fields
+
+
+class CVAnalysisCreateSerializer(serializers.Serializer[dict[str, Any]]):
+    cv = serializers.UUIDField()
+    role_profile_id = serializers.CharField(max_length=64)
+    level = serializers.CharField(max_length=20)
+
+
+class RoleProfileSerializer(serializers.Serializer[dict[str, Any]]):
+    id = serializers.CharField()
+    label = serializers.CharField()  # type: ignore[assignment]  # role label, not Field.label
+    version = serializers.CharField()
+
+
+class CVRewriteRequestSerializer(serializers.Serializer[dict[str, Any]]):
+    bullet = serializers.CharField(max_length=40, help_text='e.g. "experience.0.2"')
+
+
+class CVRewriteSerializer(serializers.Serializer[dict[str, Any]]):
+    original = serializers.CharField(required=False)
+    text = serializers.CharField(allow_null=True)
+    source = serializers.ChoiceField(choices=("model", "rule"))  # type: ignore[assignment]  # response key, not Field.source
+    suggestion = serializers.CharField(allow_null=True)
+
+
+class CVDraftUpdateSerializer(serializers.Serializer[dict[str, Any]]):
+    """Exactly one change: a bullet decision, a missing-skill answer or the summary."""
+
+    bullet = serializers.CharField(max_length=40, required=False)
+    decision = serializers.ChoiceField(choices=("accept", "reject"), required=False)
+    text = serializers.CharField(max_length=300, required=False, allow_blank=True)
+    skill = serializers.CharField(max_length=100, required=False)
+    has_experience = serializers.BooleanField(required=False)
+    summary = serializers.CharField(max_length=600, required=False, allow_blank=True)
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        groups = [
+            "bullet" in attrs and "decision" in attrs,
+            "skill" in attrs and "has_experience" in attrs,
+            "summary" in attrs,
+        ]
+        if sum(groups) != 1:
+            raise serializers.ValidationError(
+                "Send exactly one of: bullet and decision, skill and has_experience, or summary."
+            )
+        for name in ("text", "summary"):
+            if "\n" in attrs.get(name, "").strip():
+                raise serializers.ValidationError({name: "Must be a single line."})
+        return attrs
+
+
+class CVGenerateSerializer(serializers.Serializer[dict[str, Any]]):
+    # Not "format": DRF reserves that query parameter for content negotiation.
+    file_format = serializers.ChoiceField(choices=tuple(MIME_TYPES), default="pdf")

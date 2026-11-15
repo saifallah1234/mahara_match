@@ -15,6 +15,7 @@ Language = Literal["en", "fr", "ar"]
 Role = Literal["candidate", "recruiter"]
 
 CANDIDATE_JOB_SEARCH = "candidate_job_search"
+CANDIDATE_CV_ADVICE = "candidate_cv_advice"
 RECRUITER_CANDIDATE_SEARCH = "recruiter_candidate_search"
 RECRUITER_OFFER_SEARCH = "recruiter_offer_search"
 UNSUPPORTED = "unsupported"
@@ -41,6 +42,7 @@ _CANDIDATE_JOBS = {
         r"\brecommend job opportunities\b",
         r"\bjob (?:recommendations?|offers?|openings?|opportunities)\b",
         r"\bjobs? for me\b",
+        r"\bmissing skills\b",
     ),
     "fr": (
         r"\boffres? d.?emploi\b",
@@ -50,6 +52,8 @@ _CANDIDATE_JOBS = {
         r"\b(?:quels|quel) postes?\b",
         r"\bquelles offres\b",
         r"\boffres? (?:qui )?(?:me )?correspond",
+        # Job search returns training for each offer's missing skills.
+        r"\bcompetences? manquantes?\b",
     ),
     "ar": (
         r"وظيف",
@@ -58,13 +62,16 @@ _CANDIDATE_JOBS = {
         r"عرض عمل",
         r"فرص (?:ال)?عمل",
         r"فرصة عمل",
+        r"المهارات الناقصة",
     ),
 }
 _CANDIDATE_UNSUPPORTED = (
-    r"\b(?:cv|resume|apply|application|applications)\b",
+    r"\b(?:apply|application|applications)\b",
     r"\b(?:postuler|candidature|candidatures|lettre de motivation)\b",
-    r"سيرة ذاتية|السيرة الذاتية|سيرتي|تقديم طلب|الترشح",
+    r"تقديم طلب|الترشح",
 )
+# Advice comes from the candidate's latest ATS analysis.
+_CANDIDATE_CV = (r"\b(?:cv|cvs|resume|curriculum)\b", r"سيرة ذاتية|السيرة الذاتية|سيرتي")
 
 # Plural "profiles" only: "my profile" is a candidate talking about themselves.
 _RECRUITER_CANDIDATES = (
@@ -100,6 +107,8 @@ def route_request(role: Role, prompt: str) -> str:
     if role == "candidate":
         if any(re.search(pattern, text) for pattern in _CANDIDATE_UNSUPPORTED):
             return UNSUPPORTED
+        if any(re.search(pattern, text) for pattern in _CANDIDATE_CV):
+            return CANDIDATE_CV_ADVICE
         if any(re.search(p, text) for patterns in _CANDIDATE_JOBS.values() for p in patterns):
             return CANDIDATE_JOB_SEARCH
     elif role == "recruiter":

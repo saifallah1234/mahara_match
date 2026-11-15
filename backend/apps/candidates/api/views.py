@@ -1,6 +1,9 @@
+from io import BytesIO
 from typing import Any
 
-from drf_spectacular.utils import extend_schema
+from django.http import FileResponse
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -14,12 +17,18 @@ from backend.apps.candidates.api.serializers import (
     CandidateProfileSerializer,
     CandidateSkillSerializer,
     CertificationSerializer,
+    CVAnalysisCreateSerializer,
     CVAnalysisResultSerializer,
+    CVDraftUpdateSerializer,
+    CVGenerateSerializer,
+    CVRewriteRequestSerializer,
+    CVRewriteSerializer,
     CVSerializer,
     EducationSerializer,
     ExperienceSerializer,
     ProjectSerializer,
     RecruiterCandidateSerializer,
+    RoleProfileSerializer,
 )
 from backend.apps.candidates.models import (
     CV,
@@ -33,7 +42,7 @@ from backend.apps.candidates.models import (
     Experience,
     Project,
 )
-from backend.apps.candidates.services import discovery, records
+from backend.apps.candidates.services import cv_review, discovery, records
 from backend.apps.identity.api.common_permissions import active_request_user
 
 
@@ -180,3 +189,106 @@ class CVAnalysisResultViewSet(GenericViewSet[CVAnalysisResult]):
     def retrieve(self, request: Request, pk: str | None = None) -> Response:
         analysis = records.get_cv_analysis(active_request_user(request), str(pk))
         return Response(self.get_serializer(analysis).data)
+
+    @extend_schema(
+        request=CVAnalysisCreateSerializer,
+        responses={201: CVAnalysisResultSerializer},
+        description="Run a synchronous ATS analysis of one owned CV against a role and level.",
+    )
+    def create(self, request: Request) -> Response:
+        serializer = CVAnalysisCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        analysis = cv_review.create_analysis(
+            active_request_user(request), data["cv"], data["role_profile_id"], data["level"]
+        )
+        return Response(self.get_serializer(analysis).data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        request=CVRewriteRequestSerializer,
+        responses={200: CVRewriteSerializer},
+        description="Rewrite one bullet with the local model, validated; nothing is stored.",
+    )
+    @action(detail=True, methods=("post",))
+    def rewrite(self, request: Request, pk: str | None = None) -> Response:
+        serializer = CVRewriteRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = cv_review.request_rewrite(
+            active_request_user(request), str(pk), serializer.validated_data["bullet"]
+        )
+        return Response(CVRewriteSerializer(result).data)
+
+    @extend_schema(
+        request=None,
+        responses={200: CVRewriteSerializer},
+        description="Propose a validated professional summary; nothing is stored.",
+    )
+    @action(detail=True, methods=("post",))
+    def summary(self, request: Request, pk: str | None = None) -> Response:
+        result = cv_review.request_summary(active_request_user(request), str(pk))
+        return Response(CVRewriteSerializer(result).data)
+
+    @extend_schema(
+        request=CVDraftUpdateSerializer,
+        responses={200: CVAnalysisResultSerializer},
+        description="Record one choice in the CV draft: a bullet, a missing skill or the summary.",
+    )
+    @action(detail=True, methods=("patch",))
+    def draft(self, request: Request, pk: str | None = None) -> Response:
+        serializer = CVDraftUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        analysis = cv_review.update_draft(
+            active_request_user(request), str(pk), serializer.validated_data
+        )
+        return Response(self.get_serializer(analysis).data)
+
+    @extend_schema(
+        parameters=[OpenApiParameter("file_format", enum=("pdf", "docx"), default="pdf")],
+        responses={(200, "application/octet-stream"): OpenApiTypes.BINARY},
+        description="Download the CV draft as an ATS-friendly PDF or DOCX; nothing is stored. "
+        "X-CV-Placeholders counts unresolved [X] placeholders (a warning, not a refusal); "
+        "X-CV-Missing-Sections lists sections the level requires that the CV lacks.",
+    )
+    @action(detail=True, methods=("get",))
+    def generate(self, request: Request, pk: str | None = None) -> FileResponse:
+        serializer = CVGenerateSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        file_format = serializer.validated_data["file_format"]
+        generated, file_name = cv_review.generate_file(
+            active_request_user(request), str(pk), file_format
+        )
+        response = FileResponse(
+            BytesIO(generated.content),
+            as_attachment=True,
+            filename=file_name,
+            content_type=cv_review.MIME_TYPES[file_format],
+        )
+        response["Cache-Control"] = "private, no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        response["X-CV-Placeholders"] = str(generated.placeholders)
+        response["X-CV-Missing-Sections"] = ",".join(generated.missing_sections)
+        return response
+
+    @extend_schema(
+        request=CVGenerateSerializer,
+        responses={201: CVSerializer},
+        description="Save the generated file as a new CV version (not primary). The UI asks "
+        "for explicit confirmation first.",
+    )
+    @action(detail=True, methods=("post",), url_path="save-cv")
+    def save_cv(self, request: Request, pk: str | None = None) -> Response:
+        serializer = CVGenerateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        cv = cv_review.save_as_cv(
+            active_request_user(request), str(pk), serializer.validated_data["file_format"]
+        )
+        return Response(CVSerializer(cv).data, status=status.HTTP_201_CREATED)
+
+
+class CVReviewRoleViewSet(GenericViewSet[Any]):
+    serializer_class = RoleProfileSerializer
+    pagination_class = None
+
+    def list(self, request: Request) -> Response:
+        roles = cv_review.list_roles(active_request_user(request))
+        return Response(self.get_serializer(roles, many=True).data)

@@ -290,6 +290,12 @@ class CVAnalysisResult(UUIDTimestampedModel):
     issues_json = models.JSONField(default=list)
     suggestions_json = models.JSONField(default=list)
     analyzed_at = models.DateTimeField()
+    # ATS analysis: the role profile file id/version and level the CV was reviewed against.
+    role_profile_id = models.CharField(max_length=64, blank=True)
+    role_profile_version = models.CharField(max_length=20, blank=True)
+    level = models.CharField(max_length=20, blank=True)
+    breakdown_json = models.JSONField(default=dict, blank=True)
+    cv_draft_json = models.JSONField(default=dict, blank=True)
 
     class Meta:
         db_table = "cv_analysis_results"

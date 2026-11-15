@@ -33,10 +33,10 @@ The identity entities below do not imply an `ANETI_AGENT` human account role.
 | Domain | Documented scope | Missing detail |
 | --- | --- | --- |
 | guidance | AI-assisted candidate guidance scope marker; advisor execution belongs in ai/ (user clarification, Q22; supersedes assignment interpretation of PDF p. 3 and DM §§2, 7) | Delivery scope and whether any distinct business state is needed beyond existing domains; no human advisor assignments |
-| reporting | Ministry aggregate indicators (PDF p. 4; DM §2) | Metric definitions, aggregation/privacy and MVP timing |
+| reporting | Ministry aggregate indicators (PDF p. 4; DM §2). Owns no tables; since 2026-11-07 it serves demo counts combined from recruitment and training aggregate services (decisions log) | Approved metric definitions, aggregation/privacy and MVP timing (Q20) |
 | community | Forum, reports and moderation (PDF pp. 5, 7, 10) | Schema, moderation workflow and delivery timing |
 
-These areas contain README files only. They do not imply approved models or MVP inclusion.
+Guidance and community contain README files only; reporting has a service and one read endpoint but no models. They do not imply approved models or MVP inclusion.
 
 ## Interface organization
 
@@ -48,8 +48,8 @@ platform records remain pending, and no application migrations have been created
 Cross-domain mutations go through owning services. Model relationships may refer
 to existing owners without cloning entities. A service can coordinate work across
 owners, but must not absorb their rules or modify their models directly.
-Read collaboration also uses services; future reporting access contracts remain to
-be designed. Do not create a universal repository or a second ORM to bypass this boundary.
+Read collaboration also uses services; reporting reads recruitment and training through
+their `services/indicators.py` aggregate reads. Do not create a universal repository or a second ORM to bypass this boundary.
 
 ## Avoid duplicate concepts
 

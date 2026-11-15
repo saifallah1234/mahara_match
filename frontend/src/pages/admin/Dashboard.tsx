@@ -1,14 +1,15 @@
 import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { EmptyState, Panel, StatTile } from '../../components/ui'
+import { EmptyState, Loading, Panel, StatTile } from '../../components/ui'
 import { useAdmin } from '../../state/admin'
 import { useAuditLogs, useBatches } from '../../state/adminData'
-import { AUDIT_ACTION_LABEL, AUDIT_ENTITY_LABEL, formatDateTime, labelFor } from '../../lib/format'
+import { AUDIT_ACTION_LABEL, formatDateTime, labelFor } from '../../lib/format'
+import { auditSummary } from '../../lib/auditSummary'
 
 export default function AdminDashboard() {
   const { users, organizations, error } = useAdmin()
   const batchCount = useBatches().count
-  const audit = useAuditLogs().data
+  const { data: audit, loading: auditLoading } = useAuditLogs()
   return (
     <>
       <PageHeader title="Administration" />
@@ -21,14 +22,17 @@ export default function AdminDashboard() {
           <StatTile value={batchCount} label="Lots d’import" tone="leaf" />
         </div>
         <Panel title="Dernières opérations" action={<Link to="/admin/audit" className="text-[13px] font-medium text-teal hover:underline">Journal complet</Link>}>
-          {audit.length === 0 ? <EmptyState title="Aucune entrée." /> : (
+          {auditLoading && audit.length === 0 ? <Loading /> : audit.length === 0 ? <EmptyState title="Aucune opération pour le moment.">Les créations, vérifications et imports apparaîtront ici.</EmptyState> : (
             <ul className="divide-y divide-line/70">
-              {audit.slice(0, 6).map((l) => (
-                <li key={l.id} className="flex justify-between gap-3 px-5 py-3 text-[13.5px]">
-                  <span className="text-navy">{labelFor(AUDIT_ACTION_LABEL, l.action, 'Autre action')} · {labelFor(AUDIT_ENTITY_LABEL, l.entity_type, 'Autre entité')}</span>
-                  <span className="text-slate">{formatDateTime(l.created_at)}</span>
-                </li>
-              ))}
+              {audit.slice(0, 6).map((l) => {
+                const { actor, record } = auditSummary(l, users, organizations)
+                return (
+                  <li key={l.id} className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 px-5 py-3 text-[13.5px]">
+                    <span className="text-navy"><span className="font-medium">{actor}</span> · {labelFor(AUDIT_ACTION_LABEL, l.action, 'Autre action')} · {record}</span>
+                    <span className="text-slate">{formatDateTime(l.created_at)}</span>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </Panel>

@@ -20,6 +20,11 @@ ALLOWED_FILE_TYPES: dict[str, tuple[tuple[str, ...], Callable[[bytes], bool]]] =
     "application/pdf": ((".pdf",), lambda content: content.startswith(b"%PDF-")),
     "image/jpeg": ((".jpg", ".jpeg"), lambda content: content.startswith(b"\xff\xd8\xff")),
     "image/png": ((".png",), lambda content: content.startswith(b"\x89PNG\r\n\x1a\n")),
+    # DOCX CVs for ATS analysis; .docx is a ZIP container and cannot carry macros (.docm).
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": (
+        (".docx",),
+        lambda content: content.startswith(b"PK\x03\x04"),
+    ),
 }
 DOCUMENT_TYPE_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]{0,29}$")
 

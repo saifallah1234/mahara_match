@@ -1,0 +1,44 @@
+# Placement: ai/document_intelligence/ats/roles/software_engineer.yaml
+# Role profile for ATS analysis. Bump `version` whenever skills, verbs or hints change:
+# stored analyses keep the version they were scored with.
+id: software_engineer
+label: Software Engineer
+version: 1
+skills:
+  core:  # weight 3
+    - {name: Programming language, aliases: [Java, Python, JavaScript, TypeScript, "C#", "C++", Go, Kotlin]}
+    - {name: Git, aliases: [GitHub, GitLab]}
+    - {name: Testing, aliases: [unit tests, unit testing, integration tests, pytest, JUnit, Jest, TDD]}
+    - {name: REST APIs, aliases: [REST, REST API, RESTful, GraphQL]}
+  common:  # weight 2
+    - {name: Web framework, aliases: [Django, Flask, FastAPI, Spring, Spring Boot, Express, Node.js, ASP.NET]}
+    - {name: Frontend, aliases: [React, Angular, Vue, HTML, CSS]}
+    - {name: SQL, aliases: [PostgreSQL, Postgres, MySQL]}
+    - {name: Docker}
+    - {name: CI/CD, aliases: [GitHub Actions, GitLab CI, Jenkins]}
+    - {name: Cloud, aliases: [AWS, GCP, Azure]}
+  bonus:  # weight 1
+    - {name: Kubernetes}
+    - {name: Microservices, aliases: [microservice]}
+    - {name: Linux}
+    - {name: Design patterns, aliases: [SOLID, OOP, object-oriented]}
+    - {name: Agile, aliases: [Scrum, Kanban]}
+action_verbs: [built, developed, designed, implemented, shipped, refactored, tested, deployed,
+  optimized, reduced, improved, automated, integrated, led, launched, created, migrated]
+metric_hints:
+  - {label: number of users, keywords: [users, customers, clients, requests, downloads]}
+  - {label: response time, keywords: [ms, seconds, latency, response time, faster]}
+  - {label: test coverage, keywords: [coverage, tests, "%"]}
+  - {label: release frequency, keywords: [deployments, releases, per week, per day]}
+  - {label: bugs or incidents reduced, keywords: [bugs, incidents, errors, defects]}
+weak_phrases: [responsible for, worked on, helped with, involved in, participated in, assisted with, tasked with]
+section_priority: [summary, skills, experience, projects, education, certifications]
+examples:
+  - before: Worked on the backend of the app
+    after: Built REST APIs in Django serving [X] users, keeping p95 response time under [X] ms
+  - before: Responsible for testing
+    after: Raised unit test coverage from [X%] to [X%] with pytest, cutting production bugs by [X%]
+  - before: Helped with the deployment process
+    after: Automated deployments with GitHub Actions and Docker, moving from [X] to [X] releases per week
+  - before: Fixed bugs in the frontend
+    after: Refactored React components to remove [X] recurring UI errors reported by users

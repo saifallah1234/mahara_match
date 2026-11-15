@@ -1,0 +1,45 @@
+# Placement: ai/document_intelligence/ats/roles/data_engineer.yaml
+# Role profile for ATS analysis. Bump `version` whenever skills, verbs or hints change:
+# stored analyses keep the version they were scored with.
+id: data_engineer
+label: Data Engineer
+version: 1
+skills:
+  core:  # weight 3
+    - {name: SQL, aliases: [PostgreSQL, Postgres, MySQL, T-SQL, SQL Server]}
+    - {name: Python, aliases: [pandas]}
+    - {name: ETL/ELT, aliases: [ETL, ELT, data pipeline, data pipelines, data ingestion]}
+    - {name: Data modeling, aliases: [data modelling, star schema, dimensional modeling, data warehouse, data warehousing]}
+  common:  # weight 2
+    - {name: Spark, aliases: [PySpark, Apache Spark, Databricks]}
+    - {name: Airflow, aliases: [Apache Airflow, Dagster, Prefect]}
+    - {name: dbt}
+    - {name: Kafka, aliases: [Apache Kafka, Flink, Kinesis]}
+    - {name: Docker}
+    - {name: Cloud, aliases: [AWS, GCP, Azure, S3, BigQuery, Redshift, Snowflake]}
+  bonus:  # weight 1
+    - {name: Terraform}
+    - {name: CI/CD, aliases: [GitHub Actions, GitLab CI, Jenkins]}
+    - {name: Data quality, aliases: [Great Expectations, data validation]}
+    - {name: Kubernetes}
+    - {name: NoSQL, aliases: [MongoDB, Cassandra]}
+action_verbs: [built, designed, developed, optimized, automated, migrated, orchestrated, ingested,
+  reduced, implemented, modeled, deployed, scaled, streamlined, integrated, created, improved]
+metric_hints:
+  - {label: data volume (GB/TB/rows), keywords: [GB, TB, PB, rows, records, events, tables]}
+  - {label: pipeline runtime, keywords: [minutes, hours, seconds, runtime, faster]}
+  - {label: latency, keywords: [ms, latency]}
+  - {label: cost saved, keywords: [cost, costs, savings, "$", "€", TND]}
+  - {label: number of sources, keywords: [sources, pipelines, datasets, jobs]}
+  - {label: SLA/uptime, keywords: [SLA, uptime, "%"]}
+weak_phrases: [responsible for, worked on, helped with, involved in, participated in, assisted with, tasked with]
+section_priority: [summary, experience, projects, skills, education, certifications]
+examples:
+  - before: Worked on data pipelines for the company
+    after: Built ETL pipelines ingesting [X] sources into a PostgreSQL warehouse, cutting load time by [X%]
+  - before: Responsible for the reporting database
+    after: Designed a star schema for reporting on [X] million rows, reducing dashboard query time to [X] seconds
+  - before: Helped move jobs to the cloud
+    after: Migrated [X] batch jobs from cron to Airflow on AWS, reaching [X%] on-time runs
+  - before: Did data quality checks
+    after: Automated data quality checks with Great Expectations across [X] tables, catching [X] issues per month

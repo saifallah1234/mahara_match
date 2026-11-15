@@ -16,14 +16,62 @@ initial migrations. Integration tests cover access, upload, download and deletio
   URI is never returned by the candidate document endpoint.
 - `/api/v1/skills/`, `/languages/`, `/education-levels/`: authenticated read only
   reference catalogs.
-- `/api/v1/cv-analysis-results/`: candidate owned read only ATS results.
+- `/api/v1/cv-review-roles/`: candidate read only list of role profiles (`id`, `label`,
+  `version`) an ATS analysis can target. v1: `data_engineer`, `software_engineer`.
+- `/api/v1/cv-analysis-results/`: candidate owned ATS analyses. `POST` with `cv`,
+  `role_profile_id` and `level` (`intern`, `junior`, `mid`) runs the analysis
+  synchronously and returns 201 with the stored result. The CV must be owned, not
+  deleted and still have its bytes (deleted or another candidate's CV: 404; purged
+  bytes: 400). Unknown role or level, a file other than PDF/DOCX, or a non-English CV
+  return 400 and store nothing. List and retrieve return `role_profile_id`,
+  `role_profile_version`, `level`, `breakdown_json` (six component scores, weights,
+  `ats_readiness`, `role_fit`, `parse_degraded`, counts), `issues_json` (code,
+  severity, component, French message, params) and `cv_draft_json` (the CV draft, see
+  below). `breakdown_json.structure` snapshots the parsed entries and skills lines; bullet
+  keys such as `experience.0.2` index into it. `target_offer` stays unused. The analysis never changes the profile.
+  The local chat model structures the experience, projects and education sections (one
+  call per section, JSON schema, every value checked against the section text) and the
+  structure is cached on the CV (`parsed_data_json` with `checksum` and
+  `parser_version`, `parse_status` `parsed` or `degraded`). A rerun on the same file and
+  parser version skips the model; a degraded parse is retried. If the model is down or
+  its output fails validation, the analysis uses the line-based split and
+  `parse_degraded` is true.
+- `/api/v1/cv-analysis-results/{id}/rewrite/`: `POST {"bullet": "experience.0.2"}`
+  rewrites one experience or project bullet with the local model (temperature 0.4, role
+  verbs, metric hints and the 3 closest role examples by `bge-m3`, else the first 3). The
+  rewrite is rejected if it adds a number, role skill or capitalised name absent from the
+  original (`[X]` placeholders allowed), exceeds 25 words or one line; one retry at 0.1,
+  then `source: "rule"` with a French `suggestion` and `text: null`. Nothing is stored.
+- `/api/v1/cv-analysis-results/{id}/summary/`: `POST` proposes a professional summary
+  from the structure and role label, same validator against the CV's facts (two
+  sentences, at most 60 words, one line). Nothing is stored.
+- `/api/v1/cv-analysis-results/{id}/draft/`: `PATCH` with exactly one change:
+  `bullet` + `decision` (`accept` with `text`, also used for an edit, or `reject`);
+  `skill` + `has_experience` for a missing core skill of the analysis (only a yes adds it
+  to `confirmed_skills`; others go to `declined_skills`); or `summary` (empty clears).
+  `cv_draft_json` is `{bullets: {key: {original, decision, text}}, confirmed_skills,
+  declined_skills, summary}`. The model never adds a skill; the profile is never changed.
+  Another candidate's analysis returns 404 on all three routes.
+- `/api/v1/cv-analysis-results/{id}/generate/?file_format=pdf|docx` (default `pdf`):
+  `GET` downloads the CV draft as an ATS-friendly file (one column, standard English
+  headings in the role's section order, `•` bullets, no tables, icons or images, a real
+  PDF text layer). Content is the original CV's sections with accepted rewrites, the
+  accepted summary and confirmed skills applied. Nothing is stored. Warnings, not
+  refusals: `X-CV-Placeholders` counts unresolved `[X]` placeholders and
+  `X-CV-Missing-Sections` lists sections the level requires that the CV lacks.
+- `/api/v1/cv-analysis-results/{id}/save-cv/`: `POST {"file_format": "pdf"|"docx"}`
+  stores the generated file as a new `CV` document and returns the new CV (201): next
+  per-candidate version number, not primary, `language_code` `en`. The UI asks for
+  explicit confirmation first. The profile is never changed. 404 for another
+  candidate's analysis, as above.
 
 Candidates need an active global `CANDIDATE` role for candidate records. Another
 candidate's owned record returns 404. Recruiter discovery does not grant access to
 candidate-owned record endpoints. CV creation requires an existing owned document. Its
 version number is allocated per candidate and at most one CV can be primary.
-Scan/parse results, raw parsed JSON, skill validation provenance, completion scores
-and ATS analysis results have no candidate write route. Only candidate confirmed
+Scan/parse results, raw parsed JSON, skill validation provenance and completion
+scores have no candidate write route; ATS analyses are created only by the analysis
+endpoint above. Only candidate confirmed
 information is written to structured records.
 
 Deleting a CV hides it from the candidate CV/document lists and prevents new

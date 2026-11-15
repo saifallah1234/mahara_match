@@ -1,5 +1,7 @@
 import { useId, useState } from 'react'
-import { cx } from '../lib/format'
+import { cx, skillLabel } from '../lib/format'
+import { largestGaps } from '../lib/indicators'
+import type { SkillGap } from '../api/reporting'
 import { Button, Table, Row, Cell } from './ui'
 
 /**
@@ -47,7 +49,7 @@ export function BarChart({
   const multi = series.length > 1
 
   return (
-    <figure className="m-0 rounded-[10px] border border-line bg-white shadow-panel">
+    <figure className="rounded-[10px] border border-line bg-white shadow-panel">
       <figcaption className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-5 py-4">
         <div>
           <h3 id={titleId} className="text-[15px] font-semibold text-navy">
@@ -127,31 +129,35 @@ export function GapList({
 }: {
   title: string
   note?: string
-  rows: Array<{ label: string; demand: number; supply: number }>
+  rows: SkillGap[]
 }) {
-  const data = rows.map((r) => ({ label: r.label, values: [r.demand, r.supply] }))
+  const data = rows.map((r) => ({ label: skillLabel(r.skill), values: [r.offer_demand, r.training_supply] }))
+  const top = largestGaps(rows)
+  const topId = useId()
   return (
     <div className="space-y-3">
+      {top.length > 0 && (
+        <section aria-labelledby={topId} className="rounded-[10px] border border-coral/30 bg-white px-5 py-4 shadow-panel">
+          <h3 id={topId} className="text-[15px] font-semibold text-navy">Les trois plus grands écarts</h3>
+          <ol className="mt-2 space-y-1.5">
+            {top.map((r) => (
+              <li key={r.skill} className="flex items-baseline gap-2 text-[13px] text-navy">
+                <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-coral" />
+                <span>
+                  <span className="font-medium">{skillLabel(r.skill)}</span> : {formatValue(r.offer_demand)} offres pour{' '}
+                  {formatValue(r.training_supply)} places de formation.
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
       <BarChart
         title={title}
         note={note}
         data={data}
         series={['Offres demandant la compétence', 'Places de formation ouvertes']}
       />
-      <ul className="space-y-1.5">
-        {rows
-          .filter((r) => r.demand > r.supply * 1.8)
-          .slice(0, 3)
-          .map((r) => (
-            <li key={r.label} className="flex items-baseline gap-2 text-[13px] text-navy">
-              <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-coral" />
-              <span>
-                <span className="font-medium">{r.label}</span> — {formatValue(r.demand)} offres pour{' '}
-                {formatValue(r.supply)} places de formation.
-              </span>
-            </li>
-          ))}
-      </ul>
     </div>
   )
 }

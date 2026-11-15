@@ -7,6 +7,7 @@ from backend.apps.candidates.api.views import (
     CandidateSkillViewSet,
     CertificationViewSet,
     CVAnalysisResultViewSet,
+    CVReviewRoleViewSet,
     CVViewSet,
     EducationViewSet,
     ExperienceViewSet,
@@ -26,4 +27,5 @@ router.register(
 router.register("projects", ProjectViewSet, basename="project")
 router.register("cvs", CVViewSet, basename="cv")
 router.register("cv-analysis-results", CVAnalysisResultViewSet, basename="cv-analysis-result")
+router.register("cv-review-roles", CVReviewRoleViewSet, basename="cv-review-role")
 urlpatterns = router.urls

@@ -5,6 +5,7 @@ import type { RoleCode } from './types'
 export function citationPath(reference: string, role: RoleCode): string | null {
   const [kind, id] = reference.split(':')
   if (!id) return null
+  if (kind === 'cv_analysis') return '/candidat/cv'
   if (kind === 'candidate_profile') return `/recruteur/candidats/${id}`
   if (kind === 'offer') return role === 'RECRUITER' ? `/recruteur/offres/${id}` : `/candidat/offres/${id}`
   return null

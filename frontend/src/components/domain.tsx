@@ -1,6 +1,26 @@
 import { Link } from 'react-router-dom'
 import { citationPath } from '../lib/citations'
+import { cx, skillLabel } from '../lib/format'
 import type { RoleCode } from '../lib/types'
+
+/* ------------------------------------------------------------------ */
+/* Pastille de compétence                                              */
+/* ------------------------------------------------------------------ */
+
+const CHIP_STYLES = {
+  matched: 'border-leaf/30 bg-leaf/10 text-leaf',
+  missing: 'border-coral/30 bg-coral/8 text-coral',
+  neutral: 'border-line bg-mist text-navy',
+}
+
+/** One skill, matched / missing / neutral; the label is capitalised for display only. */
+export function SkillChip({ name, variant = 'neutral' }: { name: string; variant?: keyof typeof CHIP_STYLES }) {
+  return <span className={cx('inline-flex items-center rounded-full border px-2.5 py-0.5 text-[12px] font-medium', CHIP_STYLES[variant])}>{skillLabel(name)}</span>
+}
+
+export function SkillChips({ names, variant }: { names: string[]; variant?: keyof typeof CHIP_STYLES }) {
+  return <span className="inline-flex flex-wrap gap-1.5">{names.map((name, i) => <SkillChip key={`${i}-${name}`} name={name} variant={variant} />)}</span>
+}
 
 /* ------------------------------------------------------------------ */
 /* Pastille de score                                                   */
@@ -65,8 +85,7 @@ export function Citations({ items, role }: { items: Array<{ label: string; refer
         const to = citationPath(c.reference, role)
         return (
           <span key={c.reference}>
-            {to ? <Link to={to} className="text-teal hover:underline">{c.label}</Link> : c.label}{' '}
-            <span className="text-slate/70">{c.reference}</span>
+            {to ? <Link to={to} className="text-teal hover:underline">{c.label}</Link> : c.label}
           </span>
         )
       })}

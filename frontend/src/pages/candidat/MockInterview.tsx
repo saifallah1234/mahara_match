@@ -3,10 +3,11 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { answerInterview, createInterview, getInterview, getInterviewFeedback, interviewAction, interviewHistory, type InterviewFeedback, type InterviewSession } from '../../api/mockInterviews'
 import { AvatarPlayer } from '../../components/interview/AvatarPlayer'
 import { AnswerRecorder } from '../../components/interview/AnswerRecorder'
+import { ActionBar, CameraIdle, INTERVIEWER_COLUMN, INTERVIEWER_FRAME, InterviewStage } from '../../components/interview/InterviewStage'
 import { PageBody, PageHeader } from '../../components/layout'
 import { Button, ConfirmDialog, Field, Panel, Select } from '../../components/ui'
 import { interviewDisplayState, type InterviewDisplayState } from '../../lib/mockInterviewMachine'
-import { MOCK_INTERVIEW_LABEL, MOCK_JOB_STAGE_LABEL, MOCK_JOB_STATUS_LABEL, formatDateTime, labelFor } from '../../lib/format'
+import { MOCK_ERROR_FALLBACK, MOCK_ERROR_LABEL, MOCK_INTERVIEW_LABEL, MOCK_JOB_STAGE_LABEL, MOCK_JOB_STATUS_LABEL, formatDateTime, labelFor } from '../../lib/format'
 import { useCandidate } from '../../state/candidate'
 
 export default function MockInterview() {
@@ -80,6 +81,15 @@ export default function MockInterview() {
     finally { setBusy(false) }
   }
   const turn = session?.turns.find((item) => item.id === session.current_turn_id)
+  // The question appears once the interviewer asks it, never during the introduction.
+  const asking = ['SPEAKING', 'LISTENING', 'UPLOADING'].includes(display)
+  const cancel = session?.allowed_actions.includes('cancel') && <Button variant="discret" className="sm:ml-auto" disabled={busy} onClick={() => setConfirmingCancel(true)}>Annuler l’entretien</Button>
+  const interviewer = !session ? null
+    : display === 'INTRO' ? <AvatarPlayer className={INTERVIEWER_FRAME} playback={{ video: session.playback.introduction }} onDone={() => setDisplay('SPEAKING')} />
+    : display === 'SPEAKING' && session.playback.turn ? <AvatarPlayer key={turn?.id} className={INTERVIEWER_FRAME} playback={session.playback.turn} onDone={() => setDisplay('LISTENING')} />
+    : display === 'THINKING' ? <AvatarPlayer className={INTERVIEWER_FRAME} playback={{ avatar: session.playback.thinking_avatar }} loop />
+    : display === 'LISTENING' || display === 'UPLOADING' ? <AvatarPlayer className={INTERVIEWER_FRAME} playback={{ avatar: session.playback.listening_avatar }} loop />
+    : null
   return <>
     <PageHeader title="Entretien blanc" description="Trois questions et au maximum une relance. En français." />
     <PageBody className="space-y-5">
@@ -93,20 +103,17 @@ export default function MockInterview() {
       </> : session ? <>
         {session.availability.simulated && <p role="status" className="rounded-lg bg-amber/10 p-3">Mode simulé : tonalités audio, transcription prédéfinie et vidéos sans lip-sync réel.</p>}
         <p role="status">État : {MOCK_INTERVIEW_LABEL[display]}</p>
-        {['PREPARING', 'THINKING', 'FAILED'].includes(display) && <Panel title="Traitements"><ul className="p-5">{session.jobs.map((job) => <li key={job.id}>{labelFor(MOCK_JOB_STAGE_LABEL, job.stage)} : {labelFor(MOCK_JOB_STATUS_LABEL, job.status)}{job.error_code && ` (${job.error_code})`}</li>)}</ul></Panel>}
-        {display === 'READY' && <Button disabled={busy} onClick={() => void action('start')}>Commencer</Button>}
-        {display === 'INTRO' && <AvatarPlayer playback={{ video: session.playback.introduction }} onDone={() => setDisplay('SPEAKING')} />}
-        {turn && <Panel title={turn.kind === 'FOLLOWUP' ? 'Relance' : `Question ${turn.position}/3`}><p className="p-5">{turn.question}</p></Panel>}
-        {display === 'SPEAKING' && session.playback.turn && <AvatarPlayer key={turn?.id} playback={session.playback.turn} onDone={() => setDisplay('LISTENING')} />}
-        {display === 'THINKING' && <AvatarPlayer playback={{ avatar: session.playback.thinking_avatar }} loop />}
-        {(display === 'LISTENING' || display === 'UPLOADING') && <>
-          <AvatarPlayer playback={{ avatar: session.playback.listening_avatar }} loop />
-          <AnswerRecorder key={turn?.id} busy={busy} onSubmit={submit} />
-        </>}
-        {display === 'FAILED' && <Button disabled={busy} onClick={() => void action('retry')}>Réessayer le traitement</Button>}
-        {session.allowed_actions.includes('cancel') && <Button disabled={busy} onClick={() => setConfirmingCancel(true)}>Annuler l’entretien</Button>}
+        {['PREPARING', 'THINKING', 'FAILED'].includes(display) && <Panel title="Traitements"><ul className="p-5">{session.jobs.map((job) => <li key={job.id}>{labelFor(MOCK_JOB_STAGE_LABEL, job.stage)} : {labelFor(MOCK_JOB_STATUS_LABEL, job.status)}{job.status === 'FAILED' && job.error_code && ` — ${labelFor(MOCK_ERROR_LABEL, job.error_code, MOCK_ERROR_FALLBACK)}`}</li>)}</ul></Panel>}
+        {turn && asking && <Panel title={turn.kind === 'FOLLOWUP' ? 'Relance' : `Question ${turn.position}/3`}><p className="p-5">{turn.question}</p></Panel>}
+        {display === 'LISTENING' || display === 'UPLOADING' ? <AnswerRecorder key={turn?.id} busy={busy} onSubmit={submit} interviewer={interviewer} cancel={cancel} />
+          : interviewer ? <InterviewStage interviewer={interviewer} candidate={<CameraIdle />} actions={cancel} />
+          : <ActionBar>
+            {display === 'READY' && <Button disabled={busy} onClick={() => void action('start')}>Commencer</Button>}
+            {display === 'FAILED' && <Button disabled={busy} onClick={() => void action('retry')}>Réessayer le traitement</Button>}
+            {cancel}
+          </ActionBar>}
         {display === 'COMPLETED' && <>
-          {session.playback.closing_audio && <AvatarPlayer playback={{ audio: session.playback.closing_audio, avatar: session.playback.neutral_avatar }} />}
+          {session.playback.closing_audio && <div className={INTERVIEWER_COLUMN}><AvatarPlayer className={INTERVIEWER_FRAME} playback={{ audio: session.playback.closing_audio, avatar: session.playback.neutral_avatar }} /></div>}
           {feedback && <Panel title="Votre retour"><div className="space-y-4 p-5"><p>{feedback.summary}</p>{feedback.questions.map((row, index) => <section key={row.turn_id}><h2 className="font-semibold">Réponse {index + 1}</h2><p>Points forts : {row.strengths.join(' ')}</p><p>À approfondir : {row.gaps.join(' ')}</p>{row.excerpts.map((quote) => <blockquote key={quote}>« {quote} »</blockquote>)}<p>Pour progresser : {row.improvements.join(' ')}</p></section>)}</div></Panel>}
         </>}
       </> : <p role="status">Chargement…</p>}

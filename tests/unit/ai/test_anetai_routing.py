@@ -4,6 +4,7 @@ import pytest
 
 from ai.agents.anetai import BASELINE_ROUTE, resolve_route
 from ai.agents.intents import (
+    CANDIDATE_CV_ADVICE,
     CANDIDATE_JOB_SEARCH,
     RECRUITER_CANDIDATE_SEARCH,
     RECRUITER_OFFER_SEARCH,
@@ -14,6 +15,7 @@ from ai.agents.intents import (
 )
 from ai.agents.templates import (
     candidate_search_reply,
+    cv_advice_reply,
     job_search_reply,
     own_offer_search_reply,
     unsupported_reply,
@@ -54,6 +56,8 @@ def test_language_is_detected(prompt: str, language: str) -> None:
         "ما هي الوظائف المناسبة لملفي؟",
         "أريد عروض عمل في Python",
         "ابحث لي عن فرص عمل",
+        "Quelles formations pour mes compétences manquantes ?",
+        "Which training covers my missing skills?",
     ],
 )
 def test_candidate_job_intents_in_three_languages(prompt: str) -> None:
@@ -63,16 +67,44 @@ def test_candidate_job_intents_in_three_languages(prompt: str) -> None:
 @pytest.mark.parametrize(
     "prompt",
     [
-        "Can you improve my CV?",
         "Help me apply for a job",
+        "Postuler avec mon CV",
         "Recommend training for me",
         "Améliore ma lettre de motivation pour cet emploi",
-        "ساعدني في كتابة السيرة الذاتية",
         "Hello",
     ],
 )
 def test_candidate_unsupported_requests(prompt: str) -> None:
     assert route_request("candidate", prompt) == UNSUPPORTED
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "Can you improve my CV?",
+        "Comment améliorer mon CV pour un poste de développeur Python ?",
+        "ساعدني في كتابة السيرة الذاتية",
+    ],
+)
+def test_candidate_cv_advice_requests(prompt: str) -> None:
+    assert route_request("candidate", prompt) == CANDIDATE_CV_ADVICE
+
+
+def test_cv_advice_template_quotes_the_stored_analysis() -> None:
+    evidence = {
+        "reason": "analysis_found",
+        "cv_title": "CV Amine",
+        "cv_version": 2,
+        "role": "Software Engineer",
+        "score": 53,
+        "points": ["Ajoutez des tests.", "Chiffrez vos puces."],
+    }
+    assert cv_advice_reply(evidence, "fr") == (
+        "Votre dernière analyse ATS (CV Amine v2, Software Engineer) donne 53/100. "
+        "À améliorer en priorité :\n- Ajoutez des tests.\n- Chiffrez vos puces.\n"
+        "Ouvrez « Mes CV » pour appliquer ces corrections et relancer l'analyse."
+    )
+    assert "Mes CV" in cv_advice_reply({"reason": "no_cv_analysis", "matches": []}, "ar")
 
 
 def test_baseline_tool_can_be_selected_for_rollback(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -189,8 +221,8 @@ def test_recruiter_templates_hold_ids_and_skills_only() -> None:
         "matches": [{"profile_id": "p-1", "rank": 1, "matched_skills": ["Python"]}],
     }
     assert candidate_search_reply(evidence, "en") == (
-        "1. Profile p-1. Matched skills: Python.\n"
-        "Open a profile in candidate discovery to see its details."
+        "Profile 1. Matched skills: Python.\n"
+        "Open a profile from the sources below to see its details."
     )
     assert candidate_search_reply({"reason": "offer_not_accessible", "matches": []}, "fr") == (
         "Cette offre n'est pas accessible depuis votre compte."

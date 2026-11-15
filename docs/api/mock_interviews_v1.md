@@ -30,7 +30,9 @@ outages. Ordinary CV/document routes cannot select interview media and retain
 their existing size/type limits.
 
 Browser playback completion never advances server state. Refresh restores the
-current persisted question; unsent microphone recordings must be recorded again.
+current persisted question; unsent recordings must be recorded again. The browser
+uploads only the answer audio; the camera serves a local preview and replay and its video
+is never uploaded or stored ([decisions log, 2026-11-08](../architecture/decisions_log.md)).
 Use shared authenticated blob fetching and release browser object URLs.
 
 READY requires introduction/Q1 generated videos, all three question audios,

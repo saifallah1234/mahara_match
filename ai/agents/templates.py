@@ -57,6 +57,26 @@ _TEXT: dict[str, dict[str, str]] = {
         "ar": "رابط العرض: {url}",
     },
     "none": {"en": "none", "fr": "aucune", "ar": "لا شيء"},
+    "no_cv_analysis": {
+        "en": "Run an ATS analysis of one of your CVs in “Mes CV”, then I can tell you what to "
+        "improve first.",
+        "fr": "Lancez une analyse ATS d'un de vos CV dans « Mes CV » : je pourrai ensuite vous "
+        "dire quoi améliorer en priorité.",
+        "ar": "أطلق تحليل ATS لإحدى سيرك الذاتية في « Mes CV »، ثم يمكنني أن أخبرك بما يجب "
+        "تحسينه أولاً.",
+    },
+    "cv_analysis": {
+        "en": "Your latest ATS analysis ({cv} v{version}, {role}) scores {score}/100. "
+        "Improve first:",
+        "fr": "Votre dernière analyse ATS ({cv} v{version}, {role}) donne {score}/100. "
+        "À améliorer en priorité :",
+        "ar": "آخر تحليل ATS لسيرتك ({cv} v{version}، {role}) يعطي {score}/100. حسّن أولاً:",
+    },
+    "cv_hint": {
+        "en": "Open “Mes CV” to apply these fixes and re-run the analysis.",
+        "fr": "Ouvrez « Mes CV » pour appliquer ces corrections et relancer l'analyse.",
+        "ar": "افتح « Mes CV » لتطبيق هذه التصحيحات وإعادة التحليل.",
+    },
     "unsupported_recruiter": {
         "en": "I can help find opted-in candidate profiles and search your offers. "
         "Other requests are not supported yet.",
@@ -76,14 +96,14 @@ _TEXT: dict[str, dict[str, str]] = {
         "ar": "هذا العرض غير متاح من حسابك.",
     },
     "profile": {
-        "en": "{rank}. Profile {profile_id}. Matched skills: {skills}.",
-        "fr": "{rank}. Profil {profile_id}. Compétences correspondantes : {skills}.",
-        "ar": "{rank}. الملف {profile_id}. المهارات المطابقة: {skills}.",
+        "en": "Profile {rank}. Matched skills: {skills}.",
+        "fr": "Profil n°{rank}. Compétences correspondantes : {skills}.",
+        "ar": "الملف رقم {rank}. المهارات المطابقة: {skills}.",
     },
     "profiles_hint": {
-        "en": "Open a profile in candidate discovery to see its details.",
-        "fr": "Ouvrez un profil dans la recherche de candidats pour voir ses détails.",
-        "ar": "افتح الملف في البحث عن المرشحين لعرض تفاصيله.",
+        "en": "Open a profile from the sources below to see its details.",
+        "fr": "Ouvrez un profil depuis les sources ci-dessous pour voir ses détails.",
+        "ar": "افتح ملفاً من المصادر أدناه لعرض تفاصيله.",
     },
     "recruiter_has_no_offers": {
         "en": "Your organization has no offers yet.",
@@ -123,8 +143,25 @@ def _listed(names: list[str], language: str) -> str:
     return _LIST_SEPARATOR[language].join(names) or text("none", language)
 
 
+def cv_advice_reply(evidence: dict[str, Any], language: str) -> str:
+    """Score and stored issue messages of the latest analysis; nothing is generated."""
+    if evidence["reason"] != "analysis_found":
+        return text(evidence["reason"], language)
+    header = text(
+        "cv_analysis",
+        language,
+        cv=evidence["cv_title"],
+        version=evidence["cv_version"],
+        role=evidence["role"],
+        score=evidence["score"],
+    )
+    return "\n".join([header, *(f"- {point}" for point in evidence["points"])]) + (
+        "\n" + text("cv_hint", language)
+    )
+
+
 def candidate_search_reply(evidence: dict[str, Any], language: str) -> str:
-    """IDs and matched skills only: limited-profile text never enters assistant history."""
+    """Ranks and matched skills only: the profile link is in the citations, never its text."""
     if not evidence["matches"]:
         return text(evidence["reason"], language)
     lines = [
@@ -132,7 +169,6 @@ def candidate_search_reply(evidence: dict[str, Any], language: str) -> str:
             "profile",
             language,
             rank=rank,
-            profile_id=match["profile_id"],
             skills=_listed(match["matched_skills"], language),
         )
         for rank, match in enumerate(evidence["matches"], 1)

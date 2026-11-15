@@ -26,6 +26,9 @@ def citations_for(evidence: dict[str, Any]) -> list[dict[str, str]]:
     def cite(reference: str, label: str) -> None:
         found.setdefault(reference, {"label": label, "reference": reference})
 
+    if "analysis_id" in evidence:
+        label = f"Analyse ATS : {evidence['cv_title']} v{evidence['cv_version']}"
+        cite(f"cv_analysis:{evidence['analysis_id']}", label)
     for match in evidence.get("matches", []):
         if "profile_id" in match:
             cite(f"candidate_profile:{match['profile_id']}", f"Profil n°{match['rank']}")
@@ -44,8 +47,9 @@ def start_agent_run(
 ) -> dict[str, Any]:
     conversation: Conversation
     if conversation_id is None:
-        title = "Job matches" if role == "candidate" else "Recruiter assistant"
-        conversation = create_conversation(actor, title)
+        # The first question names the conversation in the user's own language.
+        title = " ".join(prompt.split())
+        conversation = create_conversation(actor, title[:77] + "…" if len(title) > 80 else title)
     else:
         conversation = get_conversation(actor, conversation_id)
 

@@ -116,7 +116,7 @@ export default function RecruteurEntretiens() {
         </Panel>
 
         <Panel title={`À venir (${upcoming.length})`}>
-          {upcoming.length === 0 ? <EmptyState title="Aucun entretien planifié" /> : list(upcoming, true)}
+          {upcoming.length === 0 ? <EmptyState title="Aucun entretien planifié" action={<Link to="/recruteur/candidatures"><Button size="sm" variant="secondaire">Ouvrir le suivi des candidatures</Button></Link>}>Planifiez un entretien depuis une candidature.</EmptyState> : list(upcoming, true)}
         </Panel>
         {past.length > 0 && <Panel title="Historique">{list(past, false)}</Panel>}
         {completing && (

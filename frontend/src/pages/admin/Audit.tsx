@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, Cell, EmptyState, Panel, Row, Select, Table } from '../../components/ui'
+import { Badge, Button, Cell, EmptyState, Loading, Panel, Row, Select, Table } from '../../components/ui'
 import { useAuditLogs } from '../../state/adminData'
 import { useAdmin } from '../../state/admin'
 import { AUDIT_ACTION_LABEL, AUDIT_ACTOR_LABEL, AUDIT_ENTITY_LABEL, formatDateTime, labelFor } from '../../lib/format'
@@ -29,8 +29,8 @@ export default function AdminAudit() {
       <PageBody>
         {error && <p role="alert" className="mb-3 text-coral">{error}</p>}
         <Panel>
-          {loading ? <p className="p-5 text-slate">Chargement…</p> : shown.length === 0 ? (
-            <EmptyState title="Aucune entrée dans le journal." />
+          {loading ? <Loading /> : shown.length === 0 ? (
+            <EmptyState title="Aucune entrée dans le journal.">Les opérations des comptes et du système apparaîtront ici.</EmptyState>
           ) : (
             <Table head={['Horodatage', 'Auteur', 'Action', 'Entité', 'Adresse IP']}>
               {shown.map((l) => (

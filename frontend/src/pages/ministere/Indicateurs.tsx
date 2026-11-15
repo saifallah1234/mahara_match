@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Cell, Panel, Row, Select, StatTile, Table } from '../../components/ui'
+import { BarChart } from '../../components/charts'
+import { Cell, Loading, Panel, Row, Select, StatTile, Table } from '../../components/ui'
 import { useIndicators } from '../../state/reporting'
+
+export const DEMO_CAPTION = 'Chiffres de démonstration : comptages simples, pas des indicateurs validés.'
 
 export function Unavailable() {
   return (
@@ -31,14 +34,20 @@ export default function MinistereIndicateurs() {
       />
       <PageBody className="space-y-6">
         {error && <p role="alert" className="text-coral">{error}</p>}
-        {loading ? <p className="text-slate">Chargement…</p> : unavailable ? <Unavailable /> : (
+        {loading ? <Panel><Loading /></Panel> : unavailable ? <Unavailable /> : (
           <>
+            <p className="text-[13px] text-slate">{DEMO_CAPTION}</p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatTile value={sum('offers')} label="Offres" />
               <StatTile value={sum('applications')} label="Candidatures" tone="teal" />
               <StatTile value={sum('hires')} label="Recrutements" tone="leaf" note={`${conversion} % des candidatures`} />
               <StatTile value={sum('trainings')} label="Formations" tone="coral" />
             </div>
+            <BarChart
+              title="Offres et formations par gouvernorat"
+              data={rows.map((r) => ({ label: r.governorate, values: [r.offers, r.trainings] }))}
+              series={['Offres', 'Formations']}
+            />
             <Panel title="Par gouvernorat">
               <Table head={['Gouvernorat', 'Offres', 'Candidatures', 'Recrutements', 'Formations']}>
                 {rows.map((r) => (

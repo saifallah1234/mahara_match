@@ -140,7 +140,7 @@ class StubModel:
     def __init__(self, content: str) -> None:
         self.content = content
 
-    def invoke(self, messages: list[Any]) -> SimpleNamespace:
+    def invoke(self, messages: list[Any], **_: Any) -> SimpleNamespace:
         return SimpleNamespace(content=self.content)
 
 
@@ -149,7 +149,7 @@ def test_grounded_english_rewording_is_kept(monkeypatch: pytest.MonkeyPatch) -> 
         "Data Analyst at Org: matched skills SQL, missing skills Python. "
         "Training for missing skills: Python 101."
     )
-    monkeypatch.setattr("ai.agents.anetai.get_chat_model", lambda: StubModel(reply))
+    monkeypatch.setattr("ai.agents.anetai.get_chat_model", lambda **_: StubModel(reply))
     assert explain_job_search("Find jobs", _grounding_evidence(), "en") == reply
 
 
@@ -166,7 +166,7 @@ def test_grounded_english_rewording_is_kept(monkeypatch: pytest.MonkeyPatch) -> 
 def test_ungrounded_rewording_falls_back_to_template(
     monkeypatch: pytest.MonkeyPatch, reply: str
 ) -> None:
-    monkeypatch.setattr("ai.agents.anetai.get_chat_model", lambda: StubModel(reply))
+    monkeypatch.setattr("ai.agents.anetai.get_chat_model", lambda **_: StubModel(reply))
     assert explain_job_search("Find jobs", _grounding_evidence(), "en").startswith(
         "1. Data Analyst at Org. Matched skills: SQL."
     )
@@ -177,6 +177,31 @@ def test_french_and_arabic_never_call_the_model(
     monkeypatch: pytest.MonkeyPatch, language: str
 ) -> None:
     monkeypatch.setattr(
-        "ai.agents.anetai.get_chat_model", lambda: pytest.fail("FR/AR replies are templates.")
+        "ai.agents.anetai.get_chat_model", lambda **_: pytest.fail("FR/AR replies are templates.")
     )
     assert "Data Analyst" in explain_job_search("q", _grounding_evidence(), language)
+
+
+class FailingModel:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    def invoke(self, messages: list[Any], **_: Any) -> SimpleNamespace:
+        raise self.error
+
+
+@pytest.mark.parametrize("error", [ConnectionError("ollama down"), TimeoutError("model too slow")])
+def test_model_failure_or_timeout_returns_the_template(
+    monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    timeouts: list[float | None] = []
+
+    def factory(timeout: float | None = None) -> FailingModel:
+        timeouts.append(timeout)
+        return FailingModel(error)
+
+    monkeypatch.setattr("ai.agents.anetai.get_chat_model", factory)
+    reply = explain_job_search("Find jobs", _grounding_evidence(), "en")
+
+    assert reply.startswith("1. Data Analyst at Org. Matched skills: SQL.")
+    assert timeouts and timeouts[0] is not None and 0 < timeouts[0] <= 10

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
 import { MembersPanel } from '../../components/members'
-import { Badge, Button, ConfirmDialog, EmptyState, Field, Input, Modal, Panel, Select } from '../../components/ui'
+import { Badge, Button, ConfirmDialog, EmptyState, Field, Input, Loading, Modal, Panel, Select } from '../../components/ui'
 import { useAdmin } from '../../state/admin'
 import * as admin from '../../api/admin'
 import { addMember, removeMember, updateMember, type OrganizationMember } from '../../api/organization'
@@ -30,7 +30,7 @@ export default function AdminOrganisationDetail() {
     return (
       <>
         <PageHeader title="Organisation" />
-        <PageBody>{loading ? <p className="text-slate">Chargement…</p> : <EmptyState title="Organisation introuvable" action={<Link to="/admin/organisations" className="text-[13px] font-medium text-teal hover:underline">Retour à la liste</Link>} />}</PageBody>
+        <PageBody>{loading ? <Loading /> : <EmptyState title="Organisation introuvable" action={<Link to="/admin/organisations" className="text-[13px] font-medium text-teal hover:underline">Retour à la liste</Link>} />}</PageBody>
       </>
     )
   }
