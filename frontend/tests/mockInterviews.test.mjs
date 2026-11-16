@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { interviewDisplayState, recordingAllowed, recordingMimeType } from '../src/lib/mockInterviewMachine.ts'
+import { formatCountdown, interviewDisplayState, openCapture, recordingAllowed, recordingMimeType, reviewMimeType } from '../src/lib/mockInterviewMachine.ts'
 import { answerInterview, createInterview } from '../src/api/mockInterviews.ts'
 
 test('recording is allowed only while listening and server state restores the turn', () => {
@@ -29,4 +29,21 @@ test('create and upload preserve idempotency key and expected version', async ()
     assert.equal(calls[1].init.headers.has('Content-Type'), false)
     assert.equal(calls[1].init.headers.get('Idempotency-Key'), calls[2].init.headers.get('Idempotency-Key'))
   } finally { globalThis.fetch = original }
+})
+
+test('capture falls back to the microphone alone when the camera is missing or refused', async () => {
+  const track = (kind) => ({ kind })
+  const stream = (...kinds) => ({ getVideoTracks: () => kinds.filter((kind) => kind === 'video').map(track) })
+  const asked = []
+  const camera = await openCapture(async (constraints) => { asked.push(constraints); return stream('audio', 'video') })
+  assert.equal(camera.audioOnly, false)
+  assert.ok(asked[0].audio && asked[0].video)
+  const refused = await openCapture(async (constraints) => { if (constraints.video) throw new DOMException('denied', 'NotAllowedError'); return stream('audio') })
+  assert.equal(refused.audioOnly, true)
+  await assert.rejects(openCapture(async () => { throw new DOMException('denied', 'NotAllowedError') }), /microphone est nécessaire/)
+  assert.equal(reviewMimeType((mime) => mime === 'video/webm'), 'video/webm')
+  assert.equal(reviewMimeType(() => false), null)
+  assert.equal(formatCountdown(180), '3:00')
+  assert.equal(formatCountdown(65), '1:05')
+  assert.equal(formatCountdown(0), '0:00')
 })

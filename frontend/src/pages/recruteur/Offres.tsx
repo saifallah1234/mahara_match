@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, Cell, ConfirmDialog, EmptyState, Panel, Row, Table, Tabs } from '../../components/ui'
+import { Badge, Button, Cell, ConfirmDialog, EmptyState, Loading, Panel, Row, Table, Tabs } from '../../components/ui'
 import { useRecruiter } from '../../state/recruiter'
-import { OFFER_STATUS_LABEL, contractLabel, formatDate } from '../../lib/format'
+import { OFFER_STATUS_LABEL, OFFER_STATUS_TONE, contractLabel, formatDate } from '../../lib/format'
 import type { RecruiterOffer } from '../../api/recruiter'
 
-const TONE = { PUBLISHED: 'positif', DRAFT: 'neutre', PAUSED: 'attention', CLOSED: 'negatif', ARCHIVED: 'neutre' } as const
 const TABS: { status: RecruiterOffer['status']; label: string }[] = [
   { status: 'PUBLISHED', label: 'Publiées' },
   { status: 'DRAFT', label: 'Brouillons' },
@@ -32,7 +31,7 @@ export default function RecruteurOffres() {
         {error && <p role="alert" className="mb-3 text-coral">{error}</p>}
         <Panel>
           {loading ? (
-            <p className="p-5 text-slate">Chargement…</p>
+            <Loading />
           ) : offers.length === 0 ? (
             <EmptyState
               title="Aucune offre"
@@ -54,7 +53,7 @@ export default function RecruteurOffres() {
                 />
               </div>
               {shown.length === 0 ? (
-                <EmptyState title={`Aucune offre dans « ${TABS.find((t) => t.status === tab)?.label} ».`} />
+                <EmptyState title={`Aucune offre dans « ${TABS.find((t) => t.status === tab)?.label} ».`} action={<Link to="/recruteur/offres/nouvelle"><Button size="sm" variant="secondaire">Publier une offre</Button></Link>} />
               ) : (
                 <Table head={['Offre', 'Entité', 'Candidatures', 'Statut', '']}>
                   {shown.map((o) => (
@@ -68,7 +67,7 @@ export default function RecruteurOffres() {
                         {applications.filter((a) => a.offer_id === o.id).length}
                       </Cell>
                       <Cell>
-                        <Badge tone={TONE[o.status]}>{OFFER_STATUS_LABEL[o.status]}</Badge>
+                        <Badge tone={OFFER_STATUS_TONE[o.status]}>{OFFER_STATUS_LABEL[o.status]}</Badge>
                         {o.application_deadline && o.status === 'PUBLISHED' && (
                           <p className="mt-0.5 text-[12px] text-slate">clôture {formatDate(o.application_deadline)}</p>
                         )}

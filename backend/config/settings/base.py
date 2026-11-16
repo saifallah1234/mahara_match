@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "backend.apps.assistant.apps.AssistantConfig",
     "backend.apps.imports.apps.ImportsConfig",
     "backend.apps.platform.apps.PlatformConfig",
+    "backend.apps.reporting.apps.ReportingConfig",
 ]
 
 MIDDLEWARE = [

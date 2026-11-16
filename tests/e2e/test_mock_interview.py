@@ -16,6 +16,8 @@ from rest_framework_simplejwt.tokens import AccessToken
 from ai.speech.providers import MockTTS, Transcript
 from backend.apps.assistant.models import MockInterviewSession
 from backend.apps.assistant.services.interview_jobs import run_one
+from backend.apps.documents.models import Document
+from backend.common.storage import object_storage
 from tests.integration.assistant.conftest import local_media  # noqa: F401
 from tests.integration.conftest import interview, phase3  # noqa: F401
 
@@ -26,6 +28,14 @@ pytestmark = [pytest.mark.e2e, pytest.mark.django_db(transaction=True)]
 def test_browser_interview_journey(request, live_server, followup, monkeypatch, settings, tmp_path):
     data = request.getfixturevalue("interview")
     request.getfixturevalue("local_media")
+    uploads: dict[str, bytes] = {}
+    store = object_storage.upload_object
+
+    def record_upload(key, content, mime):
+        uploads[key] = content
+        return store(key, content, mime)
+
+    monkeypatch.setattr(object_storage, "upload_object", record_upload)
     if followup:
         from backend.apps.assistant.services import interview_jobs
 
@@ -95,7 +105,7 @@ def test_browser_interview_journey(request, live_server, followup, monkeypatch, 
                     "--autoplay-policy=no-user-gesture-required",
                 ],
             )
-            context = browser.new_context(permissions=["microphone"])
+            context = browser.new_context(permissions=["microphone", "camera"])
             page = context.new_page()
             errors = []
             page.on("pageerror", lambda error: errors.append(str(error)))
@@ -131,15 +141,25 @@ def test_browser_interview_journey(request, live_server, followup, monkeypatch, 
                 )
             except Exception as exc:
                 raise AssertionError((page.locator("body").inner_text(), errors)) from exc
-            expect(page.get_by_text("État : PREPARING", exact=True)).to_be_visible()
+            expect(page.get_by_text("État : Préparation", exact=True)).to_be_visible()
             for _ in range(20):
                 if not tasks.submit(run_task).result():
                     break
+            expect(
+                page.get_by_role("button", name="Annuler l’entretien", exact=True)
+            ).to_be_visible()
             page.get_by_role("button", name="Commencer", exact=True).click()
-            expect(page.get_by_text("État : INTRO", exact=True)).to_be_visible()
+            expect(page.get_by_text("État : Introduction", exact=True)).to_be_visible()
+            expect(page.get_by_text("Question 1/3", exact=True)).not_to_be_visible()
+            interviewer = page.get_by_role("region", name="Recruteur virtuel").locator("video")
+            expect(interviewer).to_be_visible()
+            frame = interviewer.bounding_box()
+            camera = page.get_by_role("region", name="Vous").get_by_text("Votre caméra s’activera")
+            assert frame and frame["width"] > 280 and frame["height"] > 500
+            assert abs(frame["height"] - (camera.bounding_box() or {"height": 0})["height"]) < 2
             page.get_by_role("button", name="Lire", exact=True).click()
             for position in [1, "followup", 2, 3] if followup else [1, 2, 3]:
-                expect(page.get_by_text("État : SPEAKING", exact=True)).to_be_visible()
+                expect(page.get_by_text("État : Question", exact=True)).to_be_visible()
                 expect(
                     page.get_by_text(
                         "Relance" if position == "followup" else f"Question {position}/3",
@@ -154,11 +174,37 @@ def test_browser_interview_journey(request, live_server, followup, monkeypatch, 
                     expect(
                         page.get_by_role("button", name="Démarrer l’enregistrement")
                     ).not_to_be_visible()
+                expect(page.get_by_label("Aperçu de votre caméra")).to_be_visible()
+                expect(
+                    page.get_by_text("Seul l’audio est envoyé ; la vidéo reste sur votre appareil.")
+                ).to_be_visible()
                 page.get_by_role("button", name="Démarrer l’enregistrement", exact=True).click()
+                expect(page.get_by_role("timer")).to_be_visible()
                 page.wait_for_timeout(1100)
                 page.get_by_role("button", name="Arrêter l’enregistrement", exact=True).click()
+                expect(page.get_by_label("Revoir votre réponse")).to_be_visible()
+                expect(page.get_by_role("button", name="Réenregistrer", exact=True)).to_be_visible()
+                if position == 1:
+                    # The replay shows camera frames, not a black picture (fake camera is not black).
+                    brightness = page.get_by_label("Revoir votre réponse").evaluate(
+                        """async video => {
+                            video.muted = true; await video.play()
+                            await new Promise(done => setTimeout(done, 500))
+                            const canvas = document.createElement('canvas')
+                            canvas.width = video.videoWidth; canvas.height = video.videoHeight
+                            const context = canvas.getContext('2d'); context.drawImage(video, 0, 0)
+                            const data = context.getImageData(0, 0, canvas.width, canvas.height).data
+                            let sum = 0; for (let i = 0; i < data.length; i += 4) sum += data[i] + data[i + 1] + data[i + 2]
+                            video.pause(); return sum / (data.length / 4) / 3
+                        }"""
+                    )
+                    assert brightness > 10, brightness
+                    page.get_by_role("button", name="Réenregistrer", exact=True).click()
+                    page.wait_for_timeout(1100)
+                    page.get_by_role("button", name="Arrêter l’enregistrement", exact=True).click()
+                    expect(page.get_by_label("Revoir votre réponse")).to_be_visible()
                 page.get_by_role("button", name="Envoyer la réponse", exact=True).click()
-                expect(page.get_by_text("État : THINKING", exact=True)).to_be_visible()
+                expect(page.get_by_text("État : Analyse", exact=True)).to_be_visible()
                 for _ in range(20):
                     if not tasks.submit(run_task).result():
                         break
@@ -184,6 +230,28 @@ def test_browser_interview_journey(request, live_server, followup, monkeypatch, 
             )
             context.close()
             browser.close()
+        recordings = tasks.submit(
+            lambda: list(
+                Document.objects.filter(type="INTERVIEW_RECORDING").values_list(
+                    "storage_uri", flat=True
+                )
+            )
+        ).result()
+        assert len(recordings) == (4 if followup else 3)
+        path = tmp_path / "answer.webm"
+
+        def probe(stream):
+            return subprocess.run(
+                [settings.INTERVIEW_FFMPEG, "-v", "error", "-i", str(path)]
+                + ["-map", f"0:{stream}:0", "-f", "null", "-"],
+                capture_output=True,
+            )
+
+        for key in recordings:
+            path.write_bytes(uploads[key])
+            assert probe("a").returncode == 0
+            video = probe("v")
+            assert video.returncode != 0 and b"matches no streams" in video.stderr
     finally:
         tasks.submit(connections.close_all).result()
         tasks.shutdown()

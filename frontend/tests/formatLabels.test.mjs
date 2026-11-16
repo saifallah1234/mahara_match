@@ -2,11 +2,17 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   CONTRACT_OPTIONS,
+  MOCK_ERROR_LABEL,
+  MOCK_ERROR_FALLBACK,
   EXPERIENCE_OPTIONS,
   apiErrorMessage,
   contractLabel,
   experienceLabel,
+  formatDateTime,
+  formatPrice,
   formatTunisDateTime,
+  labelFor,
+  skillLabel,
 } from '../src/lib/format.ts'
 
 test('one shared contract list is offered by the form and the filter', () => {
@@ -44,4 +50,34 @@ test('field names without a French label fall back to a generic French label', (
 
 test('interview times show the Tunis wall clock with its zone label', () => {
   assert.equal(formatTunisDateTime('2026-10-24T09:00:00Z'), '24 oct. 2026, 10:00 UTC+1')
+})
+
+test('date-times read on a 24-hour clock', () => {
+  assert.equal(formatDateTime('2026-11-07T14:53:00'), '07 nov. 2026, 14:53')
+  assert.equal(formatDateTime('2026-11-07T00:05:00'), '07 nov. 2026, 00:05')
+})
+
+test('prices: free, whole and decimal amounts share one format', () => {
+  assert.equal(formatPrice('0.00'), 'Gratuit')
+  assert.equal(formatPrice(0), 'Gratuit')
+  assert.equal(formatPrice('600.00'), '600 TND')
+  assert.equal(formatPrice('1250.50'), '1\u202f250,5 TND')
+  assert.equal(formatPrice(undefined), 'Non renseigné')
+})
+
+test('skill labels get a capital first letter only', () => {
+  assert.equal(skillLabel('data mining'), 'Data mining')
+  assert.equal(skillLabel('utilise machine learning'), 'Utilise machine learning')
+  assert.equal(skillLabel('Python'), 'Python')
+  assert.equal(skillLabel('SQL'), 'SQL')
+  assert.equal(skillLabel('écrire du code'), 'Écrire du code')
+  assert.equal(skillLabel(''), '')
+})
+
+test('mock interview failures read in French and never show the raw code', () => {
+  const stageFailed = labelFor(MOCK_ERROR_LABEL, 'stage_failed', MOCK_ERROR_FALLBACK)
+  assert.match(stageFailed, /réessayer/i)
+  assert.doesNotMatch(stageFailed, /stage_failed/)
+  assert.equal(labelFor(MOCK_ERROR_LABEL, 'boom_unknown', MOCK_ERROR_FALLBACK), MOCK_ERROR_FALLBACK)
+  assert.doesNotMatch(MOCK_ERROR_FALLBACK, /_/)
 })

@@ -1,0 +1,161 @@
+# Placement: tests/fixtures/cv_review/synthetic_cvs.yaml
+# Synthetic English CVs for ATS analysis tests. All people, companies and contacts are fictional.
+# `bases` hold full CV texts; each entry in `cvs` renders a base (optionally changed) to a file:
+#   format: pdf | docx        layout: single | two_column | table | scan | image | icon_font |
+#                                     textbox | columns (docx section columns)
+#   drop: remove lines containing any of these substrings     replace: {old: new} on every line
+#   append: extra lines at the end      repeat_bullets: duplicate experience bullets N times
+#   expect / absent: issue codes that must / must not appear for (role, level)
+#   reject: true when the analysis must be refused (non-English)
+bases:
+  de_good:
+    - Amina Example
+    - amina.example@example.test | +216 20 000 111 | github.com/amina-example
+    - Summary
+    - Junior data engineer who builds reliable batch and streaming pipelines for analytics teams,
+    - with a focus on clean data models, tested transformations and well documented jobs.
+    - Experience
+    - Data Engineering Intern, Example Logistics | Feb 2024 - Aug 2024
+    - • Built ETL pipelines in Python and Airflow ingesting 12 sources into PostgreSQL
+    - • Migrated 40 batch jobs to Spark on AWS, cutting runtime by 35%
+    - • Designed a star schema data warehouse for 20 million rows of shipment data
+    - • Automated data validation with Great Expectations on 30 tables
+    - • Optimized SQL queries behind 8 dashboards, reducing latency to 900 ms
+    - Projects
+    - Streaming Analytics Demo | 2023
+    - • Developed a Kafka and Docker stream processing 2 million events per day
+    - • Modeled dbt transformations over 15 datasets for a reporting dashboard
+    - Open Data Loader | 2022
+    - • Built a Python loader that ingests 5 GB of public transport data every night
+    - Skills
+    - SQL, Python, Airflow, Spark, Kafka, Docker, dbt, AWS, Terraform, Git, Great Expectations
+    - Education
+    - BSc in Computer Science, Example University | 2020 - 2024
+    - Relevant courses include databases, distributed systems, statistics and cloud computing.
+    - Languages
+    - English (fluent), French (fluent), Arabic (native)
+  se_good:
+    - Youssef Example
+    - youssef.example@example.test | +216 50 000 222 | linkedin.com/in/youssef-example
+    - Summary
+    - Junior software engineer focused on tested web applications, clean REST APIs and
+    - maintainable frontends, used to working in small agile teams with code reviews.
+    - Skills
+    - Python, Django, JavaScript, TypeScript, React, PostgreSQL, Docker, Git, GitHub Actions, pytest, Linux
+    - Experience
+    - Software Engineering Intern, Example Fintech | Mar 2024 - Sep 2024
+    - • Built REST APIs in Django serving 5000 users with response time under 200 ms
+    - • Raised unit test coverage from 40% to 85% with pytest
+    - • Automated deployments with GitHub Actions and Docker, reaching 10 releases per week
+    - • Refactored React components, removing 12 recurring UI errors reported by users
+    - • Implemented GraphQL endpoints in Python that cut mobile requests by 30%
+    - Projects
+    - Task Tracker App | 2023
+    - • Developed a React and TypeScript frontend backed by a Django REST API used by 300 users
+    - • Implemented integration tests with Jest covering 70% of the frontend code
+    - Chat Bot Service | 2022
+    - • Built a Flask microservice with PostgreSQL handling 1000 requests per day
+    - Education
+    - BSc in Software Engineering, Example University | 2020 - 2024
+    - Relevant courses include algorithms, operating systems, databases and software design.
+  fr_cv:
+    - Sami Exemple
+    - sami.exemple@example.test | +216 22 000 333
+    - Profil
+    - Ingénieur de données junior qui construit des chaînes de traitement fiables pour les équipes
+    - d'analyse, avec une attention particulière à la qualité et à la documentation des données.
+    - Expérience
+    - Stagiaire ingénieur de données, Exemple Transport | 2024
+    - • Construction de chaînes de traitement en Python alimentant un entrepôt de données
+    - • Migration de quarante traitements par lots vers le nuage avec une réduction des coûts
+    - Formation
+    - Licence en informatique, Université Exemple | 2020 - 2024
+  es_cv:
+    - Lucía Ejemplo
+    - lucia.ejemplo@example.test | +216 22 000 444
+    - Resumen
+    - Ingeniera de datos junior que construye canales de procesamiento fiables para los equipos
+    - de análisis, con atención especial a la calidad y la documentación de los datos.
+    - Experiencia
+    - Becaria de ingeniería de datos, Ejemplo Transporte | 2024
+    - • Construcción de canales de procesamiento en Python que alimentan un almacén de datos
+    - Educación
+    - Grado en informática, Universidad Ejemplo | 2020 - 2024
+
+cvs:
+  - {id: de_good_pdf, base: de_good, format: pdf, role: data_engineer, level: junior,
+     absent: [missing_sections, missing_core_skills, multi_column, tables, images, too_long, too_short,
+              missing_email, missing_phone, no_text_layer]}
+  - {id: se_good_pdf, base: se_good, format: pdf, role: software_engineer, level: junior,
+     absent: [missing_sections, missing_core_skills, multi_column, tables, too_long, too_short, section_order]}
+  - {id: de_good_docx, base: de_good, format: docx, role: data_engineer, level: junior,
+     absent: [missing_sections, missing_core_skills, multi_column, tables, text_boxes, images, unusual_fonts]}
+  - {id: se_good_docx, base: se_good, format: docx, role: software_engineer, level: junior,
+     absent: [missing_sections, missing_core_skills, multi_column, tables, text_boxes, images]}
+  - {id: de_scan_pdf, base: de_good, format: pdf, layout: scan, role: data_engineer, level: junior,
+     expect: [no_text_layer], absent: [images]}
+  - {id: de_two_column_pdf, base: de_good, format: pdf, layout: two_column, role: data_engineer,
+     level: junior, expect: [multi_column]}
+  - {id: se_table_pdf, base: se_good, format: pdf, layout: table, role: software_engineer, level: junior,
+     expect: [tables]}
+  - {id: de_image_pdf, base: de_good, format: pdf, layout: image, role: data_engineer, level: junior,
+     expect: [images], absent: [no_text_layer]}
+  - {id: se_icon_font_pdf, base: se_good, format: pdf, layout: icon_font, role: software_engineer,
+     level: junior, expect: [unusual_fonts]}
+  - {id: de_table_docx, base: de_good, format: docx, layout: table, role: data_engineer, level: junior,
+     expect: [tables]}
+  - {id: se_textbox_docx, base: se_good, format: docx, layout: textbox, role: software_engineer,
+     level: junior, expect: [text_boxes]}
+  - {id: de_columns_docx, base: de_good, format: docx, layout: columns, role: data_engineer,
+     level: junior, expect: [multi_column]}
+  - {id: de_image_docx, base: de_good, format: docx, layout: image, role: data_engineer, level: junior,
+     expect: [images]}
+  - {id: de_missing_sections, base: de_good, format: pdf, role: data_engineer, level: junior,
+     drop: ["Projects", "Streaming Analytics", "Kafka and Docker", "dbt transformations", "Open Data",
+            "Python loader", "Skills", "SQL, Python, Airflow"],
+     expect: [missing_sections]}
+  - {id: se_wrong_order, base: se_good, format: pdf, role: software_engineer, level: junior,
+     drop: ["Skills", "Python, Django, JavaScript"],
+     append: ["Skills", "Python, Django, JavaScript, React, PostgreSQL, Docker, Git, pytest"],
+     expect: [section_order]}
+  - {id: de_weak_bullets, base: de_good, format: pdf, role: data_engineer, level: mid,
+     replace: {"Built ETL pipelines in Python and Airflow ingesting 12 sources into PostgreSQL": "Responsible for the pipelines of the team",
+               "Migrated 40 batch jobs to Spark on AWS, cutting runtime by 35%": "Worked on moving old jobs to a new platform",
+               "Designed a star schema data warehouse for 20 million rows of shipment data": "Helped with the warehouse and reports"},
+     expect: [weak_phrases, bullets_without_metric, bullets_without_verb]}
+  - {id: de_keyword_stuffed, base: de_good, format: pdf, role: data_engineer, level: junior,
+     replace: {"Built ETL pipelines in Python and Airflow ingesting 12 sources into PostgreSQL": "Built internal reports for the operations team every week",
+               "Migrated 40 batch jobs to Spark on AWS, cutting runtime by 35%": "Reduced manual work for the finance team by 10 hours",
+               "Designed a star schema data warehouse for 20 million rows of shipment data": "Designed a new onboarding guide for 6 analysts",
+               "Automated data validation with Great Expectations on 30 tables": "Automated weekly status emails for the managers",
+               "Optimized SQL queries behind 8 dashboards, reducing latency to 900 ms": "Optimized the meeting schedule of the whole team",
+               "Developed a Kafka and Docker stream processing 2 million events per day": "Developed a small game for a student competition",
+               "Modeled dbt transformations over 15 datasets for a reporting dashboard": "Created a poster about the project for the open day",
+               "Built a Python loader that ingests 5 GB of public transport data every night": "Built a schedule viewer for the bus lines of the city"},
+     expect: [skills_without_evidence]}
+  - {id: de_long_junior, base: de_good, format: pdf, role: data_engineer, level: junior, repeat_bullets: 6,
+     expect: [too_long]}
+  - {id: de_long_mid, base: de_good, format: pdf, role: data_engineer, level: mid, repeat_bullets: 6,
+     absent: [too_long]}
+  - {id: de_no_contact, base: de_good, format: pdf, role: data_engineer, level: junior,
+     drop: ["amina.example@example.test"], expect: [missing_email, missing_phone]}
+  - {id: se_missing_core, base: se_good, format: pdf, role: software_engineer, level: junior,
+     replace: {"Git, GitHub Actions, pytest, ": "", "Raised unit test coverage from 40% to 85% with pytest": "Raised customer satisfaction to 85% in surveys",
+               "Automated deployments with GitHub Actions and Docker, reaching 10 releases per week": "Automated release notes for 10 releases per week",
+               "Built REST APIs in Django serving": "Built Django pages serving",
+               "Implemented GraphQL endpoints in Python that cut mobile requests by 30%": "Implemented caching in Python that cut page load by 30%",
+               "backed by a Django REST API used by 300 users": "used by 300 users",
+               "Implemented integration tests with Jest covering 70% of the frontend code": "Implemented dark mode for 70% of the screens"},
+     expect: [missing_core_skills]}
+  - {id: de_intern_projects_only, base: de_good, format: pdf, role: data_engineer, level: intern,
+     drop: ["Experience", "Data Engineering Intern", "ETL pipelines", "Migrated 40", "star schema",
+            "Great Expectations on", "Optimized SQL"],
+     absent: [missing_sections]}
+  - {id: de_no_bullets, base: de_good, format: pdf, role: data_engineer, level: junior,
+     drop: ["•"], expect: [no_bullets]}
+  - {id: de_short, base: de_good, format: pdf, role: data_engineer, level: junior,
+     drop: ["•", "Junior data", "with a focus", "Relevant courses", "Streaming", "Open Data", "English"],
+     expect: [too_short]}
+  - {id: fr_pdf, base: fr_cv, format: pdf, role: data_engineer, level: junior, reject: true}
+  - {id: fr_docx, base: fr_cv, format: docx, role: data_engineer, level: junior, reject: true}
+  - {id: es_docx, base: es_cv, format: docx, role: software_engineer, level: junior, reject: true}

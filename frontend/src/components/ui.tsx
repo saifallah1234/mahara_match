@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { Children, cloneElement, createContext, isValidElement, useContext, useEffect, useRef, useState, type ReactElement, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { cx } from '../lib/format'
 
 /* ------------------------------------------------------------------ */
@@ -66,6 +66,21 @@ export function Panel({
   )
 }
 
+/** Placeholder bars shown while a list loads; the hidden text keeps « Chargement… » for screen readers. */
+export function Loading() {
+  return (
+    <div role="status" className="space-y-3 px-5 py-4">
+      <span className="sr-only">Chargement…</span>
+      {[0, 1, 2].map((i) => (
+        <div key={i} aria-hidden className="space-y-1.5">
+          <div className="h-3.5 w-2/5 animate-pulse rounded bg-mist" />
+          <div className="h-3 w-3/4 animate-pulse rounded bg-mist/70" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function EmptyState({ title, children, action }: { title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
@@ -128,7 +143,7 @@ export function Field({
 }
 
 const CONTROL =
-  'w-full rounded-[6px] border border-line bg-white px-3 py-2 text-sm text-navy placeholder:text-slate/60 focus:border-teal focus:outline-none'
+  'w-full rounded-[6px] border border-line bg-white px-3 py-2 text-sm text-navy placeholder:text-slate focus:border-teal'
 
 export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...rest} className={cx(CONTROL, className)} />
@@ -150,11 +165,14 @@ export function Select({ className, children, ...rest }: SelectHTMLAttributes<HT
 /* Tableaux                                                            */
 /* ------------------------------------------------------------------ */
 
+// Column titles, so each cell can label itself when the table becomes stacked cards on phones.
+const TableHead = createContext<ReactNode[]>([])
+
 export function Table({ head, children }: { head: ReactNode[]; children: ReactNode }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead>
+    <div className="sm:overflow-x-auto">
+      <table className="block w-full border-collapse text-sm sm:table">
+        <thead className="hidden sm:table-header-group">
           <tr className="border-b border-line text-left">
             {head.map((cell, i) => (
               <th key={i} className="px-5 py-2.5 text-[12px] font-semibold text-slate">
@@ -163,25 +181,39 @@ export function Table({ head, children }: { head: ReactNode[]; children: ReactNo
             ))}
           </tr>
         </thead>
-        <tbody>{children}</tbody>
+        <tbody className="block sm:table-row-group">
+          <TableHead.Provider value={head}>{children}</TableHead.Provider>
+        </tbody>
       </table>
     </div>
   )
 }
 
 export function Row({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
+  const head = useContext(TableHead)
+  let column = 0
+  const cells = Children.map(children, (child) =>
+    isValidElement(child) && child.type === Cell ? cloneElement(child as ReactElement<CellProps>, { label: head[column++] }) : child,
+  )
   return (
     <tr
       onClick={onClick}
-      className={cx('border-b border-line/70 last:border-0', onClick && 'cursor-pointer hover:bg-mist/60')}
+      className={cx('block border-b border-line/70 py-2 last:border-0 sm:table-row sm:py-0', onClick && 'cursor-pointer hover:bg-mist/60')}
     >
-      {children}
+      {cells}
     </tr>
   )
 }
 
-export function Cell({ children, className }: { children: ReactNode; className?: string }) {
-  return <td className={cx('px-5 py-3 align-middle', className)}>{children}</td>
+type CellProps = { children: ReactNode; className?: string; label?: ReactNode }
+
+export function Cell({ children, className, label }: CellProps) {
+  return (
+    <td className={cx('block px-5 py-1 align-middle sm:table-cell sm:py-3', className)}>
+      {label && <span className="block text-left text-[11px] font-semibold text-slate sm:hidden">{label}</span>}
+      {children}
+    </td>
+  )
 }
 
 /* ------------------------------------------------------------------ */

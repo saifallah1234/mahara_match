@@ -40,6 +40,32 @@ A user attached to an organization and therefore able to act on its offers, appl
 sessions. Only an administrator adds or removes one; members can see each other.
 _Avoid_: Colleague, staff, employee
 
+## CV review
+
+**ATS analysis**:
+A stored review of one CV against one role at one level, producing an ATS readiness, a role fit, a breakdown and a list of issues. It is improvement feedback, never a hiring decision.
+_Avoid_: CV score, CV analysis result (as a name for the concept)
+
+**ATS readiness**:
+How reliably an applicant tracking system can read the CV: format, sections, length and wording quality. It does not depend on the chosen role.
+_Avoid_: ATS score, ATS compatibility
+
+**Role fit**:
+How well the CV's skills and evidence cover the chosen role profile. Not the same as a match score, which is candidate-to-offer.
+_Avoid_: Role match, match score
+
+**Role profile**:
+A versioned definition of one target role (core, common and bonus skills with aliases, action verbs, metric hints, example bullets). It is the reference a CV is reviewed against.
+_Avoid_: Job template, virtual job description
+
+**Evidence**:
+A skill backed by a bullet in an experience or project, as opposed to a skill that only appears in the skills list.
+_Avoid_: Proof, usage
+
+**CV draft**:
+The analysed CV's parsed data plus the edits the candidate accepted during review; the source from which an ATS-friendly CV file is generated. The candidate profile is not changed by it.
+_Avoid_: Improved CV, new CV
+
 ## Data processing
 
 **Pipeline**:

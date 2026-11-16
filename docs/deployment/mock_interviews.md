@@ -44,6 +44,12 @@ Install optional local speech only when models are available:
 uv sync --frozen --extra local-speech
 ```
 
+`STT_PROVIDER=faster-whisper` and `TTS_PROVIDER=piper` need this `local-speech` extra.
+`run_interview_tasks` builds the configured STT and TTS providers at startup and exits
+with an error naming the provider if one cannot be built (missing extra, model or key),
+before processing any job. ElevenLabs is only checked for configuration there; no paid
+request is made at startup.
+
 Set `TTS_PROVIDER=piper`, `PIPER_MODEL_PATH` to an existing French ONNX voice with
 its adjacent `.onnx.json`; set `STT_PROVIDER=faster-whisper`,
 `FASTER_WHISPER_MODEL_PATH` to an existing complete model directory (`model.bin`,

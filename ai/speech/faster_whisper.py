@@ -1,3 +1,4 @@
+import wave
 from importlib import import_module
 from io import BytesIO
 from pathlib import Path
@@ -25,8 +26,20 @@ class FasterWhisperSTT:
     def transcribe(self, audio: bytes, language: str) -> Transcript:
         if language != "fr" or not audio:
             raise ValueError("French audio is required.")
+        # The job passes the 16 kHz mono WAV decoded by FFmpeg. Hand faster-whisper the samples:
+        # its own PyAV decoder calls av.open(metadata_errors=...), which PyAV 19 rejects.
+        try:
+            with wave.open(BytesIO(audio), "rb") as source:
+                layout = (source.getnchannels(), source.getsampwidth(), source.getframerate())
+                frames = source.readframes(source.getnframes())
+        except (wave.Error, EOFError) as exc:
+            raise ValueError("Expected 16 kHz mono 16-bit WAV audio.") from exc
+        if layout != (1, 2, 16000):
+            raise ValueError("Expected 16 kHz mono 16-bit WAV audio.")
+        numpy = import_module("numpy")
+        samples = numpy.frombuffer(frames, dtype="<i2").astype(numpy.float32) / 32768.0
         segments, info = self.model.transcribe(
-            BytesIO(audio), language="fr", vad_filter=True, condition_on_previous_text=False
+            samples, language="fr", vad_filter=True, condition_on_previous_text=False
         )
         text = " ".join(segment.text.strip() for segment in segments).strip()
         if not text:

@@ -14,14 +14,14 @@ class StubModel:
     def __init__(self, content: str) -> None:
         self.content = content
 
-    def invoke(self, messages: list[Any]) -> SimpleNamespace:
+    def invoke(self, messages: list[Any], **_: Any) -> SimpleNamespace:
         return SimpleNamespace(content=self.content)
 
 
 def test_unsafe_ollama_claims_fall_back_to_match_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "ai.agents.anetai.get_chat_model",
-        lambda: StubModel("You have all required skills. Apply here: http://link.com/apply."),
+        lambda **_: StubModel("You have all required skills. Apply here: http://link.com/apply."),
     )
     evidence = {
         "reason": "matches_found",
@@ -50,7 +50,7 @@ def test_grounded_ollama_explanation_is_kept(monkeypatch: pytest.MonkeyPatch) ->
     reply = (
         "Python Developer at Example Org has 100% skill coverage. Matched: Python; missing: none."
     )
-    monkeypatch.setattr("ai.agents.anetai.get_chat_model", lambda: StubModel(reply))
+    monkeypatch.setattr("ai.agents.anetai.get_chat_model", lambda **_: StubModel(reply))
     evidence = {
         "reason": "matches_found",
         "matches": [
@@ -74,7 +74,7 @@ def test_empty_results_use_evidence_summary_without_calling_model(
 ) -> None:
     monkeypatch.setattr(
         "ai.agents.anetai.get_chat_model",
-        lambda: pytest.fail("No LLM call is needed when there are no scored matches."),
+        lambda **_: pytest.fail("No LLM call is needed when there are no scored matches."),
     )
 
     reply = explain_matches(
@@ -121,7 +121,7 @@ def test_unsupported_graph_path_does_not_call_matching_or_model() -> None:
 def test_changed_score_or_unsupported_claims_use_deterministic_fallback(
     monkeypatch: pytest.MonkeyPatch, reply: str
 ) -> None:
-    monkeypatch.setattr("ai.agents.anetai.get_chat_model", lambda: StubModel(reply))
+    monkeypatch.setattr("ai.agents.anetai.get_chat_model", lambda **_: StubModel(reply))
     evidence = {
         "reason": "matches_found",
         "matches": [
@@ -140,4 +140,32 @@ def test_changed_score_or_unsupported_claims_use_deterministic_fallback(
     assert explain_matches("What jobs match my profile?", evidence) == (
         "Python Developer at Example Org: 100.00% skill coverage. "
         "Matched skills: Python. Missing skills: none."
+    )
+
+
+class FailingModel:
+    def invoke(self, messages: list[Any], **_: Any) -> SimpleNamespace:
+        raise TimeoutError("model too slow")
+
+
+def test_model_failure_returns_the_match_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("ai.agents.anetai.get_chat_model", lambda **_: FailingModel())
+    evidence = {
+        "reason": "matches_found",
+        "matches": [
+            {
+                "title": "Python Developer",
+                "organization": "Example Org",
+                "score": "50.00",
+                "matched_skills": ["Python"],
+                "missing_skills": ["SQL"],
+                "offer_skills": ["Python", "SQL"],
+                "offer_url": "",
+            }
+        ],
+    }
+
+    assert explain_matches("What jobs match my profile?", evidence) == (
+        "Python Developer at Example Org: 50.00% skill coverage. "
+        "Matched skills: Python. Missing skills: SQL."
     )

@@ -1,0 +1,163 @@
+{
+  "placement": "backend/apps/taxonomy/data/esco_skills.json",
+  "source": "ESCO (European Skills, Competences, Qualifications and Occupations) v1.2, https://esco.ec.europa.eu",
+  "retrieved": "2026-11-07 via https://ec.europa.eu/esco/api (English preferred labels and descriptions, copied verbatim)",
+  "skills": [
+    {
+      "uri": "http://data.europa.eu/esco/skill/ccd0a1d9-afda-43d9-b901-96344886e14d",
+      "label": "Python (computer programming)",
+      "skill_type": "knowledge",
+      "description": "The techniques and principles of software development, such as analysis, algorithms, coding, testing and compiling of programming paradigms in Python."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/598de5b0-5b58-4ea7-8058-a4bc4d18c742",
+      "label": "SQL",
+      "skill_type": "knowledge",
+      "description": "The computer language SQL is a query language for retrieval of information from a database and of documents containing the needed information. It is developed by the American National Standards Institute and the International Organization for Standardization."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/3cd569a2-4f88-4c1e-9995-8dce8c5e51a7",
+      "label": "JavaScript",
+      "skill_type": "knowledge",
+      "description": "The techniques and principles of software development, such as analysis, algorithms, coding, testing and compiling of programming paradigms in JavaScript."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/867137fb-ff1b-4ca3-99f3-cb6969aa2c68",
+      "label": "TypeScript",
+      "skill_type": "knowledge",
+      "description": "The techniques and principles of software development, such as analysis, algorithms, coding, testing and compiling of programming paradigms in TypeScript."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/19a8293b-8e95-4de3-983f-77484079c389",
+      "label": "Java (computer programming)",
+      "skill_type": "knowledge",
+      "description": "The techniques and principles of software development, such as analysis, algorithms, coding, testing and compiling of programming paradigms in Java."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/a8d07b5a-c1a1-42c6-9d53-db9c7a2ca996",
+      "label": "PostgreSQL",
+      "skill_type": "knowledge",
+      "description": "The computer program PostgreSQL is a free and open-source software tool for creating, updating and managing databases, developed by the PostgreSQL Global Development Group."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/76ef6ed3-1658-4a1a-9593-204d799c6d0c",
+      "label": "NoSQL",
+      "skill_type": "knowledge",
+      "description": "The Not Only SQL non-relational database used for creating, updating and managing large amounts of unstructured data stored in the cloud."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/ab1e97ed-2319-4293-a8b7-072d2648822f",
+      "label": "database management systems",
+      "skill_type": "knowledge",
+      "description": "The tools for creating, updating and managing databases, such as Oracle, MySQL and Microsoft SQL Server."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/8369c2d6-c100-4cf6-bd83-9668d8678433",
+      "label": "utilise machine learning",
+      "skill_type": "skill",
+      "description": "Use techniques and algorithms that are able to extract mastery out of data, learn from it and make predictions, to be used for program optimisation, application adaptation, pattern recognition, filtering, search engines and computer vision."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/25f0ea33-b4a2-4f31-b7b4-7d20e827b180",
+      "label": "data mining",
+      "skill_type": "knowledge",
+      "description": "The methods of artificial intelligence, machine learning, statistics and databases used to extract content from a dataset."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/7ee4c2ea-b349-4bd2-81a3-ec31475d4833",
+      "label": "statistics",
+      "skill_type": "knowledge",
+      "description": "The study of statistical theory, methods and practices such as collection, organisation, analysis, interpretation and presentation of data. It deals with all aspects of data including the planning of data collection in terms of the design of surveys and experiments in order to forecast and plan work-related activities."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/382c11ed-20d5-4ae7-b60e-15fec527fa6c",
+      "label": "apply statistical analysis techniques",
+      "skill_type": "skill",
+      "description": "Use models (descriptive or inferential statistics) and techniques (data mining or machine learning) for statistical analysis and ICT tools to analyse data, uncover correlations and forecast trends."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/c3e36d05-8ae8-447f-bb2b-6f9409f85389",
+      "label": "deliver visual presentation of data",
+      "skill_type": "skill",
+      "description": "Create visual representations of data such as charts or diagrams for easier understanding."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/fbafa41f-cd05-4109-a649-8b44d306d779",
+      "label": "create data models",
+      "skill_type": "skill",
+      "description": "Use specific techniques and methodologies to analyse the data requirements of an organisation's business processes in order to create models for these data, such as conceptual, logical and physical models. These models have a specific structure and format."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/69bbd53f-fbb0-4476-b4b2-ef7844464e28",
+      "label": "web programming",
+      "skill_type": "knowledge",
+      "description": "The programming paradigm that is based on combining markup (which adds context and structure to text) and other web programming code, such as AJAX, javascript and PHP, in order to carry out appropriate actions and visualise the content."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/9b9de2a4-d8af-4a7b-933a-a8334ae60067",
+      "label": "JavaScript Framework",
+      "skill_type": "knowledge",
+      "description": "The JavaScript software development environments which provide specific features and components ( such as HTML generation tools, Canvas support or Visual design) that support and guide JavaScript web applications development."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/0af062de-eb43-41e9-9b96-249e2cd22d26",
+      "label": "use markup languages",
+      "skill_type": "skill",
+      "description": "Utilise computer languages that are syntactically distinguishable from the text to add annotations to a document, specify layout and process types of documents such as HTML."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/9d2e926f-53d9-41f5-98f3-19dfaa687f3f",
+      "label": "tools for software configuration management",
+      "skill_type": "knowledge",
+      "description": "The software programs to perform configuration identification, control, status accounting and audit, such as CVS, ClearCase, Subversion, GIT and TortoiseSVN perform this management."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/0a9acb6b-1139-4be9-b431-3a80a959f2f4",
+      "label": "Agile project management",
+      "skill_type": "knowledge",
+      "description": "The agile project management approach is a methodology for planning, managing and overseeing of ICT resources in order to meet specific goals and using project management ICT tools."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/7961413f-61d0-4722-9cd9-20a050a29899",
+      "label": "perform software unit testing",
+      "skill_type": "skill",
+      "description": "Test single units of source code to determine whether or not they are suitable for use by creating short code fragments."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/2522a6ce-3202-4ac8-9f5b-b9cb5a3a83a1",
+      "label": "debug software",
+      "skill_type": "skill",
+      "description": "Repair computer code by analysing testing results, locating the defects causing the software to output an incorrect or unexpected result and removing these faults."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/bd14968e-e409-45af-b362-3495ed7b10e0",
+      "label": "cloud technologies",
+      "skill_type": "knowledge",
+      "description": "The technologies which enable access to hardware, software, data and services through remote servers and software networks irrespective of their location and architecture."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/2b7a79e5-84d8-4880-be66-3d9bb05bea17",
+      "label": "use software design patterns",
+      "skill_type": "skill",
+      "description": "Utilise reusable solutions, formalised best practices, to solve common ICT development tasks in software development and design."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/60c78287-22eb-4103-9c8c-28deaa460da0",
+      "label": "work in teams",
+      "skill_type": "skill",
+      "description": "Work confidently within a group with each doing their part in the service of the whole."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/15d76317-c71a-4fa2-aadc-2ecc34e627b7",
+      "label": "communication",
+      "skill_type": "knowledge",
+      "description": "Exchanging and conveying information, ideas, concepts, thoughts, and feelings through the use of a shared system of words, signs, and semiotic rules via a medium."
+    },
+    {
+      "uri": "http://data.europa.eu/esco/skill/4707da90-9cfc-46ca-8de0-38a0b7bfb137",
+      "label": "think analytically",
+      "skill_type": "skill",
+      "description": "Produce thoughts using logic and reasoning in order to identify the strengths and weaknesses of alternative solutions, conclusions or approaches to problems."
+    }
+  ]
+}

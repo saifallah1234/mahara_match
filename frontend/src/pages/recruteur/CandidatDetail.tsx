@@ -2,12 +2,12 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { EmptyState, Note, Panel } from '../../components/ui'
+import { EmptyState, Loading, Note, Panel } from '../../components/ui'
 import { useAuth } from '../../state/auth'
 import { useRecruiter } from '../../state/recruiter'
 import { getCandidate, listEducationLevels, type CandidateCard, type EducationLevel } from '../../api/recruiter'
 import { ApiError } from '../../api/client'
-import { SKILL_LEVEL_LABEL, WORK_MODE_LABEL, formatMonthYear, labelFor } from '../../lib/format'
+import { SKILL_LEVEL_LABEL, WORK_MODE_LABEL, formatMonthYear, labelFor, skillLabel } from '../../lib/format'
 import { RELOCATION_LABEL, UNVERIFIED_MESSAGE } from '../../lib/recruiterCandidates'
 
 /** Read-only limited profile. No contact action: contact is not part of the MVP (D14). */
@@ -39,7 +39,7 @@ export default function RecruteurCandidatDetail() {
     return () => { live = false }
   }, [candidateId, verified])
 
-  const skillName = (id: string) => skills.find((s) => s.id === id)?.canonical_name ?? 'Compétence'
+  const skillName = (id: string) => skillLabel(skills.find((s) => s.id === id)?.canonical_name ?? 'Compétence')
   const levelName = (id: string) => levels.find((l) => l.id === id)?.name ?? 'Formation'
 
   return (
@@ -50,7 +50,7 @@ export default function RecruteurCandidatDetail() {
         {verified && gone && <Note tone="attention">Ce profil n’est plus visible.</Note>}
         {verified && loadError && <p role="alert" className="text-coral">{loadError}</p>}
         {levelsError && <p role="alert" className="text-coral">{levelsError}</p>}
-        {verified && !card && !gone && !loadError && <p className="text-slate">Chargement…</p>}
+        {verified && !card && !gone && !loadError && <Loading />}
         {card && (
           <>
             <Panel title="Compétences">

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Button, Field, Input, Panel, Select, Textarea } from '../../components/ui'
+import { Button, Field, Input, Loading, Panel, Select, Textarea } from '../../components/ui'
 import { useAuth } from '../../state/auth'
 import { useRecruiter } from '../../state/recruiter'
 import { listOfferSkills, type OfferSkill, type RecruiterOffer } from '../../api/recruiter'
-import { CONTRACT_OPTIONS, EXPERIENCE_OPTIONS, GOUVERNORATS, contractLabel } from '../../lib/format'
+import { CONTRACT_OPTIONS, EXPERIENCE_OPTIONS, GOUVERNORATS, contractLabel, skillLabel } from '../../lib/format'
 
 const MODES = [['ONSITE', 'Sur site'], ['HYBRID', 'Hybride'], ['REMOTE', 'À distance']]
 
@@ -15,7 +15,7 @@ export default function RecruteurNouvelleOffre() {
   const { offers, loading } = useRecruiter()
   if (!offerId) return <OfferForm />
   const offer = offers.find((o) => o.id === offerId)
-  if (!offer) return <PageBody><p className="text-slate">{loading ? 'Chargement…' : 'Cette offre est introuvable.'}</p></PageBody>
+  if (!offer) return <PageBody>{loading ? <Loading /> : <p className="text-slate">Cette offre est introuvable.</p>}</PageBody>
   return <OfferEditor offer={offer} />
 }
 
@@ -30,7 +30,7 @@ function OfferEditor({ offer }: { offer: RecruiterOffer }) {
     return () => { live = false }
   }, [offer.id])
   if (loadError) return <PageBody><p role="alert" className="text-coral">{loadError}</p></PageBody>
-  if (!current) return <PageBody><p className="text-slate">Chargement…</p></PageBody>
+  if (!current) return <PageBody><Loading /></PageBody>
   return <OfferForm offer={offer} current={current} />
 }
 
@@ -53,7 +53,7 @@ function OfferForm({ offer, current = [] }: { offer?: RecruiterOffer; current?: 
 
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value })
   const orgId = offer?.organization_id ?? workspace?.organization?.id
-  const skillName = (id: string) => skills.find((s) => s.id === id)?.canonical_name ?? id
+  const skillName = (id: string) => skillLabel(skills.find((s) => s.id === id)?.canonical_name ?? id)
 
   const problems: string[] = []
   if (!f.title.trim()) problems.push('Le titre est obligatoire.')
@@ -154,7 +154,7 @@ function OfferForm({ offer, current = [] }: { offer?: RecruiterOffer; current?: 
               }}
             >
               <option value="">Ajouter une compétence…</option>
-              {skills.map((s) => <option key={s.id} value={s.id}>{s.canonical_name}</option>)}
+              {skills.map((s) => <option key={s.id} value={s.id}>{skillLabel(s.canonical_name)}</option>)}
             </Select>
             {chosen.map((c) => (
               <div key={c.id} className="flex items-center justify-between gap-3 text-[13.5px]">

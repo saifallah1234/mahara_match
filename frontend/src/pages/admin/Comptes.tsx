@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, Cell, ConfirmDialog, EmptyState, Input, Panel, Row, Select, Table } from '../../components/ui'
+import { Badge, Button, Cell, ConfirmDialog, EmptyState, Input, Loading, Panel, Row, Select, Table } from '../../components/ui'
 import { useAdmin } from '../../state/admin'
 import { ROLE_LABEL, formatDate, labelFor } from '../../lib/format'
 import { filterUsers } from '../../lib/adminFilters'
@@ -44,8 +44,8 @@ export default function AdminComptes() {
       <PageBody>
         {error && <p role="alert" className="mb-3 text-coral">{error}</p>}
         <Panel>
-          {loading ? <p className="p-5 text-slate">Chargement…</p> : shown.length === 0 ? (
-            <EmptyState title="Aucun compte ne correspond." />
+          {loading ? <Loading /> : shown.length === 0 ? (
+            <EmptyState title="Aucun compte ne correspond.">Modifiez la recherche ou le filtre de rôle.</EmptyState>
           ) : (
             <Table head={['Utilisateur', 'Rôles', 'Organisation', 'Dernière connexion', 'Statut', '']}>
               {shown.map((u) => (

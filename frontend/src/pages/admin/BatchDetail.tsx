@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, Cell, EmptyState, Panel, Row, Select, Table } from '../../components/ui'
+import { Badge, Button, Cell, EmptyState, Loading, Panel, Row, Select, Table } from '../../components/ui'
 import { useBatchRows } from '../../state/adminData'
 import * as api from '../../api/admin'
 import { IMPORT_BATCH_STATUS_LABEL, IMPORT_REJECTION_LABEL, IMPORT_ROW_STATUS_LABEL, formatDateTime, labelFor } from '../../lib/format'
@@ -44,8 +44,8 @@ export default function AdminBatchDetail() {
         )}
         {rows.error && <p role="alert" className="text-coral">{rows.error}</p>}
         <Panel>
-          {rows.loading && rows.data.length === 0 ? <p className="p-5 text-slate">Chargement…</p> : rows.data.length === 0 ? (
-            <EmptyState title="Aucune ligne pour ce filtre." />
+          {rows.loading && rows.data.length === 0 ? <Loading /> : rows.data.length === 0 ? (
+            <EmptyState title="Aucune ligne pour ce filtre.">Choisissez un autre statut.</EmptyState>
           ) : (
             <Table head={['Ligne', 'Statut', 'Identifiant externe', 'Motif', 'Offre', 'Contenu brut']}>
               {rows.data.map((r) => (

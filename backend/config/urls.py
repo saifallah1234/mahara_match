@@ -13,4 +13,5 @@ urlpatterns = [
     path("api/v1/", include("backend.apps.assistant.api.urls")),
     path("api/v1/", include("backend.apps.platform.api.urls")),
     path("api/v1/", include("backend.apps.imports.api.urls")),
+    path("api/v1/reporting/", include("backend.apps.reporting.api.urls")),
 ]

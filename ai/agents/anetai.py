@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 from decimal import Decimal
@@ -8,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from ai.agents.intents import (
+    CANDIDATE_CV_ADVICE,
     CANDIDATE_JOB_SEARCH,
     RECRUITER_CANDIDATE_SEARCH,
     RECRUITER_OFFER_SEARCH,
@@ -19,6 +21,7 @@ from ai.agents.intents import (
 )
 from ai.agents.templates import (
     candidate_search_reply,
+    cv_advice_reply,
     job_search_reply,
     own_offer_search_reply,
     unsupported_reply,
@@ -30,6 +33,8 @@ from ai.tools.candidate_search import (
     search_candidates,
     search_own_offers,
 )
+from ai.tools.cv_advice import TOOL_NAME as CV_ADVICE_TOOL
+from ai.tools.cv_advice import get_cv_advice
 from ai.tools.job_matches import get_candidate_job_matches
 from ai.tools.job_search import TOOL_NAME as JOB_SEARCH_TOOL
 from ai.tools.job_search import search_jobs_for_candidate
@@ -39,7 +44,11 @@ from backend.apps.recruitment.services.retrieval_scope import offer_reference
 if TYPE_CHECKING:
     from backend.apps.identity.models import User
 
+logger = logging.getLogger(__name__)
+
 AGENT_VERSION = "anetai-v2"
+# Wording is optional polish: a slow or unreachable model must not delay the grounded reply.
+WORDING_TIMEOUT_SECONDS = 8
 # Phase 7 skill-coverage route, kept selectable (ANETAI_CANDIDATE_TOOL=baseline) until the
 # retrieval route is verified live; remove it in a follow-up.
 BASELINE_ROUTE = "job_match_search"
@@ -165,11 +174,22 @@ def _stays_within_evidence(reply: str, evidence: dict[str, Any]) -> bool:
     return True
 
 
+def _reword(messages: list[SystemMessage | HumanMessage]) -> str | None:
+    """Model wording, or None when the model fails or times out."""
+    try:
+        # Unstreamed, so the read timeout bounds the whole generation, not each token.
+        model = get_chat_model(timeout=WORDING_TIMEOUT_SECONDS)
+        return str(model.invoke(messages, stream=False).content)
+    except Exception as exc:
+        logger.warning("Agent wording fell back to the template: %s", type(exc).__name__)
+        return None
+
+
 def explain_matches(prompt: str, evidence: dict[str, Any]) -> str:
     if not evidence["matches"]:
         return _evidence_summary(evidence)
     fallback = _evidence_summary(evidence)
-    response = get_chat_model().invoke(
+    reply = _reword(
         [
             SystemMessage(
                 content=(
@@ -193,8 +213,9 @@ def explain_matches(prompt: str, evidence: dict[str, Any]) -> str:
             ),
         ]
     )
-    reply = str(response.content)
-    return reply if _stays_within_evidence(reply, evidence) else fallback
+    if reply is None or not _stays_within_evidence(reply, evidence):
+        return fallback
+    return reply
 
 
 def _stays_within_search_evidence(reply: str, evidence: dict[str, Any]) -> bool:
@@ -227,7 +248,7 @@ def explain_job_search(prompt: str, evidence: dict[str, Any], language: str) -> 
     fallback = job_search_reply(evidence, language)
     if language != "en" or not evidence["matches"]:
         return fallback
-    response = get_chat_model().invoke(
+    reply = _reword(
         [
             SystemMessage(
                 content=(
@@ -243,8 +264,9 @@ def explain_job_search(prompt: str, evidence: dict[str, Any], language: str) -> 
             HumanMessage(content=f"Request: {prompt}\nDeterministic explanation: {fallback}"),
         ]
     )
-    reply = str(response.content)
-    return reply if _stays_within_search_evidence(reply, evidence) else fallback
+    if reply is None or not _stays_within_search_evidence(reply, evidence):
+        return fallback
+    return reply
 
 
 _CANDIDATE_SEARCH_TRACE_KEYS = ("reason", "offer_id", "vector_unavailable", "legs", "latency_ms")
@@ -276,6 +298,11 @@ def _routes() -> dict[str, RouteSpec]:
                 prompt, evidence, language
             ),
             tool_input=lambda prompt: {"question": prompt},
+        ),
+        CANDIDATE_CV_ADVICE: RouteSpec(
+            tool_name=CV_ADVICE_TOOL,
+            tool=lambda actor, prompt: get_cv_advice(actor),
+            explain=lambda prompt, evidence, language: cv_advice_reply(evidence, language),
         ),
         RECRUITER_CANDIDATE_SEARCH: RouteSpec(
             tool_name=CANDIDATE_TOOL_NAME,

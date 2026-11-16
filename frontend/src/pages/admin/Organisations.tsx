@@ -1,7 +1,7 @@
 import { PageBody, PageHeader } from '../../components/layout'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Badge, Button, Cell, ConfirmDialog, EmptyState, Panel, Row, Select, Table } from '../../components/ui'
+import { Badge, Button, Cell, ConfirmDialog, EmptyState, Loading, Panel, Row, Select, Table } from '../../components/ui'
 import { useAdmin } from '../../state/admin'
 import { ORGANIZATION_STATUS_LABEL, ORGANIZATION_TYPE_LABEL, filterOrganizations } from '../../lib/adminFilters'
 import { labelFor } from '../../lib/format'
@@ -37,8 +37,8 @@ export default function AdminOrganisations() {
         {error && <p role="alert" className="mb-3 text-coral">{error}</p>}
         <p className="mb-3 text-[13px] text-slate">{pending} organisation(s) en attente de vérification.</p>
         <Panel>
-          {loading ? <p className="p-5 text-slate">Chargement…</p> : shown.length === 0 ? (
-            <EmptyState title="Aucune organisation ne correspond." />
+          {loading ? <Loading /> : shown.length === 0 ? (
+            <EmptyState title="Aucune organisation ne correspond.">Modifiez la recherche ou les filtres.</EmptyState>
           ) : (
             <Table head={['Organisation', 'Type', 'Matricule fiscal', 'Lieu', 'Statut', '']}>
               {shown.map((o) => (

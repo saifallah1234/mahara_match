@@ -53,7 +53,7 @@ export default function AdminOnboarding() {
   return <><PageHeader title="Demandes d’accès" description="Vérifier l’organisation avant d’activer un recruteur ou un responsable de formation." />
     <PageBody className="space-y-4">
       {error && <p role="alert" className="text-coral">{error}</p>}
-      {requests.length === 0 && <Panel><EmptyState title="Aucune demande en attente" /></Panel>}
+      {requests.length === 0 && <Panel><EmptyState title="Aucune demande en attente">Les demandes d’accès des recruteurs et des organismes apparaîtront ici.</EmptyState></Panel>}
       {requests.map((entry) => {
         const org = organizations.find((candidate) => candidate.matricule_fiscal === entry.matricule_fiscal)
         const expectedType = entry.requested_role === 'RECRUITER' ? 'COMPANY' : 'TRAINING_PROVIDER'

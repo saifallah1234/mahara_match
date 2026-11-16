@@ -134,17 +134,19 @@ def build_interview_graph(model: Any, retrieve: Callable[[], dict[str, Any]] | N
         action = output.get("next_action")
         if action not in {"followup", "next", "evaluate"}:
             raise ValueError("Invalid model routing output.")
-        if action == "followup":
-            if state.get("followup_used") or state.get("current_kind") == "FOLLOWUP":
-                action = (
-                    "next" if sum(a["kind"] == "MAIN" for a in state["answers"]) < 3 else "evaluate"
-                )
-            elif (
-                not isinstance(output.get("followup"), str)
-                or not output["followup"].strip()
-                or len(output["followup"]) > 2000
-            ):
-                raise ValueError("Invalid follow-up question.")
+        # The model only judges whether a follow-up is needed; the answer count decides between
+        # the next question and feedback (the model chose "evaluate" after one answer, 2026-11-08).
+        move_on = "next" if sum(a["kind"] == "MAIN" for a in state["answers"]) < 3 else "evaluate"
+        followup = output.get("followup")
+        usable = isinstance(followup, str) and followup.strip() and len(followup) <= 2000
+        # A follow-up is optional: an unusable one moves on rather than failing the interview.
+        if (
+            action != "followup"
+            or not usable
+            or state.get("followup_used")
+            or state.get("current_kind") == "FOLLOWUP"
+        ):
+            action = move_on
         if action == "evaluate" and sum(a["kind"] == "MAIN" for a in state["answers"]) != 3:
             raise ValueError("Cannot evaluate before three main answers.")
         return output | {"next_action": action}

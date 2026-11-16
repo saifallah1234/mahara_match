@@ -1,0 +1,29 @@
+# Placement: ai/document_intelligence/ats/levels.yaml
+# Per-level scoring configuration (Q26 v1 starting point; tune after evaluation).
+# weights: component weights, summed then normalised (mid uses the default 20/10/30/20/15/5).
+# required_sections: sections the CV must have at this level.
+# max_pages / strict_page_limit: strict means any extra page scores zero for length.
+# metric_weight: how much a missing metric costs a bullet (1.0 = full cost).
+version: 1
+levels:
+  intern:
+    label: Intern
+    weights: {parseability: 20, sections: 14, skill_coverage: 30, evidence: 15, content: 13, length: 8}
+    required_sections: [skills, education, projects]
+    max_pages: 1
+    strict_page_limit: true
+    metric_weight: 0.4
+  junior:
+    label: Junior
+    weights: {parseability: 20, sections: 12, skill_coverage: 30, evidence: 18, content: 13, length: 7}
+    required_sections: [skills, education, projects]
+    max_pages: 1
+    strict_page_limit: true
+    metric_weight: 0.6
+  mid:
+    label: Mid-level
+    weights: {parseability: 20, sections: 10, skill_coverage: 30, evidence: 20, content: 15, length: 5}
+    required_sections: [experience, skills, education]
+    max_pages: 2
+    strict_page_limit: false
+    metric_weight: 1.0

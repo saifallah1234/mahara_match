@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
-import { Badge, Button, Cell, ConfirmDialog, EmptyState, Field, Input, Modal, Panel, Row, Select, Table, Textarea } from '../../components/ui'
+import { Badge, Button, Cell, ConfirmDialog, EmptyState, Field, Input, Loading, Modal, Panel, Row, Select, Table, Textarea } from '../../components/ui'
 import { useBatches, useSources } from '../../state/adminData'
 import * as api from '../../api/admin'
 import { canLaunch, sourcePayload, type SourceForm } from '../../lib/adminSources'
@@ -64,8 +64,8 @@ export default function AdminImports() {
           title="Sources de données"
           action={<Button size="sm" onClick={() => setSourceDialog({})}>Déclarer une source</Button>}
         >
-          {sources.loading ? <p className="p-5 text-slate">Chargement…</p> : sources.data.length === 0 ? (
-            <EmptyState title="Aucune source déclarée" />
+          {sources.loading ? <Loading /> : sources.data.length === 0 ? (
+            <EmptyState title="Aucune source déclarée" action={<Button size="sm" onClick={() => setSourceDialog({})}>Déclarer une source</Button>}>Déclarez une source avant de lancer un import.</EmptyState>
           ) : (
             <Table head={['Source', 'Type', 'Autorisation', '']}>
               {sources.data.map((s) => (
@@ -112,8 +112,8 @@ export default function AdminImports() {
         </Panel>
 
         <Panel title="Lots d’import">
-          {batches.loading && batches.data.length === 0 ? <p className="p-5 text-slate">Chargement…</p> : batches.data.length === 0 ? (
-            <EmptyState title="Aucun import réalisé" />
+          {batches.loading && batches.data.length === 0 ? <Loading /> : batches.data.length === 0 ? (
+            <EmptyState title="Aucun import réalisé">Autorisez une source puis lancez un import : ses lots apparaîtront ici.</EmptyState>
           ) : (
             <Table head={['Source', 'Date', 'Ajoutées', 'Mises à jour', 'Inchangées', 'Rejetées', 'Statut']}>
               {batches.data.map((b) => (

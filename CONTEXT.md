@@ -166,8 +166,8 @@ helpers. `ai/` owns future intelligence capabilities; `pipelines/` processing;
 and collaboration. See the [repository map](README.md#repository-map).
 
 Guidance remains a README-only scope marker for AI-assisted candidate support,
-not a human advisor module or a second AI runtime. Reporting needs a small set of
-approved aggregate KPIs and privacy rules before implementation. Community is
+not a human advisor module or a second AI runtime. Reporting serves demo counts only
+(2026-11-07, decisions log); approved aggregate KPIs and privacy rules are still needed. Community is
 post-MVP. Advanced integrations stay outside the current release; freelance,
 fine-tuning and quantization retain separate future gates (PDF p. 10).
 
