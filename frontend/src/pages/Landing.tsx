@@ -160,6 +160,10 @@ export default function Landing() {
             Projet académique · Faculté des Sciences de Bizerte · Ibn Hadj Mbarek Saif Allah · Chakroun Yasmine · Arbi
             Aya · Gorrab Yasmine · Tlili Malek
           </p>
+          {/* Licence ESCO (décision 2011/833/UE) : mention obligatoire. */}
+          <p className="w-full text-[11.5px] text-slate">
+            Ce service utilise la classification <a className="underline" href="https://ec.europa.eu/esco" target="_blank" rel="noreferrer">ESCO</a> de la Commission européenne.
+          </p>
         </div>
       </footer>
     </div>

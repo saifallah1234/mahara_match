@@ -1,14 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PageBody, PageHeader } from '../../components/layout'
 import { Badge, Button, Cell, ConfirmDialog, EmptyState, Field, Input, Loading, Modal, Panel, Row, Select, Table, Textarea } from '../../components/ui'
 import { useBatches, useSources } from '../../state/adminData'
 import * as api from '../../api/admin'
-import { sourcePayload, type SourceForm } from '../../lib/adminSources'
+import { canLaunch, sourcePayload, type SourceForm } from '../../lib/adminSources'
 import { IMPORT_BATCH_STATUS_LABEL, IMPORT_SOURCE_TYPE_LABEL, formatDateTime, labelFor } from '../../lib/format'
 
 const EMPTY_SOURCE: SourceForm = { name: '', type: 'API', base_url: '', configuration: '' }
 const EMPTY_AUTHORIZATION = { acquisition_method: '', permission_evidence: '', expires_at: '' }
+const ACTIVE_BATCH = ['RUNNING', 'STARTED']
+const REFRESH_MS = 10_000
 
 export default function AdminImports() {
   const sources = useSources()
@@ -18,6 +20,28 @@ export default function AdminImports() {
   const [error, setError] = useState<string | null>(null)
   const [revoking, setRevoking] = useState<(typeof sources.data)[number] | null>(null)
   const [sourceDialog, setSourceDialog] = useState<{ source?: (typeof sources.data)[number] } | null>(null)
+  const [launching, setLaunching] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const running = batches.data.some((b) => ACTIVE_BATCH.includes(b.status))
+  const runningFor = (sourceId: string) => batches.data.some((b) => b.source_id === sourceId && ACTIVE_BATCH.includes(b.status))
+
+  // Un import dure plusieurs minutes : la liste des lots se rafraîchit tant qu’un lot est en cours.
+  const { reload: reloadBatches } = batches
+  useEffect(() => {
+    if (!running) return
+    const timer = window.setInterval(() => { void reloadBatches() }, REFRESH_MS)
+    return () => window.clearInterval(timer)
+  }, [running, reloadBatches])
+
+  async function launch(source: (typeof sources.data)[number]) {
+    setError(null); setNotice(null); setLaunching(source.id)
+    try {
+      await api.runImport(source.id)
+      setNotice(`Import de ${source.name} lancé. Il tourne en arrière-plan ; la liste des lots se met à jour toute seule.`)
+      await batches.reload()
+    } catch (e) { setError(e instanceof Error ? e.message : 'Lancement refusé.') }
+    finally { setLaunching(null) }
+  }
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value })
   const sourceName = (id: string) => sources.data.find((s) => s.id === id)?.name ?? 'Source inconnue'
 
@@ -35,6 +59,7 @@ export default function AdminImports() {
       <PageHeader title="Imports d’offres" />
       <PageBody className="space-y-6">
         {(error || sources.error || batches.error) && <p role="alert" className="text-coral">{error ?? sources.error ?? batches.error}</p>}
+        {notice && <p role="status" className="text-[13px] text-teal-deep">{notice}</p>}
         <Panel
           title="Sources de données"
           action={<Button size="sm" onClick={() => setSourceDialog({})}>Déclarer une source</Button>}
@@ -52,6 +77,13 @@ export default function AdminImports() {
                     {s.expires_at && <p className="text-[12px] text-slate">jusqu’au {formatDateTime(s.expires_at)}</p>}
                   </Cell>
                   <Cell className="text-right">
+                    {canLaunch(s) && (
+                      <>
+                        <Button size="sm" disabled={launching !== null || runningFor(s.id)} onClick={() => void launch(s)}>
+                          {launching === s.id ? 'Lancement…' : runningFor(s.id) ? 'Import en cours' : 'Lancer l’import'}
+                        </Button>{' '}
+                      </>
+                    )}
                     <Button size="sm" variant="discret" onClick={() => setSourceDialog({ source: s })}>Modifier</Button>{' '}
                     {s.is_authorized
                       ? <Button size="sm" variant="discret" onClick={() => setRevoking(s)}>Révoquer</Button>
@@ -92,7 +124,7 @@ export default function AdminImports() {
                   <Cell className="tnum text-[13px]">{b.updated_count}</Cell>
                   <Cell className="tnum text-[13px]">{b.unchanged_count}</Cell>
                   <Cell className="tnum text-[13px]">{b.rejected_count}</Cell>
-                  <Cell><Badge tone={b.status === 'COMPLETED' ? 'positif' : 'neutre'}>{labelFor(IMPORT_BATCH_STATUS_LABEL, b.status)}</Badge></Cell>
+                  <Cell><Badge tone={b.status === 'COMPLETED' ? 'positif' : b.status === 'FAILED' ? 'negatif' : ACTIVE_BATCH.includes(b.status) ? 'encours' : 'neutre'}>{labelFor(IMPORT_BATCH_STATUS_LABEL, b.status)}</Badge></Cell>
                 </Row>
               ))}
             </Table>
@@ -158,7 +190,7 @@ function SourceDialog({ source, onClose, onSaved }: { source?: api.DataSource; o
         <Field label="URL de base" hint="Laisser vide pour une source sans adresse.">
           <Input value={form.base_url} onChange={set('base_url')} placeholder="https://" />
         </Field>
-        <Field label="Configuration (JSON)" hint="Facultatif.">
+        <Field label="Configuration (JSON)" hint={'Facultatif. Collecte web : {"keywords": [""], "max_pages": 2} (mot-clé vide = toutes les offres). Changer keywords ou max_pages garde l’autorisation ; toute autre clé la retire.'}>
           <Textarea value={form.configuration} onChange={set('configuration')} className="font-mono text-[12.5px]" />
         </Field>
       </div>

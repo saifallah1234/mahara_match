@@ -1,6 +1,8 @@
 services:
   minio:
-    image: minio/minio
+    # minio/minio is no longer published on Docker Hub (pulls fail since late 2025).
+    # pgsty/minio is a community rebuild of the same open-source server, drop-in compatible.
+    image: pgsty/minio:latest
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000"

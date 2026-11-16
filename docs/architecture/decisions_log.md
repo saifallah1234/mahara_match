@@ -147,3 +147,60 @@ re-recording or leaving the turn. Only the audio is uploaded and retained under 
 recording-retention rule (`INTERVIEW_RECORDING_RETENTION_HOURS`). Candidates without a camera,
 or who refuse it, answer with audio only. Analysing or sharing answer video needs a separate
 privacy decision.
+**Imported offers are published (2026-11-14):** the import owner decided, without a
+team reply, that scraped offers are saved as `PUBLISHED` instead of `DRAFT`, so
+candidates see them. The import placeholder organization is `VERIFIED` (an admin's
+`REJECTED` is kept and hides them again), the API exposes `company_name`, and the
+offer pages show it. Earlier drafts are published with `publish_imported_offers`.
+G08/Q16 (final organization rule for imported offers) stays open. Details:
+[offer import](offer_import.md).
+Same day: candidates (catalogue, matching, agent retrieval) no longer see offers whose
+`application_deadline` has passed; the deadline day is still open and offers without a
+deadline stay visible. This reuses the existing apply/publish rule. The status is not
+changed, and the owning organization still sees its expired offers.
+
+**Local development database (2026-11-14):** the shared Supabase project stopped
+answering ("tenant/user not found"). Development now uses a local Docker PostgreSQL
+(`mahara-postgres`, pgvector, PostgreSQL 17, port 5434). `mahara_match_backup` holds the
+`public` and `eval_graphrag` schemas restored from the 2026-10-29 Supabase backup; its
+schema matched the code (no pending migrations). Tests use the separate `mahara_match`
+database. The storage export was empty. Data written locally since then is not shared
+with teammates. Setup and restore script: [infrastructure/postgres](../../infrastructure/postgres/README.md).
+
+**Admin-launched imports (2026-11-14):** an administrator starts a Tanitjobs import from the
+Imports page. The request only creates a RUNNING batch (one per source at a time; older than
+3 h counts as crashed) and starts `offer_import --batch-id` as a separate process, the same
+command a scheduler will use. Without a keyword a run uses the source configuration, else an
+empty search over 2 pages, which brings offers of every field (chosen over a keyword list).
+The scheduled run is the next step. Details: [offer import](offer_import.md).
+
+**Scheduled imports and run settings (2026-11-14):** changing a source's `keywords` or
+`max_pages` no longer revokes its authorization; other configuration keys, the type and the
+base URL still do. A daily scheduled import (`offer_import tanitjobs --scheduled`) shares the
+admin button's one-run-at-a-time guard and is audited as `SYSTEM`. For now it is a per-machine
+Windows scheduled task (or cron) writing to that machine's local database; a shared schedule
+waits for a shared database. Setup: [infrastructure/scheduler](../../infrastructure/scheduler/README.md).
+
+**CV extraction (2026-11-14):** candidates can pre-fill their profile from an uploaded CV
+(ported from the OneTech agent project). The analysis runs in the background; the raw result
+stays on the CV (G05) and only rows the candidate confirms are added. Decided by the CV/import
+owner without a team reply: the LLM chain is Gemini, then Groq, then local Ollama, so with API
+keys configured the CV text is sent to Google or Groq (without keys nothing leaves the machine);
+confirmed skills missing from the shared list are created (normalized names); the Bac+N
+education scale with EQF reference is seeded. Details: [CV extraction](cv_extraction.md).
+
+**MinIO image (2026-11-14):** `minio/minio` can no longer be pulled from Docker Hub (and
+`quay.io/minio/minio` refuses anonymous pulls), so `docker-compose.yml` now uses
+`pgsty/minio`, a community rebuild of the same open-source server, approved by the CV/import
+owner. Same command, ports and credentials; a bucket must still be created once (see
+[CV extraction](cv_extraction.md)). Revisit if an official free image returns.
+
+**ESCO skills (2026-11-14):** the `skills` table is backed by ESCO v1.2.1 (13,939 skills, labels
+in fr/en/ar), loaded from a trimmed extract committed in `data/reference/esco/` (1.7 MB, allowed
+by the ESCO licence with attribution and a modification notice; the attribution is shown in the
+landing footer and the workspace sidebar). Migration `taxonomy.0002` adds `esco_uri` and ESCO
+metadata to `skills` and a `skill_labels` table: every developer runs `migrate` then
+`load_esco_skills`. Tier 1 matching only: exact on normalized ESCO preferred labels or local names,
+never fuzzy, alternative labels never auto-link. Skills ESCO lacks stay local. Lists and the
+retrieval index use local + in-use skills; `?search=` reaches all. Meaning-based suggestions are
+deferred. Details: [CV extraction](cv_extraction.md#skills).

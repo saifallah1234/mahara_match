@@ -39,7 +39,7 @@ export default function CandidatDashboard() {
           <ScoreDial score={badge.score} available />
           <div className="min-w-0 space-y-1.5 text-sm">
             <Link className="font-medium text-navy hover:text-teal" to={`/candidat/offres/${offer.id}`}>{offer.title}</Link>
-            <p className="text-slate">{offer.organization_name} · {offer.city || offer.governorate}</p>
+            <p className="text-slate">{offer.company_name || offer.organization_name} · {offer.city || offer.governorate}</p>
             {badge.missing.length > 0 && <p className="flex flex-wrap items-center gap-1.5 text-slate">À acquérir : <SkillChips names={badge.missing} variant="missing" /></p>}
             {training[offer.id] && <p className="text-slate">Formation suggérée : <Link className="font-medium text-teal" to="/candidat/formations">{training[offer.id].title}</Link></p>}
           </div>

@@ -2,7 +2,7 @@ import { allPages } from './auth.ts'
 import { request } from './client.ts'
 
 export type RecruiterOffer = {
-  id: string; organization_id: string; organization_name: string; title: string; description: string
+  id: string; organization_id: string; organization_name: string; company_name: string; title: string; description: string
   contract_type: string; work_mode: string; experience_level: string; governorate: string; city: string
   min_salary: string | null; max_salary: string | null; application_deadline: string | null
   status: 'DRAFT' | 'PUBLISHED' | 'PAUSED' | 'CLOSED' | 'ARCHIVED'; published_at: string | null

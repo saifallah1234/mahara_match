@@ -1,7 +1,7 @@
 // Placement: frontend/tests/adminSources.test.mjs
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { sourcePayload } from '../src/lib/adminSources.ts'
+import { canLaunch, sourcePayload } from '../src/lib/adminSources.ts'
 
 test('a source form sends name, type and configuration, and a blank base URL as null', () => {
   assert.deepEqual(
@@ -19,4 +19,10 @@ test('a configuration that is not JSON stops the form before any request', () =>
   const result = sourcePayload({ name: 'Export CSV', type: 'CSV', base_url: '', configuration: '{oops' })
   assert.equal(result.ok, false)
   assert.match(result.error, /JSON/)
+})
+
+test('only an authorized web-scraping source offers the launch button', () => {
+  assert.equal(canLaunch({ type: 'WEB_SCRAPING', is_authorized: true }), true)
+  assert.equal(canLaunch({ type: 'WEB_SCRAPING', is_authorized: false }), false)
+  assert.equal(canLaunch({ type: 'CSV', is_authorized: true }), false)
 })

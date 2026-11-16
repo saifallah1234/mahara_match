@@ -8,8 +8,10 @@ everything already processed, and the batch stays visible as RUNNING/FAILED.
 
 import hashlib
 from dataclasses import dataclass
+from datetime import timedelta
 from enum import StrEnum
 from typing import Any
+from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -17,9 +19,18 @@ from django.db.models import Count
 from django.utils import timezone
 
 from backend.apps.identity.models import User, UserStatus
-from backend.apps.identity.models.organizations import Organization, OrganizationType
+from backend.apps.identity.models.organizations import (
+    Organization,
+    OrganizationType,
+    VerificationStatus,
+)
+from backend.apps.identity.services.access import require_permission
 from backend.apps.imports.models.records import DataSource, ImportBatch, ImportRow
+from backend.apps.imports.services.contracts import ImportsPermissionCode
+from backend.apps.platform.services.records import append_audit
 from backend.apps.recruitment.services import import_reconciliation as reconciliation
+from backend.common.exceptions import DomainNotFoundError, DomainValidationError
+from backend.common.exceptions.domain import DomainError
 
 # Placeholder owner of every imported offer: job_offers.organization and
 # created_by are required, and scraped companies are not registered recruiters.
@@ -30,6 +41,8 @@ IMPORT_USER_EMAIL = "import-bot@mahara-match.invalid"  # .invalid can never be a
 
 EXTERNAL_ID_MAX = 255
 REJECTED = "REJECTED"
+WEB_SCRAPING = "WEB_SCRAPING"  # the only source type a launch can run (browser scrapers)
+STALE_RUN_AFTER = timedelta(hours=3)  # a launched run never takes this long
 
 
 class BatchStatus(StrEnum):  # provisional vocabulary (Q24)
@@ -40,6 +53,12 @@ class BatchStatus(StrEnum):  # provisional vocabulary (Q24)
 
 class SourceNotAuthorized(Exception):
     """The source is not (or no longer) approved for acquisition."""
+
+
+class ImportAlreadyRunning(DomainError):
+    code = "import_already_running"
+    status_code = 409
+    default_message = "An import of this source is already running."
 
 
 @dataclass(frozen=True)
@@ -68,15 +87,43 @@ def get_or_create_source(
 
 
 def _get_placeholder_organization() -> Organization:
+    """Created VERIFIED: candidates only see offers of verified organizations.
+
+    A placeholder left PENDING by earlier runs is promoted. REJECTED is an
+    administrator's explicit choice and is kept, which hides the imported offers again.
+    """
     organization, _ = Organization.objects.get_or_create(
         matricule_fiscal=PLACEHOLDER_ORG_MATRICULE,
         defaults={
             "type": OrganizationType.COMPANY,
             "legal_name": PLACEHOLDER_ORG_NAME,
             "description": "Placeholder owner of offers imported from external sources. Not a real company.",
+            "verification_status": VerificationStatus.VERIFIED,
         },
     )
+    if organization.verification_status == VerificationStatus.PENDING:
+        organization.verification_status = VerificationStatus.VERIFIED
+        organization.save(update_fields=["verification_status", "updated_at"])
     return organization
+
+
+def publish_previous_imports() -> int:
+    """Publish DRAFT offers stored by imports made before 2026-11-14; returns the count."""
+    with transaction.atomic():
+        return reconciliation.publish_imported_drafts(
+            organization=_get_placeholder_organization(), created_by=_get_import_user()
+        )
+
+
+def count_previous_import_drafts() -> int:
+    """How many offers publish_previous_imports() would publish (read-only)."""
+    organization = Organization.objects.filter(matricule_fiscal=PLACEHOLDER_ORG_MATRICULE).first()
+    user = User.objects.filter(email__iexact=IMPORT_USER_EMAIL).first()
+    if organization is None or user is None:
+        return 0
+    return reconciliation.publishable_imported_drafts(
+        organization=organization, created_by=user
+    ).count()
 
 
 def _get_import_user() -> User:
@@ -174,6 +221,93 @@ def reject_row(
         status=REJECTED,
         error_code=error_code,
         error_message=error_message,
+    )
+
+
+def prepare_import(actor: User, source_id: UUID | str) -> ImportBatch:
+    """Create the RUNNING batch of an admin-launched run (the scrape starts afterwards)."""
+    require_permission(actor, ImportsPermissionCode.MANAGE_SOURCES)
+    return _prepare_batch({"pk": source_id}, actor=actor)
+
+
+def prepare_scheduled_import(source_name: str) -> ImportBatch | None:
+    """Create the RUNNING batch of a scheduled run, or None when a run is already going.
+
+    Same checks as an admin launch, so a scheduled run and a click never scrape the
+    same source at once. Recorded in the audit log as a SYSTEM action.
+    """
+    try:
+        return _prepare_batch({"name": source_name}, actor=None)
+    except ImportAlreadyRunning:
+        return None
+
+
+def _prepare_batch(lookup: dict[str, Any], *, actor: User | None) -> ImportBatch:
+    """Only authorized WEB_SCRAPING sources run, one run at a time per source.
+
+    A RUNNING batch older than STALE_RUN_AFTER is treated as a crashed run and marked
+    FAILED, so a dead process cannot block the source forever.
+    """
+    with transaction.atomic():
+        source = DataSource.objects.select_for_update().filter(**lookup).first()
+        if source is None:
+            raise DomainNotFoundError("Data source not found.")
+        if source.type != WEB_SCRAPING:
+            raise DomainValidationError(
+                details={"source": ["Only web-scraping sources can be launched from here."]}
+            )
+        try:
+            assert_source_authorized(source)
+        except SourceNotAuthorized as exc:
+            raise DomainValidationError(details={"source": [str(exc)]}) from exc
+
+        now = timezone.now()
+        running = ImportBatch.objects.filter(source=source, status=BatchStatus.RUNNING)
+        running.filter(started_at__lt=now - STALE_RUN_AFTER).update(
+            status=BatchStatus.FAILED, completed_at=now, updated_at=now
+        )
+        if running.exists():
+            raise ImportAlreadyRunning()
+
+        batch = ImportBatch.objects.create(
+            source=source, checksum="", status=BatchStatus.RUNNING, started_at=now
+        )
+        append_audit(
+            actor_type="USER" if actor is not None else "SYSTEM",
+            actor_user=actor,
+            action="imports.batch.launch" if actor is not None else "imports.batch.schedule",
+            entity_type="import_batches",
+            entity_id=batch.id,
+            after={"source_id": str(source.id)},
+        )
+    return batch
+
+
+def resume_import(batch_id: UUID | str) -> ImportRun:
+    """The ImportRun of a batch created by prepare_import(), for the launched process."""
+    batch = ImportBatch.objects.select_related("source").filter(pk=batch_id).first()
+    if batch is None or batch.status != BatchStatus.RUNNING:
+        raise ValueError(f"Import batch {batch_id} is not waiting to run.")
+    assert_source_authorized(batch.source)  # it may have been revoked since the click
+    return ImportRun(
+        batch=batch,
+        organization=_get_placeholder_organization(),
+        created_by=_get_import_user(),
+    )
+
+
+def batch_source_name(batch_id: UUID | str) -> str | None:
+    name: str | None = (
+        ImportBatch.objects.filter(pk=batch_id).values_list("source__name", flat=True).first()
+    )
+    return name
+
+
+def mark_batch_failed(batch_id: UUID | str) -> None:
+    """Close a batch whose process died before finish_import(); a finished one is left alone."""
+    now = timezone.now()
+    ImportBatch.objects.filter(pk=batch_id, status=BatchStatus.RUNNING).update(
+        status=BatchStatus.FAILED, completed_at=now, updated_at=now
     )
 
 

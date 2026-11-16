@@ -99,6 +99,7 @@ export const IMPORT_SOURCE_TYPE_LABEL: Record<string, string> = { API: 'API', CS
 
 export const IMPORT_BATCH_STATUS_LABEL: Record<string, string> = {
   STARTED: 'En cours',
+  RUNNING: 'En cours',
   COMPLETED: 'Terminé',
   FAILED: 'Échoué',
 }

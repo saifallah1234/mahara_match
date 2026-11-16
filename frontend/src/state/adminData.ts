@@ -44,7 +44,7 @@ export function usePagedList<T>(load: (page: number) => Promise<api.Paged<T>>, r
   }, [])
 
   useEffect(() => { void fetchPage(1) }, [fetchPage, resetKey])
-  return { data, count, hasMore, loading, error, loadMore: () => fetchPage(page + 1) }
+  return { data, count, hasMore, loading, error, loadMore: () => fetchPage(page + 1), reload: () => fetchPage(1) }
 }
 
 const none = { skills: [] as SkillRef[] }

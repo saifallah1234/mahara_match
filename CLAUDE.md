@@ -13,8 +13,12 @@ with this file, say so instead of picking one.
 - Run every command from the repository root (the folder with `pyproject.toml`), using `uv run`.
 - The developer works on Windows (PowerShell). Use PowerShell-friendly commands.
 - Django settings: `--settings=backend.config.settings.development`.
-- The database is Supabase PostgreSQL, reached through `POSTGRES_SESSION_POOLER` in `.env`.
-  It is a shared, real database: every `migrate` and every import writes to it for real.
+- The database is a local Docker PostgreSQL (container `mahara-postgres`, port 5434), reached
+  through `DATABASE_URL` in `.env` (it overrides the old Supabase `POSTGRES_SESSION_POOLER`).
+  `mahara_match_backup` holds the data restored from the 2026-10-29 Supabase backup; tests use the
+  `mahara_match` database (`TEST_DATABASE_URL`). Docker Desktop must be running. Setup and restore:
+  [infrastructure/postgres/README.md](infrastructure/postgres/README.md). It is the developer's real
+  working data: every `migrate` and every import writes to it for real.
   Never print, log or paste `.env` values.
 - Every new file starts with a comment naming its placement (`# Placement: path/to/file.py`).
 - New dependencies need a one-line justification (see `AGENT.md`); add them with `uv add`.
@@ -23,7 +27,7 @@ with this file, say so instead of picking one.
 ## Import pipeline: structure
 
 ```
-tanitjobs.py (browser) -> ScrapedOffer -> offer_adapter.py -> services -> job_offers (DRAFT)
+tanitjobs.py (browser) -> ScrapedOffer -> offer_adapter.py -> services -> job_offers (PUBLISHED)
 ```
 
 | File | Role |
@@ -34,7 +38,8 @@ tanitjobs.py (browser) -> ScrapedOffer -> offer_adapter.py -> services -> job_of
 | `pipelines/ingestion/language_detection.py` | `lingua` restricted to fr/en/ar; returns a code or `None`. |
 | `pipelines/ingestion/offer_adapter.py` | The only place that knows `job_offers` columns. Pure Python. |
 | `pipelines/ingestion/offer_import.py` | Entry point (`python -m ...`). Never imports Django models. |
-| `backend/apps/imports/services/batch_processing.py` | Source authorization, batch and row bookkeeping. |
+| `backend/apps/imports/services/batch_processing.py` | Source authorization, batch and row bookkeeping, launch guard (`prepare_import`). |
+| `backend/apps/imports/services/import_launcher.py` | Admin "Lancer l’import": creates the RUNNING batch, starts `offer_import --batch-id` as its own process. |
 | `backend/apps/recruitment/services/import_reconciliation.py` | Add / update / unchanged per (source, external_id). |
 | `backend/apps/taxonomy/management/commands/seed_languages.py` | Idempotent seed of fr/en/ar. |
 
@@ -59,6 +64,8 @@ Do not re-litigate them without asking.
   Do not `goto` the same URL again right after it.
 - Calling `.first` / `inner_text()` on a Playwright locator that does not exist waits for the timeout.
   Check `count()` first for optional elements.
+- The admin launch runs the scrape in a separate process (never inside the request or the Django process).
+  Its output is in `logs/imports/<batch id>.log`. One RUNNING batch per source; one older than 3 h counts as crashed.
 - `--refresh` revisits stored offers and updates them. It never changes `status`, organization or
   creator, and it skips soft-deleted offers.
 
@@ -68,6 +75,10 @@ Do not re-litigate them without asking.
 uv run python backend/manage.py seed_languages --settings=backend.config.settings.development
 uv run python -m pipelines.ingestion.offer_import tanitjobs "python" --max-pages 1
 uv run python -m pipelines.ingestion.offer_import tanitjobs "python" --max-pages 1 --refresh
+uv run python -m pipelines.ingestion.offer_import tanitjobs --headless   # configured keywords (default: empty search, 2 pages)
+uv run python -m pipelines.ingestion.offer_import tanitjobs --scheduled --headless   # scheduler mode (infrastructure/scheduler)
+uv run python backend/manage.py publish_imported_offers --dry-run --settings=backend.config.settings.development
+uv run python backend/manage.py load_esco_skills --settings=backend.config.settings.development   # after migrate; idempotent
 uv run python backend/manage.py makemigrations --check --dry-run --settings=backend.config.settings.development
 ```
 

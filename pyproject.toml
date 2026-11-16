@@ -10,6 +10,8 @@ dependencies = [
     "djangorestframework>=3.16,<3.17",
     "djangorestframework-simplejwt>=5.5,<6",
     "drf-spectacular>=0.28,<0.29",
+    "google-genai>=3.3.0",
+    "groq>=1.7.0",
     "langchain-ollama>=0.3,<2",
     "langgraph>=0.2,<2",
     "lingua-language-detector>=2.2.0",
@@ -17,7 +19,8 @@ dependencies = [
     "pgvector>=0.5.1",
     "playwright>=1.63.0",
     "psycopg[binary]>=3.2,<4",
-    "pymupdf>=1.26,<2",
+    "pymupdf4llm>=2.1",
+    "pymupdf>=1.26,<3",
     "python-docx>=1.2.0",
     "python-dotenv>=1.2.4",
     "pyyaml>=6.0.3",
@@ -63,6 +66,9 @@ line-ending = "auto"
 
 [tool.mypy]
 python_version = "3.12"
+# Code is deployed on Linux (the interview worker uses fcntl/os.killpg); check as Linux
+# so results are the same on Windows developer machines.
+platform = "linux"
 plugins = ["mypy_django_plugin.main"]
 check_untyped_defs = true
 warn_unused_ignores = true

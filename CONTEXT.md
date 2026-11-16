@@ -82,7 +82,8 @@ The complete entity-to-domain map is in
 The backend is a modular monolith: DRF API → application service → Django
 ORM → PostgreSQL. Django migrations create and evolve relational tables.
 Initial migrations for all active business apps were generated and applied to the
-configured Supabase PostgreSQL database on 2026-09-26. RBAC roles and permissions
+configured Supabase PostgreSQL database on 2026-09-26 (development moved to a local
+restored copy on 2026-11-14, see the decisions log). RBAC roles and permissions
 were seeded. Assistant, imports and platform have protected persistence interfaces;
 the agent runtime and actual import processing remain in later phases.
 

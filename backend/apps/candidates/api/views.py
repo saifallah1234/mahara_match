@@ -21,6 +21,7 @@ from backend.apps.candidates.api.serializers import (
     CVAnalysisResultSerializer,
     CVDraftUpdateSerializer,
     CVGenerateSerializer,
+    CVProposalApplySerializer,
     CVRewriteRequestSerializer,
     CVRewriteSerializer,
     CVSerializer,
@@ -42,7 +43,7 @@ from backend.apps.candidates.models import (
     Experience,
     Project,
 )
-from backend.apps.candidates.services import cv_review, discovery, records
+from backend.apps.candidates.services import cv_parsing, cv_review, discovery, records
 from backend.apps.identity.api.common_permissions import active_request_user
 
 
@@ -176,6 +177,30 @@ class CVViewSet(OwnedRecordViewSet):
     def destroy(self, request: Request, pk: str | None = None) -> Response:
         records.delete_cv(active_request_user(request), str(pk))
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(request=None, responses={202: CVSerializer})
+    @action(detail=True, methods=["post"])
+    def parse(self, request: Request, pk: str | None = None) -> Response:
+        """Start the analysis of this CV in the background; poll parse_status."""
+        cv = cv_parsing.request_cv_parsing(active_request_user(request), str(pk))
+        return Response(CVSerializer(cv).data, status=status.HTTP_202_ACCEPTED)
+
+    @extend_schema(request=None, responses=dict[str, Any])
+    @action(detail=True, methods=["get"], url_path="profile-proposal")
+    def profile_proposal(self, request: Request, pk: str | None = None) -> Response:
+        """What the analysis found, shaped like profile records, for the candidate to review."""
+        return Response(cv_parsing.cv_profile_proposal(active_request_user(request), str(pk)))
+
+    @extend_schema(request=CVProposalApplySerializer, responses=dict[str, int])
+    @action(detail=True, methods=["post"], url_path="apply-proposal")
+    def apply_proposal(self, request: Request, pk: str | None = None) -> Response:
+        """Add the entries the candidate confirmed to their profile (all or nothing)."""
+        serializer = CVProposalApplySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        counts = cv_parsing.apply_cv_proposal(
+            active_request_user(request), str(pk), serializer.validated_data
+        )
+        return Response(counts, status=status.HTTP_201_CREATED)
 
 
 class CVAnalysisResultViewSet(GenericViewSet[CVAnalysisResult]):

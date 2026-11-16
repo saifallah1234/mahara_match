@@ -11,6 +11,8 @@ from enum import StrEnum
 from typing import Any
 
 from django.apps import apps
+from django.db.models import QuerySet
+from django.utils import timezone
 
 from backend.apps.identity.models import User
 from backend.apps.identity.models.organizations import Organization
@@ -38,9 +40,9 @@ def reconcile_offer(
     Raises django.core.exceptions.ValidationError when the values break the
     model's own rules; nothing is written in that case. Call inside a transaction.
 
-    On update only the scraped content columns are touched. status, organization,
-    created_by and source are never overwritten, so a manual decision (for example
-    publishing an offer) survives later imports.
+    New offers are saved as PUBLISHED. On update only the scraped content columns are
+    touched. status, organization, created_by and source are never overwritten, so a
+    manual decision (for example closing or unpublishing an offer) survives later imports.
 
     description_language_code ("fr", "en", "ar") is resolved to a taxonomy.Language
     row; a code with no matching row leaves the column empty.
@@ -50,12 +52,15 @@ def reconcile_offer(
     existing = JobOffer.objects.filter(source=source, external_id=external_id).first()
 
     if existing is None:
+        # Imported offers go straight to the candidate catalogue (decision 2026-11-14):
+        # the original site already published them, and candidates apply there.
         offer = JobOffer(
             source=source,
             organization=organization,
             created_by=created_by,
             external_id=external_id,
-            status=JobOfferStatus.DRAFT,
+            status=JobOfferStatus.PUBLISHED,
+            published_at=timezone.now(),
             **values,
         )
         offer.full_clean()  # model validators only run here, not on save()
@@ -91,3 +96,34 @@ def known_external_ids(source: DataSource) -> set[str]:
         "external_id", flat=True
     )
     return {external_id for external_id in external_ids if external_id}
+
+
+def publishable_imported_drafts(
+    *, organization: Organization, created_by: User
+) -> QuerySet[JobOffer]:
+    """Live DRAFT offers left by earlier imports (before 2026-11-14) that can be published.
+
+    Only offers owned by the import placeholder and import user are considered, so an
+    offer a recruiter created by hand is never touched. External offers need a link.
+    """
+    return (
+        JobOffer.objects.filter(
+            status=JobOfferStatus.DRAFT,
+            deleted_at__isnull=True,
+            source__isnull=False,
+            organization=organization,
+            created_by=created_by,
+            easy_apply=False,
+        )
+        .exclude(offer_url="")
+        .exclude(title="")
+        .exclude(description="")
+        .order_by("created_at", "id")
+    )
+
+
+def publish_imported_drafts(*, organization: Organization, created_by: User) -> int:
+    """Publish every offer returned by publishable_imported_drafts(); returns the count."""
+    return publishable_imported_drafts(organization=organization, created_by=created_by).update(
+        status=JobOfferStatus.PUBLISHED, published_at=timezone.now(), updated_at=timezone.now()
+    )
